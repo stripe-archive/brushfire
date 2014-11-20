@@ -1,6 +1,6 @@
 #!/bin/sh
 
-if [ $TRAVIS_PULL_REQUEST -ne "false" ]; then
+if [ "$TRAVIS_PULL_REQUEST" -ne "false" ]; then
   exit 0
 fi
 
