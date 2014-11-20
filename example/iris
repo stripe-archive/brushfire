@@ -1,0 +1,7 @@
+#!/bin/sh
+java -Xmx2G -cp ../target/runtime/*:../target/provided/*:../target/classes \
+com.twitter.scalding.Tool \
+com.stripe.brushfire.scalding.IrisJob \
+--local \
+--input iris.data \
+--output iris.output
