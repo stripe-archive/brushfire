@@ -111,4 +111,10 @@ Map("age" -> Ordinal(35), "gender" -> Nominal("male"), "weight" -> Continuous(13
 
 # Extending Brushfire
 
-(TBD)
+Brushfire is designed to be extremely pluggable. Some ways you might want to extend it are (from simplest to most involved):
+
+* Adding a new sampling strategy, to get finer grained control over how instances are allocated to trees, or between the training set and the test set: define a new [Sampler](http://stripe.github.io/brushfire/#com.stripe.brushfire.Sampler)
+* Add a new evaluation strategy (such as log-likelihood or entropy) or stopping criteria: define a new [Evaluator](http://stripe.github.io/brushfire/#com.stripe.brushfire.Evaluator)
+* Adding a new feature type, or a new way of binning an existing feature type (such as log-binning real numbers): define a new [Splitter](http://stripe.github.io/brushfire/#com.stripe.brushfire.Splitter)
+* Adding a new target type (such as real-valued targets for regression trees): define a new [Evaluator](http://stripe.github.io/brushfire/#com.stripe.brushfire.Evaluator), and quite likely also define a new [Splitter](http://stripe.github.io/brushfire/#com.stripe.brushfire.Splitter) for any continuous or sparse feature types you want to be able to use.
+* Add a new distributed computation platform: define a new equivalent of [Trainer](http://stripe.github.io/brushfire/#com.stripe.brushfire.scalding.Trainer), idiomatically to the platform you're using. (There's no specific interface this should implement.)
