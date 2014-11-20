@@ -1,5 +1,9 @@
 #!/bin/sh
 
+if [ $TRAVIS_PULL_REQUEST -ne 'false' ]; then
+  exit 0
+fi
+
 GH_REF="https://${GH_TOKEN?:}@github.com/stripe/brushfire.git"
 
 set -e
@@ -7,10 +11,6 @@ set -e
 echo "Generating docs..."
 cd $(dirname $0)
 mvn clean scala:doc
-
-if [ $TRAVIS_PULL_REQUEST -ne 'false' ]; then
-  exit 0
-fi
 
 cd ./target/site/scaladocs
 git init
