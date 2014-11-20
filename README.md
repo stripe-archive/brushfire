@@ -44,7 +44,7 @@ If it worked, you should see a JSON representation of 4 versions of a decision t
 
 The only distributed computing platform that Brushfire currently supports is [Scalding](http://github.com/twitter.scalding), version 0.12 or later.
 
-The simplest way to use Brushfire with Scalding is by subclassing `TrainerJob` and overriding `trainer` to return an instance of `Trainer`. (Both of those are in the `com.stripe.brushfire.scalding` package; any other Brushfire classes mentioned are in `com.stripe.brushfire`.) Example:
+The simplest way to use Brushfire with Scalding is by subclassing [TrainerJob](http://stripe.github.io/brushfire/#com.stripe.brushfire.scalding.TrainerJob) and overriding `trainer` to return an instance of [Trainer](http://stripe.github.io/brushfire/#com.stripe.brushfire.scalding.Trainer). Example:
 
 ````scala
 import com.stripe.brushfire._
@@ -56,7 +56,7 @@ class MyJob(args: Args) extends TrainerJob(args) {
 }
 ```
 
-To construct a `Trainer`, you need to pass it training data as a Scalding `TypedPipe` of Brushfire `Instance[K, V,T]` objects. `Instance` looks like this:
+To construct a `Trainer`, you need to pass it training data as a Scalding `TypedPipe` of Brushfire [Instance[K, V,T]](http://stripe.github.io/brushfire/#com.stripe.brushfire.Instance) objects. `Instance` looks like this:
 
 ````scala
 case class Instance[K, V, T](id: String, timestamp: Long, features: Map[K, V], target: T)
@@ -72,11 +72,11 @@ Example:
 Instance("AS-2014", 1416168857L, Map("lat" -> 49.2, "long" -> 37.1, "altitude" -> 35000.0), Map(true -> 1L))
 ````
 
-You also need to pass it a `Sampler`. Here are some samplers you might use:
+You also need to pass it a [Sampler](http://stripe.github.io/brushfire/#com.stripe.brushfire.Sampler). Here are some samplers you might use:
 
-* `SingleTreeSampler` will use the entirety of the training data to construct a single tree.
-* `KFoldSampler(numTrees: Int)` will construct k different trees, each excluding a random 1/k of the data, for use in cross-validation.
-* `RFSampler(numTrees: Int, featureRate: Double, samplingRate: Double)` will construct multiple trees, each using a separate bootstrap sample (using `samplingRate`, which defaults to `1.0`). Each node in the tree will also only consider a random `featureRate` sample of the features available. (This is the approach used for random forests).
+* [SingleTreeSampler](http://stripe.github.io/brushfire/#com.stripe.brushfire.SingleTreeSampler$) will use the entirety of the training data to construct a single tree.
+* [KFoldSampler(numTrees: Int)](http://stripe.github.io/brushfire/#com.stripe.brushfire.KFoldSampler) will construct k different trees, each excluding a random 1/k of the data, for use in cross-validation.
+* [RFSampler(numTrees: Int, featureRate: Double, samplingRate: Double)](http://stripe.github.io/brushfire/#com.stripe.brushfire.RFSampler) will construct multiple trees, each using a separate bootstrap sample (using `samplingRate`, which defaults to `1.0`). Each node in the tree will also only consider a random `featureRate` sample of the features available. (This is the approach used for random forests).
 
 One you have constructed a `Trainer`, you most likely want to call `expandTimes(base: String, times: Int)`. This will build a new ensemble of trees from the training data and expand them `times` times, to depth `times + 1`. At each step, the trees will be serialized to a directory (on HDFS, unless you're running in local mode) under `base`.
 
