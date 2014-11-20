@@ -1,0 +1,8 @@
+laungage: java
+script: ./generate_docs.sh
+env:
+  global:
+    secure: cx7QLGEkcbp5VQGz6VzU9H7zPtgVLw6OH3KBSDLSTrWz/aqFHFbGAufynbol5XtGAYlTtNsFAHvXo2ythKTzM/MbTfOBEx1CUSuSAAnrH+STkbiZ9MOuV6F0TQFkSxAB+IGmavNBFciZzZsssLWFUMxvyvTKZPEeazHqZ01pN40=
+branches:
+  only:
+    - master
