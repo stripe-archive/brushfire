@@ -9,23 +9,23 @@ abstract class TrainerJob(args: Args) extends ExecutionJob[Unit](args) with Defa
   import TDsl._
 
   def execution = trainer.execution.unit
-  def trainer: Trainer[_, _]
+  def trainer: Trainer[_, _, _]
 }
 
 object TreeSource {
-  def apply[V, T](path: String)(implicit inj: Injection[Tree[V, T], String]) = {
+  def apply[K, V, T](path: String)(implicit inj: Injection[Tree[K, V, T], String]) = {
     implicit val bij = Injection.unsafeToBijection(inj).inverse
-    typed.BijectedSourceSink[(Int, String), (Int, Tree[V, T])](TypedTsv(path))
+    typed.BijectedSourceSink[(Int, String), (Int, Tree[K, V, T])](TypedTsv(path))
   }
 }
 
-case class TrainerState[V, T](sampler: Sampler, trees: TypedPipe[(Int, Tree[V, T])])
+case class TrainerState[K, V, T](sampler: Sampler[K], trees: TypedPipe[(Int, Tree[K, V, T])])
 
-case class Trainer[V, T: Monoid](trainingData: TypedPipe[Instance[V, T]], reducers: Int, execution: Execution[TrainerState[V, T]]) {
+case class Trainer[K: Ordering, V, T: Monoid](trainingData: TypedPipe[Instance[K, V, T]], reducers: Int, execution: Execution[TrainerState[K, V, T]]) {
 
   private def stepPath(base: String, n: Int) = base + "/step_%02d".format(n)
 
-  def flatMapTrees(fn: ((Sampler, Iterable[(Int, Tree[V, T])])) => Execution[TypedPipe[(Int, Tree[V, T])]]) = {
+  def flatMapTrees(fn: ((Sampler[K], Iterable[(Int, Tree[K, V, T])])) => Execution[TypedPipe[(Int, Tree[K, V, T])]]) = {
     val newExecution = execution
       .flatMap { state =>
         Execution.from(state.sampler).zip(state.trees.toIterableExecution)
@@ -35,7 +35,7 @@ case class Trainer[V, T: Monoid](trainingData: TypedPipe[Instance[V, T]], reduce
     copy(execution = newExecution)
   }
 
-  def flatMapSampler(fn: Sampler => Execution[Sampler]) = {
+  def flatMapSampler(fn: Sampler[K] => Execution[Sampler[K]]) = {
     val newExecution = execution
       .flatMap { state => fn(state.sampler) }
       .zip(execution.map { _.trees })
@@ -43,11 +43,11 @@ case class Trainer[V, T: Monoid](trainingData: TypedPipe[Instance[V, T]], reduce
     copy(execution = newExecution)
   }
 
-  def load(path: String)(implicit inj: Injection[Tree[V, T], String]): Trainer[V, T] = {
+  def load(path: String)(implicit inj: Injection[Tree[K, V, T], String]): Trainer[K, V, T] = {
     flatMapTrees { case (sampler, _) => Execution.from(TypedPipe.from(TreeSource(path))) }
   }
 
-  def updateTargets(path: String)(implicit inj: Injection[Tree[V, T], String]): Trainer[V, T] = {
+  def updateTargets(path: String)(implicit inj: Injection[Tree[K, V, T], String]): Trainer[K, V, T] = {
     flatMapTrees {
       case (sampler, trees) =>
         lazy val treeMap = trees.toMap
@@ -77,10 +77,10 @@ case class Trainer[V, T: Monoid](trainingData: TypedPipe[Instance[V, T]], reduce
     }
   }
 
-  def expand[S](path: String)(implicit splitter: Splitter[V, T], evaluator: Evaluator[V, T], inj: Injection[Tree[V, T], String]) = {
+  def expand[S](path: String)(implicit splitter: Splitter[V, T], evaluator: Evaluator[V, T], inj: Injection[Tree[K, V, T], String]) = {
     flatMapTrees {
       case (sampler, trees) =>
-        implicit val splitSemigroup = new SplitSemigroup[V, T]
+        implicit val splitSemigroup = new SplitSemigroup[K, V, T]
         implicit val jdSemigroup = splitter.semigroup
         lazy val treeMap = trees.toMap
 
@@ -150,12 +150,12 @@ case class Trainer[V, T: Monoid](trainingData: TypedPipe[Instance[V, T]], reduce
     }
   }
 
-  def expandTimes[S](base: String, times: Int)(implicit splitter: Splitter[V, T], evaluator: Evaluator[V, T], inj: Injection[Tree[V, T], String]) = {
+  def expandTimes[S](base: String, times: Int)(implicit splitter: Splitter[V, T], evaluator: Evaluator[V, T], inj: Injection[Tree[K, V, T], String]) = {
     updateTargets(stepPath(base, 0))
       .expandFrom(base, 1, times)
   }
 
-  def expandFrom[S](base: String, step: Int, to: Int)(implicit splitter: Splitter[V, T], evaluator: Evaluator[V, T], inj: Injection[Tree[V, T], String]): Trainer[V, T] = {
+  def expandFrom[S](base: String, step: Int, to: Int)(implicit splitter: Splitter[V, T], evaluator: Evaluator[V, T], inj: Injection[Tree[K, V, T], String]): Trainer[K, V, T] = {
     if (step > to)
       this
     else {
@@ -181,14 +181,14 @@ case class Trainer[V, T: Monoid](trainingData: TypedPipe[Instance[V, T]], reduce
 object Trainer {
   val MaxReducers = 20
 
-  def apply[V, T: Monoid](trainingData: TypedPipe[Instance[V, T]], sampler: Sampler): Trainer[V, T] = {
-    val empty = 0.until(sampler.numTrees).map { treeIndex => (treeIndex, Tree.empty[V, T](Monoid.zero)) }
+  def apply[K: Ordering, V, T: Monoid](trainingData: TypedPipe[Instance[K, V, T]], sampler: Sampler[K]): Trainer[K, V, T] = {
+    val empty = 0.until(sampler.numTrees).map { treeIndex => (treeIndex, Tree.empty[K, V, T](Monoid.zero)) }
     Trainer(trainingData, sampler.numTrees.min(MaxReducers), Execution.from(TrainerState(sampler, TypedPipe.from(empty))))
   }
 }
 
-class SplitSemigroup[V, T] extends Semigroup[(String, Split[V, T], Double)] {
-  def plus(a: (String, Split[V, T], Double), b: (String, Split[V, T], Double)) = {
+class SplitSemigroup[K, V, T] extends Semigroup[(K, Split[V, T], Double)] {
+  def plus(a: (K, Split[V, T], Double), b: (K, Split[V, T], Double)) = {
     if (a._3 > b._3)
       a
     else
