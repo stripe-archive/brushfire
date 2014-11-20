@@ -2,14 +2,14 @@ package com.stripe.brushfire
 
 import com.twitter.algebird._
 
-object SingleTreeSampler extends Sampler {
+object SingleTreeSampler extends Sampler[Any] {
   val numTrees = 1
   def timesInTrainingSet(id: String, timestamp: Long, treeIndex: Int) = 1
   def includeInValidationSet(id: String, timestamp: Long, treeIndex: Int) = true
-  def includeFeature(name: String, treeIndex: Int, leafIndex: Int) = true
+  def includeFeature(name: Any, treeIndex: Int, leafIndex: Int) = true
 }
 
-case class KFoldSampler(numTrees: Int) extends Sampler {
+case class KFoldSampler(numTrees: Int) extends Sampler[Any] {
   val murmur = MurmurHash128(12345)
 
   def timesInTrainingSet(id: String, timestamp: Long, treeIndex: Int) = {
@@ -25,11 +25,11 @@ case class KFoldSampler(numTrees: Int) extends Sampler {
     timesInTrainingSet(id, timestamp, treeIndex) == 0
   }
 
-  def includeFeature(name: String, treeIndex: Int, leafIndex: Int) = true
+  def includeFeature(name: Any, treeIndex: Int, leafIndex: Int) = true
 }
 
 case class RFSampler(numTrees: Int, featureRate: Double, samplingRate: Double = 1.0)
-    extends Sampler {
+    extends Sampler[String] {
 
   def timesInTrainingSet(id: String, timestamp: Long, treeIndex: Int) = {
     val rand = random(id, treeIndex)
@@ -60,7 +60,7 @@ case class RFSampler(numTrees: Int, featureRate: Double, samplingRate: Double = 
   }
 }
 
-case class TimeGroupedSampler(base: Sampler, period: Long, groups: Int) extends Sampler {
+case class TimeGroupedSampler[K](base: Sampler[K], period: Long, groups: Int) extends Sampler[K] {
   def numTrees = base.numTrees * groups
 
   def timesInTrainingSet(id: String, timestamp: Long, treeIndex: Int) = {
@@ -78,10 +78,10 @@ case class TimeGroupedSampler(base: Sampler, period: Long, groups: Int) extends 
     timesInTrainingSet(id, timestamp, treeIndex) == 0
   }
 
-  def includeFeature(name: String, treeIndex: Int, leafIndex: Int) = base.includeFeature(name, treeIndex, leafIndex)
+  def includeFeature(name: K, treeIndex: Int, leafIndex: Int) = base.includeFeature(name, treeIndex, leafIndex)
 }
 
-case class OutOfTimeSampler(base: Sampler, threshold: Long) extends Sampler {
+case class OutOfTimeSampler[K](base: Sampler[K], threshold: Long) extends Sampler[K] {
   def numTrees = base.numTrees
 
   def timesInTrainingSet(id: String, timestamp: Long, treeIndex: Int) = {
@@ -95,5 +95,5 @@ case class OutOfTimeSampler(base: Sampler, threshold: Long) extends Sampler {
     timestamp >= threshold
   }
 
-  def includeFeature(name: String, treeIndex: Int, leafIndex: Int) = base.includeFeature(name, treeIndex, leafIndex)
+  def includeFeature(name: K, treeIndex: Int, leafIndex: Int) = base.includeFeature(name, treeIndex, leafIndex)
 }

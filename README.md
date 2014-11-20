@@ -56,15 +56,15 @@ class MyJob(args: Args) extends TrainerJob(args) {
 }
 ```
 
-To construct a `Trainer`, you need to pass it training data as a Scalding `TypedPipe` of Brushfire `Instance[V,T]` objects. `Instance` looks like this:
+To construct a `Trainer`, you need to pass it training data as a Scalding `TypedPipe` of Brushfire `Instance[K, V,T]` objects. `Instance` looks like this:
 
 ````scala
-case class Instance[V, T](id: String, timestamp: Long, features: Map[String, V], target: T)
+case class Instance[K, V, T](id: String, timestamp: Long, features: Map[K, V], target: T)
 ````
 
 * The `id` should be unique for each instance.
 * If there's an associated observation time, it should be the `timestamp`. (Otherwise `0L` is fine)
-* `features` is a `Map` from feature name to some value of type V. There's built-in implicit support for `Int`, `Double`, `Boolean`, and `String` types (with the assumption for `Int` and `String` that there is a small, finite number of possible values). If, as is common, you need to mix different feature types, see the section on `Dispatched` below.
+* `features` is a `Map` from feature name (type K, usually String) to some value of type V. There's built-in implicit support for `Int`, `Double`, `Boolean`, and `String` types (with the assumption for `Int` and `String` that there is a small, finite number of possible values). If, as is common, you need to mix different feature types, see the section on `Dispatched` below.
 * the only built-in support for `target` currently is for `Map[L,Long]`, where `L` represents some label type (for example `Boolean` for a binary classifier or `String` for multi-class). The `Long` values represent the weight for the instance, which is usually 1.
 
 Example:
@@ -87,7 +87,7 @@ import com.stripe.brushfire.scalding._
 import com.twitter.scalding._
 
 class MyJob(args: Args) extends TrainerJob(args) {
-  def trainingData: TypedPipe[Instance[V,T]] = ???
+  def trainingData: TypedPipe[Instance[K, V,T]] = ???
   def trainer = Trainer(trainingData, KFoldSampler(4)).expandTimes(args("output"), 5)
 }
 ````

@@ -2,8 +2,8 @@ package com.stripe.brushfire
 
 import com.twitter.algebird._
 
-case class BinnedError[K, T: Monoid](binner: Iterable[T] => K) extends Error[T, Map[K, T]] {
-  val semigroup = implicitly[Semigroup[Map[K, T]]]
+case class BinnedError[B, T: Monoid](binner: Iterable[T] => B) extends Error[T, Map[B, T]] {
+  val semigroup = implicitly[Semigroup[Map[B, T]]]
 
   def create(actual: T, predicted: Iterable[T]) = Map(binner(predicted) -> actual)
 }

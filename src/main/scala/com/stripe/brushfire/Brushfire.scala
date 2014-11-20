@@ -2,10 +2,10 @@ package com.stripe.brushfire
 
 import com.twitter.algebird._
 
-case class Instance[V, T](id: String, timestamp: Long, features: Map[String, V], target: T)
+case class Instance[K, V, T](id: String, timestamp: Long, features: Map[K, V], target: T)
 
 object Instance {
-  def apply[V](id: String, timestamp: Long, features: Map[String, V], target: Boolean): Instance[V, Map[Boolean, Long]] =
+  def apply[K, V](id: String, timestamp: Long, features: Map[K, V], target: Boolean): Instance[K, V, Map[Boolean, Long]] =
     Instance(id, timestamp, features, Map(target -> 1L))
 }
 
@@ -24,11 +24,11 @@ trait Evaluator[V, T] {
   def evaluate(split: Split[V, T]): (Split[V, T], Double)
 }
 
-trait Sampler {
+trait Sampler[-K] {
   def numTrees: Int
   def timesInTrainingSet(id: String, timestamp: Long, treeIndex: Int): Int
   def includeInValidationSet(id: String, timestamp: Long, treeIndex: Int): Boolean
-  def includeFeature(name: String, treeIndex: Int, leafIndex: Int): Boolean
+  def includeFeature(key: K, treeIndex: Int, leafIndex: Int): Boolean
 }
 
 trait Error[T, E] {
