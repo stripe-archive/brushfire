@@ -11,6 +11,7 @@ Brushfire currently supports:
 * categorical features (including those with very high cardinality)
 * k-fold cross validation and random forests
 * chi-squared test as a measure of split quality
+* feature importance and brier scores
 * Scalding/Hadoop as a distributed computing platform
 
 In the future we plan to add support for:
@@ -28,6 +29,7 @@ Thanks for assistance and contributions:
 
 * Steven Noble <http://twitter.com/snoble>
 * Colin Marc <http://twitter.com/colinmarc>
+* Dan Frank <http://twitter.com/danielhfrank>
 
 # Quick start
 

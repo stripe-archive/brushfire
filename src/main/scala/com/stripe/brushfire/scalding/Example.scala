@@ -20,4 +20,7 @@ class IrisJob(args: Args) extends TrainerJob(args) {
   val trainer =
     Trainer(trainingData, KFoldSampler(4))
       .expandTimes(args("output"), 3)
+      .featureImportance(BrierScoreError[String]) { results =>
+        results.map { case (k, v) => (k, v.value) }.writeExecution(TypedTsv(args("output") + "/fi"))
+      }
 }

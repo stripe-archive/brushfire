@@ -5,6 +5,8 @@ import com.twitter.scalding._
 import com.twitter.algebird._
 import com.twitter.bijection._
 
+import scala.util.Random
+
 abstract class TrainerJob(args: Args) extends ExecutionJob[Unit](args) with Defaults with JsonInjections {
   import TDsl._
 
@@ -42,6 +44,9 @@ case class Trainer[K: Ordering, V, T: Monoid](trainingData: TypedPipe[Instance[K
       .map { case (s, t) => TrainerState(s, t) }
     copy(execution = newExecution)
   }
+
+  def tee[A](teeFn: A => Execution[_])(fn: ((Sampler[K], Iterable[(Int, Tree[K, V, T])]) => A)): Trainer[K, V, T] =
+    flatMapTrees { case (s, i) => teeFn(fn(s, i)).unit.flatMap { u => execution.map { _.trees } } }
 
   def load(path: String)(implicit inj: Injection[Tree[K, V, T], String]): Trainer[K, V, T] = {
     flatMapTrees { case (sampler, _) => Execution.from(TypedPipe.from(TreeSource(path))) }
@@ -127,11 +132,11 @@ case class Trainer[K: Ordering, V, T: Monoid](trainingData: TypedPipe[Instance[K
   }
 
   def validate[E](error: Error[T, E])(fn: ValuePipe[E] => Execution[_]) = {
-    flatMapTrees {
+    tee(fn) {
       case (sampler, trees) =>
         lazy val treeMap = trees.toMap
 
-        val e = trainingData
+        trainingData
           .flatMap { instance =>
             val predictions =
               for (
@@ -145,8 +150,47 @@ case class Trainer[K: Ordering, V, T: Monoid](trainingData: TypedPipe[Instance[K
               Some(error.create(instance.target, predictions))
           }
           .sum(error.semigroup)
+    }
+  }
 
-        fn(e).unit.flatMap { u => execution.map { _.trees } }
+  /**
+   *  featureImportance should: shuffle data randomly (group on something random then sort on something random?),
+   * then stream through and have each instance pick one feature value at random to pass on to the following instance.
+   * then group by permuted feature and compare error.
+   * @param error
+   * @tparam E
+   * @return
+   */
+  def featureImportance[E](error: Error[T, E])(fn: TypedPipe[(K, E)] => Execution[_]) = {
+    lazy val r = new Random(123)
+    tee(fn) {
+      case (sampler, trees) =>
+        lazy val treeMap = trees.toMap
+
+        val permutedFeatsPipe = trainingData.groupRandomly(10).sortBy { _ => r.nextDouble() }.mapValueStream {
+          instanceIterator =>
+            instanceIterator.sliding(2)
+              .flatMap {
+                case List(prevInst, instance) =>
+                  val treesForInstance = treeMap.filter {
+                    case (treeIndex, tree) => sampler.includeInValidationSet(instance.id, instance.timestamp, treeIndex)
+                  }.values
+
+                  treesForInstance.map { tree =>
+                    val featureToPermute = r.shuffle(prevInst.features).head
+                    val permuted = instance.features + featureToPermute
+                    val instanceErr = error.create(instance.target, tree.targetFor(permuted))
+                    (featureToPermute._1, instanceErr)
+                  }
+                case _ =>
+                  Nil
+              }
+        }.values
+
+        val summed = permutedFeatsPipe.groupBy(_._1)
+          .mapValues(_._2)
+          .sum(error.semigroup)
+        summed.toTypedPipe
     }
   }
 
