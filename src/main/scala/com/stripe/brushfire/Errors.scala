@@ -48,7 +48,7 @@ case class BrierScoreError[A] extends Error[Map[A, Long], AveragedValue] {
         val averagedScores = Monoid.sum(probs).mapValues(_ / predicted.size)
         val differences: Map[A, Double] = new MapGroup[A, Double].minus(actual.mapValues(_.toDouble), averagedScores)
         val sumSquareDifferences = differences.values.map { math.pow(_, 2) }.sum
-        AveragedValue(1L, sumSquareDifferences / differences.size)
+        AveragedValue(1L, sumSquareDifferences / math.max(differences.size, 1L))
     }
   }
 }
