@@ -32,7 +32,7 @@ trait Splitter[V, T] {
   /** return a new joint distribution from a value and a target distribution */
   def create(value: V, target: T): S
 
-  /** semigroup to sum up joint distributions **/
+  /** semigroup to sum up joint distributions */
   def semigroup: Semigroup[S]
 
   /** return candidate splits given a joint distribution and the parent node's target distrubution */
