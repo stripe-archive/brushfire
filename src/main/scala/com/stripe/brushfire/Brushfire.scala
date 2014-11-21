@@ -2,18 +2,19 @@ package com.stripe.brushfire
 
 import com.twitter.algebird._
 
-/** Represents a single instance of training data.
-*
-* @tparam K feature names
-* @tparam V feature values
-* @tparam T target distribution
-*
-* @constructor create a new instance
-* @param id an identifier unique to this instance
-* @param timestamp the time this instance was observed
-* @param features a map of named features that make up this instance
-* @param target a distribution of predictions or labels for this instance
-*/
+/**
+ * Represents a single instance of training data.
+ *
+ * @tparam K feature names
+ * @tparam V feature values
+ * @tparam T target distribution
+ *
+ * @constructor create a new instance
+ * @param id an identifier unique to this instance
+ * @param timestamp the time this instance was observed
+ * @param features a map of named features that make up this instance
+ * @param target a distribution of predictions or labels for this instance
+ */
 case class Instance[K, V, T](id: String, timestamp: Long, features: Map[K, V], target: T)
 
 object Instance {
@@ -21,10 +22,11 @@ object Instance {
     Instance(id, timestamp, features, Map(target -> 1L))
 }
 
-/** Produces candidate splits from the instances at a leaf node.
-* @tparam V feature values
-* @tparam T target distrubutions
-*/
+/**
+ * Produces candidate splits from the instances at a leaf node.
+ * @tparam V feature values
+ * @tparam T target distrubutions
+ */
 trait Splitter[V, T] {
   /** the type of a representation of a joint distribution of feature values and predictions */
   type S
@@ -70,10 +72,11 @@ trait Error[T, E] {
   /** semigroup to sum up error values */
   def semigroup: Semigroup[E]
 
-  /** create an single component of the error value
-  *
-  * @param actual the actual target distribution from the validation set
-  * @param predicted the set of predicted distributions from the trees
-  */
+  /**
+   * create an single component of the error value
+   *
+   * @param actual the actual target distribution from the validation set
+   * @param predicted the set of predicted distributions from the trees
+   */
   def create(actual: T, predicted: Iterable[T]): E
 }
