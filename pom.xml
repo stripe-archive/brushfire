@@ -3,7 +3,7 @@
 
   <groupId>com.stripe</groupId>
   <artifactId>brushfire</artifactId>
-  <version>0.4.0rc2-SNAPSHOT</version>
+  <version>0.4.0</version>
   <packaging>jar</packaging>
 
   <name>Brushfire</name>
