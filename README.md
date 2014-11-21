@@ -44,6 +44,16 @@ cat iris.output/step_03
 
 If it worked, you should see a JSON representation of 4 versions of a decision tree for classifying irises.
 
+To use brushfire as a jar in your own project, add the following to your POM file:
+
+```
+<dependency>
+  <groupId>com.stripe</groupId>
+  <artifactId>brushfire</artifactId>
+  <version>0.4.0</version>
+</dependency>
+```
+
 # Using Brushfire with Scalding
 
 The only distributed computing platform that Brushfire currently supports is [Scalding](http://github.com/twitter.scalding), version 0.12 or later.
