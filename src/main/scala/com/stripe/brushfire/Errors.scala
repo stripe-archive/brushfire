@@ -29,7 +29,7 @@ object Errors {
     Math.floor(averageProbability(predicted) * 100) / 100.0
 }
 
-class BrierScoreError[A] extends Error[Map[A, Long], AveragedValue] {
+case class BrierScoreError[A] extends Error[Map[A, Long], AveragedValue] {
   val semigroup = AveragedValue.group
 
   def normalizedFrequencies(m: Map[A, Long]): Map[A, Double] = {
