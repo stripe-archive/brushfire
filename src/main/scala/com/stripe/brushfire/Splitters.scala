@@ -19,6 +19,15 @@ case class BinarySplitter[V, T: Monoid](partition: V => Predicate[V])
   }
 }
 
+case class RandomSplitter[V, T](original: Splitter[V, T])
+    extends Splitter[V, T] {
+  type S = original.S
+  val semigroup = original.semigroup
+  def create(value: V, target: T) = original.create(value, target)
+  def split(parent: T, stats: S) =
+    scala.util.Random.shuffle(original.split(parent, stats)).headOption
+}
+
 case class QTreeSplitter[T: Monoid](k: Int)
     extends Splitter[Double, T] {
 
