@@ -52,11 +52,12 @@ case class Trainer[K: Ordering, V, T: Monoid](trainingData: TypedPipe[Instance[K
     flatMapTrees { case (sampler, _) => Execution.from(TypedPipe.from(TreeSource(path))) }
   }
 
-  /** Update the leaves of the current trees from the training set.
-  *
-  * The leaves target distributions will be set to the summed distributions of the instances
-  * in the training set that would get classified to them. Often used to initialize an empty tree.
-  */
+  /**
+   * Update the leaves of the current trees from the training set.
+   *
+   * The leaves target distributions will be set to the summed distributions of the instances
+   * in the training set that would get classified to them. Often used to initialize an empty tree.
+   */
   def updateTargets(path: String)(implicit inj: Injection[Tree[K, V, T], String]): Trainer[K, V, T] = {
     flatMapTrees {
       case (sampler, trees) =>
@@ -87,11 +88,12 @@ case class Trainer[K: Ordering, V, T: Monoid](trainingData: TypedPipe[Instance[K
     }
   }
 
-  /** expand each tree by one level, by attempting to split every leaf.
-  * @param path where to save the new tree
-  * @param splitter the splitter to use to generate candidate splits for each leaf
-  * @param evaluator the evaluator to use to decide which split to use for each leaf
-  */
+  /**
+   * expand each tree by one level, by attempting to split every leaf.
+   * @param path where to save the new tree
+   * @param splitter the splitter to use to generate candidate splits for each leaf
+   * @param evaluator the evaluator to use to decide which split to use for each leaf
+   */
   def expand[S](path: String)(implicit splitter: Splitter[V, T], evaluator: Evaluator[V, T], inj: Injection[Tree[K, V, T], String]) = {
     flatMapTrees {
       case (sampler, trees) =>
