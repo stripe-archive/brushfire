@@ -53,6 +53,10 @@ case class Trainer[K: Ordering, V, T: Monoid](
     copy(unitExecution = unitExecution.zip(newExecution).unit)
   }
 
+  def forceTrainingDataToDisk: Trainer[K, V, T] = {
+    copy(trainingDataExecution = trainingDataExecution.flatMap { _.forceToDiskExecution })
+  }
+
   def load(path: String)(implicit inj: Injection[Tree[K, V, T], String]): Trainer[K, V, T] = {
     copy(treeExecution = Execution.from(TypedPipe.from(TreeSource(path))))
   }
@@ -252,7 +256,7 @@ object Trainer {
   def apply[K: Ordering, V, T: Monoid](trainingData: TypedPipe[Instance[K, V, T]], sampler: Sampler[K]): Trainer[K, V, T] = {
     val empty = 0.until(sampler.numTrees).map { treeIndex => (treeIndex, Tree.empty[K, V, T](Monoid.zero)) }
     Trainer(
-      trainingData.forceToDiskExecution,
+      Execution.from(trainingData),
       Execution.from(sampler),
       Execution.from(TypedPipe.from(empty)),
       Execution.from(()),
