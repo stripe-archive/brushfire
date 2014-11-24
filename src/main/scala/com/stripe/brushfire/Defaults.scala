@@ -29,7 +29,7 @@ trait Defaults extends LowPriorityDefaults {
     if (v == 0.0)
       0.0
     else {
-      val sign = if (v < 0.0) -1.0 else 1.0
+      val sign = math.signum(v)
       val abs = math.abs(v)
       val exponent = math.floor(math.log(abs / precision) / math.log(base))
       val base2Exp = math.pow(base, exponent)
