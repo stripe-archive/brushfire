@@ -28,6 +28,14 @@ case class RandomSplitter[V, T](original: Splitter[V, T])
     scala.util.Random.shuffle(original.split(parent, stats)).headOption
 }
 
+case class BinnedSplitter[V, T](original: Splitter[V, T])(fn: V => V)
+    extends Splitter[V, T] {
+  type S = original.S
+  def create(value: V, target: T) = original.create(fn(value), target)
+  val semigroup = original.semigroup
+  def split(parent: T, stats: S) = original.split(parent, stats)
+}
+
 case class QTreeSplitter[T: Monoid](k: Int)
     extends Splitter[Double, T] {
 
