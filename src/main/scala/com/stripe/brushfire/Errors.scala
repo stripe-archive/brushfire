@@ -33,9 +33,9 @@ case class BrierScoreError[A] extends Error[Map[A, Long], AveragedValue] {
   val semigroup = AveragedValue.group
 
   def normalizedFrequencies(m: Map[A, Long]): Map[A, Double] = {
-    // Make this at least one to handle empty map case
-    val total = math.max(m.values.sum, 1L)
-    m.mapValues(_.toDouble / total)
+    val nonNeg = m.mapValues { n => math.max(n, 0L) }
+    val total = math.max(nonNeg.values.sum, 1L)
+    nonNeg.mapValues { _.toDouble / total }
   }
 
   def create(actual: Map[A, Long], predicted: Iterable[Map[A, Long]]): AveragedValue = {
@@ -45,8 +45,8 @@ case class BrierScoreError[A] extends Error[Map[A, Long], AveragedValue] {
       case Nil => AveragedValue(0L, 0.0)
       case _ =>
         val probs = predicted.map(normalizedFrequencies)
-        val averagedScores = Monoid.sum(probs).mapValues(_ / predicted.size)
-        val differences: Map[A, Double] = new MapGroup[A, Double].minus(actual.mapValues(_.toDouble), averagedScores)
+        val averagedScores = Monoid.sum(probs).mapValues { _ / predicted.size }
+        val differences = Group.minus(actual.mapValues { _.toDouble }, averagedScores)
         val sumSquareDifferences = differences.values.map { math.pow(_, 2) }.sum
         AveragedValue(1L, sumSquareDifferences / math.max(differences.size, 1L))
     }
