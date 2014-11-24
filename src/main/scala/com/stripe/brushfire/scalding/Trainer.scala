@@ -21,35 +21,40 @@ object TreeSource {
   }
 }
 
-case class TrainerState[K, V, T](sampler: Sampler[K], trees: TypedPipe[(Int, Tree[K, V, T])])
-
-case class Trainer[K: Ordering, V, T: Monoid](trainingData: TypedPipe[Instance[K, V, T]], reducers: Int, execution: Execution[TrainerState[K, V, T]]) {
+case class Trainer[K: Ordering, V, T: Monoid](
+    trainingDataExecution: Execution[TypedPipe[Instance[K, V, T]]],
+    samplerExecution: Execution[Sampler[K]],
+    treeExecution: Execution[TypedPipe[(Int, Tree[K, V, T])]],
+    unitExecution: Execution[Unit],
+    reducers: Int) {
 
   private def stepPath(base: String, n: Int) = base + "/step_%02d".format(n)
 
-  def flatMapTrees(fn: ((Sampler[K], Iterable[(Int, Tree[K, V, T])])) => Execution[TypedPipe[(Int, Tree[K, V, T])]]) = {
-    val newExecution = execution
-      .flatMap { state =>
-        Execution.from(state.sampler).zip(state.trees.toIterableExecution)
+  def execution = Execution.zip(treeExecution, unitExecution).unit
+
+  def flatMapTrees(fn: ((TypedPipe[Instance[K, V, T]], Sampler[K], Iterable[(Int, Tree[K, V, T])])) => Execution[TypedPipe[(Int, Tree[K, V, T])]]) = {
+    val newExecution = treeExecution
+      .flatMap { trees =>
+        Execution.zip(trainingDataExecution, samplerExecution, trees.toIterableExecution)
       }.flatMap(fn)
-      .zip(execution.map { _.sampler })
-      .map { case (t, s) => TrainerState(s, t) }
-    copy(execution = newExecution)
+    copy(treeExecution = newExecution)
   }
 
-  def flatMapSampler(fn: Sampler[K] => Execution[Sampler[K]]) = {
-    val newExecution = execution
-      .flatMap { state => fn(state.sampler) }
-      .zip(execution.map { _.trees })
-      .map { case (s, t) => TrainerState(s, t) }
-    copy(execution = newExecution)
+  def flatMapSampler(fn: ((TypedPipe[Instance[K, V, T]], Sampler[K])) => Execution[Sampler[K]]) = {
+    val newExecution = trainingDataExecution.zip(samplerExecution).flatMap(fn)
+    copy(samplerExecution = newExecution)
   }
 
-  def tee[A](teeFn: A => Execution[_])(fn: ((Sampler[K], Iterable[(Int, Tree[K, V, T])]) => A)): Trainer[K, V, T] =
-    flatMapTrees { case (s, i) => teeFn(fn(s, i)).unit.flatMap { u => execution.map { _.trees } } }
+  def tee[A](fn: ((TypedPipe[Instance[K, V, T]], Sampler[K], Iterable[(Int, Tree[K, V, T])])) => Execution[A]): Trainer[K, V, T] = {
+    val newExecution = treeExecution
+      .flatMap { trees =>
+        Execution.zip(trainingDataExecution, samplerExecution, trees.toIterableExecution)
+      }.flatMap(fn)
+    copy(unitExecution = unitExecution.zip(newExecution).unit)
+  }
 
   def load(path: String)(implicit inj: Injection[Tree[K, V, T], String]): Trainer[K, V, T] = {
-    flatMapTrees { case (sampler, _) => Execution.from(TypedPipe.from(TreeSource(path))) }
+    copy(treeExecution = Execution.from(TypedPipe.from(TreeSource(path))))
   }
 
   /**
@@ -60,7 +65,7 @@ case class Trainer[K: Ordering, V, T: Monoid](trainingData: TypedPipe[Instance[K
    */
   def updateTargets(path: String)(implicit inj: Injection[Tree[K, V, T], String]): Trainer[K, V, T] = {
     flatMapTrees {
-      case (sampler, trees) =>
+      case (trainingData, sampler, trees) =>
         lazy val treeMap = trees.toMap
 
         trainingData
@@ -96,7 +101,7 @@ case class Trainer[K: Ordering, V, T: Monoid](trainingData: TypedPipe[Instance[K
    */
   def expand[S](path: String)(implicit splitter: Splitter[V, T], evaluator: Evaluator[V, T], inj: Injection[Tree[K, V, T], String]) = {
     flatMapTrees {
-      case (sampler, trees) =>
+      case (trainingData, sampler, trees) =>
         implicit val splitSemigroup = new SplitSemigroup[K, V, T]
         implicit val jdSemigroup = splitter.semigroup
         lazy val treeMap = trees.toMap
@@ -145,24 +150,26 @@ case class Trainer[K: Ordering, V, T: Monoid](trainingData: TypedPipe[Instance[K
 
   /** produce an error object from the current trees and the validation set */
   def validate[E](error: Error[T, E])(fn: ValuePipe[E] => Execution[_]) = {
-    tee(fn) {
-      case (sampler, trees) =>
+    tee {
+      case (trainingData, sampler, trees) =>
         lazy val treeMap = trees.toMap
 
-        trainingData
-          .flatMap { instance =>
-            val predictions =
-              for (
-                (treeIndex, tree) <- treeMap if sampler.includeInValidationSet(instance.id, instance.timestamp, treeIndex);
-                target <- tree.targetFor(instance.features).toList
-              ) yield target
+        val err =
+          trainingData
+            .flatMap { instance =>
+              val predictions =
+                for (
+                  (treeIndex, tree) <- treeMap if sampler.includeInValidationSet(instance.id, instance.timestamp, treeIndex);
+                  target <- tree.targetFor(instance.features).toList
+                ) yield target
 
-            if (predictions.isEmpty)
-              None
-            else
-              Some(error.create(instance.target, predictions))
-          }
-          .sum(error.semigroup)
+              if (predictions.isEmpty)
+                None
+              else
+                Some(error.create(instance.target, predictions))
+            }
+            .sum(error.semigroup)
+        fn(err)
     }
   }
 
@@ -176,8 +183,8 @@ case class Trainer[K: Ordering, V, T: Monoid](trainingData: TypedPipe[Instance[K
    */
   def featureImportance[E](error: Error[T, E])(fn: TypedPipe[(K, E)] => Execution[_]) = {
     lazy val r = new Random(123)
-    tee(fn) {
-      case (sampler, trees) =>
+    tee {
+      case (trainingData, sampler, trees) =>
         lazy val treeMap = trees.toMap
 
         val permutedFeatsPipe = trainingData.groupRandomly(10).sortBy { _ => r.nextDouble() }.mapValueStream {
@@ -203,7 +210,7 @@ case class Trainer[K: Ordering, V, T: Monoid](trainingData: TypedPipe[Instance[K
         val summed = permutedFeatsPipe.groupBy(_._1)
           .mapValues(_._2)
           .sum(error.semigroup)
-        summed.toTypedPipe
+        fn(summed.toTypedPipe)
     }
   }
 
@@ -224,15 +231,17 @@ case class Trainer[K: Ordering, V, T: Monoid](trainingData: TypedPipe[Instance[K
 
   /** add out of time validation */
   def outOfTime(quantile: Double = 0.8) = {
-    flatMapSampler { sampler =>
-      implicit val qtree = new QTreeSemigroup[Long](6)
+    flatMapSampler {
+      case (trainingData, sampler) =>
 
-      trainingData
-        .map { instance => QTree(instance.timestamp) }
-        .sum
-        .map { q => q.quantileBounds(quantile)._2.toLong }
-        .toIterableExecution
-        .map { thresholds => OutOfTimeSampler(sampler, thresholds.head) }
+        implicit val qtree = new QTreeSemigroup[Long](6)
+
+        trainingData
+          .map { instance => QTree(instance.timestamp) }
+          .sum
+          .map { q => q.quantileBounds(quantile)._2.toLong }
+          .toIterableExecution
+          .map { thresholds => OutOfTimeSampler(sampler, thresholds.head) }
     }
   }
 }
@@ -242,7 +251,12 @@ object Trainer {
 
   def apply[K: Ordering, V, T: Monoid](trainingData: TypedPipe[Instance[K, V, T]], sampler: Sampler[K]): Trainer[K, V, T] = {
     val empty = 0.until(sampler.numTrees).map { treeIndex => (treeIndex, Tree.empty[K, V, T](Monoid.zero)) }
-    Trainer(trainingData, sampler.numTrees.min(MaxReducers), Execution.from(TrainerState(sampler, TypedPipe.from(empty))))
+    Trainer(
+      trainingData.forceToDiskExecution,
+      Execution.from(sampler),
+      Execution.from(TypedPipe.from(empty)),
+      Execution.from(()),
+      sampler.numTrees.min(MaxReducers))
   }
 }
 
