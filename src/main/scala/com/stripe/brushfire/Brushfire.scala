@@ -52,6 +52,13 @@ trait Evaluator[V, T] {
   def evaluate(split: Split[V, T]): (Split[V, T], Double)
 }
 
+/** Provides stopping conditions which guide when splits will be attempted */
+trait Stopper[T] {
+  def canSplit(target: T): Boolean
+  def shouldSplitLocally(target: T): Boolean
+  def shouldSplitDistributed(target: T): Boolean
+}
+
 /** Allocates instances and features to trees and training or validation sets */
 trait Sampler[-K] {
   /** returns number of trees to train */

@@ -13,6 +13,7 @@ trait LowPriorityDefaults {
 
 trait Defaults extends LowPriorityDefaults {
   implicit def chiSquaredEvaluator[V, L, W <% Double](implicit weightMonoid: Monoid[W]): Evaluator[V, Map[L, W]] = ChiSquaredEvaluator[V, L, W]
+  implicit def frequencyStopper[L]: Stopper[Map[L, Long]] = FrequencyStopper(1000)
 
   implicit def intSplitter[T: Monoid]: Splitter[Int, T] = BinarySplitter[Int, T](LessThan(_))
   implicit def stringSplitter[T: Monoid]: Splitter[String, T] = BinarySplitter[String, T](EqualTo(_))

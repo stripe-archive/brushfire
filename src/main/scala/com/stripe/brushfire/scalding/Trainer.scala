@@ -103,7 +103,7 @@ case class Trainer[K: Ordering, V, T: Monoid](
    * @param splitter the splitter to use to generate candidate splits for each leaf
    * @param evaluator the evaluator to use to decide which split to use for each leaf
    */
-  def expand[S](path: String)(implicit splitter: Splitter[V, T], evaluator: Evaluator[V, T], inj: Injection[Tree[K, V, T], String]) = {
+  def expand[S](path: String)(implicit splitter: Splitter[V, T], evaluator: Evaluator[V, T], stopper: Stopper[T], inj: Injection[Tree[K, V, T], String]) = {
     flatMapTrees {
       case (trainingData, sampler, trees) =>
         implicit val splitSemigroup = new SplitSemigroup[K, V, T]
@@ -219,16 +219,16 @@ case class Trainer[K: Ordering, V, T: Monoid](
   }
 
   /** recursively expand multiple times, writing out the new tree at each step */
-  def expandTimes[S](base: String, times: Int)(implicit splitter: Splitter[V, T], evaluator: Evaluator[V, T], inj: Injection[Tree[K, V, T], String]) = {
+  def expandTimes[S](base: String, times: Int)(implicit splitter: Splitter[V, T], evaluator: Evaluator[V, T], stopper: Stopper[T], inj: Injection[Tree[K, V, T], String]) = {
     updateTargets(stepPath(base, 0))
       .expandFrom(base, 1, times)
   }
 
-  def expandFrom[S](base: String, step: Int, to: Int)(implicit splitter: Splitter[V, T], evaluator: Evaluator[V, T], inj: Injection[Tree[K, V, T], String]): Trainer[K, V, T] = {
+  def expandFrom[S](base: String, step: Int, to: Int)(implicit splitter: Splitter[V, T], evaluator: Evaluator[V, T], stopper: Stopper[T], inj: Injection[Tree[K, V, T], String]): Trainer[K, V, T] = {
     if (step > to)
       this
     else {
-      expand(stepPath(base, step))(splitter, evaluator, inj)
+      expand(stepPath(base, step))(splitter, evaluator, stopper, inj)
         .expandFrom(base, step + 1, to)
     }
   }
