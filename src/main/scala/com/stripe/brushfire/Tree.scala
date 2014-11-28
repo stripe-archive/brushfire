@@ -66,11 +66,11 @@ case class Tree[K, V, T](root: Node[K, V, T]) {
     Tree(growFrom(root))
   }
 
-  def updateByLeafIndex(fn: Int => Option[T]) = {
+  def updateByLeafIndex(fn: Int => Option[Node[K, V, T]]) = {
     def updateFrom(start: Node[K, V, T]): Node[K, V, T] = {
       start match {
         case LeafNode(index, target) =>
-          LeafNode[K, V, T](index, fn(index).getOrElse(target))
+          fn(index).getOrElse(start)
         case SplitNode(children) => SplitNode[K, V, T](children.map {
           case (feature, predicate, child) =>
             (feature, predicate, updateFrom(child))
@@ -84,5 +84,6 @@ case class Tree[K, V, T](root: Node[K, V, T]) {
 
 object Tree {
   def empty[K, V, T](t: T): Tree[K, V, T] = Tree(LeafNode[K, V, T](0, t))
+  def expand[K, V, T](leaf: LeafNode[K, V, T], splitter: Splitter[V, T], evaluator: Evaluator[V, T], stopper: Stopper[T], instances: Iterable[Instance[K, V, T]]): Node[K, V, T] = leaf
 }
 
