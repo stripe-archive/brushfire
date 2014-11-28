@@ -56,7 +56,7 @@ To use brushfire as a jar in your own project, add the following to your POM fil
 
 # Using Brushfire with Scalding
 
-The only distributed computing platform that Brushfire currently supports is [Scalding](http://github.com/twitter.scalding), version 0.12 or later.
+The only distributed computing platform that Brushfire currently supports is [Scalding](http://github.com/twitter/scalding), version 0.12 or later.
 
 The simplest way to use Brushfire with Scalding is by subclassing [TrainerJob](http://stripe.github.io/brushfire/#com.stripe.brushfire.scalding.TrainerJob) and overriding `trainer` to return an instance of [Trainer](http://stripe.github.io/brushfire/#com.stripe.brushfire.scalding.Trainer). Example:
 
