@@ -31,6 +31,8 @@ case class Tree[K, V, T](root: Node[K, V, T]) {
     }
   }
 
+  def leafFor(row: Map[K, V]) = findLeaf(row, root)
+
   def leafIndexFor(row: Map[K, V]) = findLeaf(row, root).map { _.index }
 
   def targetFor(row: Map[K, V]) = findLeaf(row, root).map { _.target }

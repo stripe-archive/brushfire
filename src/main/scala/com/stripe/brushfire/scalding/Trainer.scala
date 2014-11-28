@@ -110,29 +110,39 @@ case class Trainer[K: Ordering, V, T: Monoid](
         implicit val jdSemigroup = splitter.semigroup
         lazy val treeMap = trees.toMap
 
-        trainingData
-          .flatMap { instance =>
-            for (
-              (treeIndex, tree) <- treeMap;
-              i <- 1.to(sampler.timesInTrainingSet(instance.id, instance.timestamp, treeIndex)).toList;
-              leafIndex <- tree.leafIndexFor(instance.features).toList;
-              (feature, value) <- instance.features if (sampler.includeFeature(feature, treeIndex, leafIndex))
-            ) yield (treeIndex, leafIndex, feature) ->
-              splitter.create(value, instance.target)
-          }
-          .group
-          .sum
-          .flatMap {
-            case ((treeIndex, leafIndex, feature), target) =>
-              treeMap(treeIndex).leafAt(leafIndex).toList.flatMap { leaf =>
-                splitter
-                  .split(leaf.target, target)
-                  .map { rawSplit =>
-                    val (split, goodness) = evaluator.evaluate(rawSplit)
-                    treeIndex -> Map(leafIndex -> (feature, split, goodness))
-                  }
-              }
-          }
+        val stats =
+          trainingData
+            .flatMap { instance =>
+              lazy val features = instance.features.mapValues { value => splitter.create(value, instance.target) }
+
+              for (
+                (treeIndex, tree) <- treeMap;
+                i <- 1.to(sampler.timesInTrainingSet(instance.id, instance.timestamp, treeIndex)).toList;
+                leaf <- tree.leafFor(instance.features).toList if stopper.canSplit(leaf.target) && stopper.shouldSplitDistributed(leaf.target);
+                (feature, stats) <- features if (sampler.includeFeature(feature, treeIndex, leaf.index))
+              ) yield (treeIndex, leaf.index, feature) -> stats
+            }
+
+        val splits =
+          stats
+            .group
+            .sum
+            .flatMap {
+              case ((treeIndex, leafIndex, feature), target) =>
+                treeMap(treeIndex).leafAt(leafIndex).toList.flatMap { leaf =>
+                  splitter
+                    .split(leaf.target, target)
+                    .map { rawSplit =>
+                      val (split, goodness) = evaluator.evaluate(rawSplit)
+                      treeIndex -> Map(leafIndex -> (feature, split, goodness))
+                    }
+                }
+            }
+
+        val emptySplits = TypedPipe.from(0.until(sampler.numTrees))
+          .map { i => i -> Map[Int, (K, Split[V, T], Double)]() }
+
+        (splits ++ emptySplits)
           .group
           .withReducers(reducers)
           .sum
