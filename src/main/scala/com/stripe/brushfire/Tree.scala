@@ -84,6 +84,29 @@ case class Tree[K, V, T](root: Node[K, V, T]) {
 
 object Tree {
   def empty[K, V, T](t: T): Tree[K, V, T] = Tree(LeafNode[K, V, T](0, t))
-  def expand[K, V, T](leaf: LeafNode[K, V, T], splitter: Splitter[V, T], evaluator: Evaluator[V, T], stopper: Stopper[T], instances: Iterable[Instance[K, V, T]]): Node[K, V, T] = leaf
+  def expand[K, V, T](leaf: LeafNode[K, V, T], splitter: Splitter[V, T], evaluator: Evaluator[V, T], stopper: Stopper[T], instances: Iterable[Instance[K, V, T]]): Node[K, V, T] = {
+    if (stopper.canSplit(leaf.target) && stopper.shouldSplitLocally(leaf.target)) {
+      implicit val jdSemigroup = splitter.semigroup
+
+      val stats = Semigroup.sumOption(instances.flatMap { instance =>
+        instance.features.map { case (f, v) => Map(f -> splitter.create(v, instance.target)) }
+      }).get
+
+      val splits = stats.toList.flatMap {
+        case (f, s) =>
+          splitter.split(leaf.target, s).map { x => f -> evaluator.evaluate(x) }
+      }
+
+      val (splitFeature, (split, score)) = splits.maxBy { case (f, (x, s)) => s }
+
+      SplitNode(split.predicates.toList.map {
+        case (pred, target) =>
+          val newInstances = instances.filter { inst => pred(inst.features.get(splitFeature)) }
+          (splitFeature, pred, expand(LeafNode[K, V, T](0, target), splitter, evaluator, stopper, newInstances))
+      })
+    } else {
+      leaf
+    }
+  }
 }
 
