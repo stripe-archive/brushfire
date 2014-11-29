@@ -243,7 +243,7 @@ case class Trainer[K: Ordering, V, T: Monoid](
     }
   }
 
-  def expandSmallNodes(path: String)(implicit splitter: Splitter[V, T], evaluator: Evaluator[V, T], stopper: Stopper[T], inj: Injection[Tree[K, V, T], String]): Trainer[K, V, T] = {
+  def expandSmallNodes(path: String, times: Int)(implicit splitter: Splitter[V, T], evaluator: Evaluator[V, T], stopper: Stopper[T], inj: Injection[Tree[K, V, T], String]): Trainer[K, V, T] = {
     flatMapTrees {
       case (trainingData, sampler, trees) =>
 
@@ -263,7 +263,7 @@ case class Trainer[K: Ordering, V, T: Monoid](
             .flatMap {
               case ((treeIndex, leafIndex), instances) =>
                 treeMap(treeIndex).leafAt(leafIndex).map { leaf =>
-                  treeIndex -> List(leafIndex -> Tree.expand(leaf, splitter, evaluator, stopper, instances))
+                  treeIndex -> List(leafIndex -> Tree.expand(times, leaf, splitter, evaluator, stopper, instances))
                 }
             }
 
