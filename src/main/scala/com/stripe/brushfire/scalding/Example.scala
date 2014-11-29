@@ -17,10 +17,11 @@ class IrisJob(args: Args) extends TrainerJob(args) {
         Instance(line, 0L, Map(cols.zip(values): _*), Map(label -> 1L))
       }
 
-  implicit val stopper = FrequencyStopper[String](3)
+  implicit val stopper = FrequencyStopper[String](10)
   val trainer =
     Trainer(trainingData, KFoldSampler(4))
       .expandTimes(args("output"), 3)
+      .expandSmallNodes(args("output") + "/mem")
       .featureImportance(BrierScoreError[String]) { results =>
         results.map { case (k, v) => (k, v.value) }.writeExecution(TypedTsv(args("output") + "/fi"))
       }
