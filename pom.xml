@@ -194,6 +194,11 @@
     </dependency>
     <dependency>
       <groupId>com.twitter</groupId>
+      <artifactId>chill-bijection_2.10</artifactId>
+      <version>0.4.0</version>
+    </dependency>
+    <dependency>
+      <groupId>com.twitter</groupId>
       <artifactId>bijection-json_2.10</artifactId>
       <version>0.7.0</version>
     </dependency>

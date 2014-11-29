@@ -7,7 +7,7 @@ import com.twitter.bijection._
 
 import scala.util.Random
 
-abstract class TrainerJob(args: Args) extends ExecutionJob[Unit](args) with Defaults with JsonInjections {
+abstract class TrainerJob(args: Args) extends ExecutionJob[Unit](args) with Defaults {
   import TDsl._
 
   def execution = trainer.execution.unit
