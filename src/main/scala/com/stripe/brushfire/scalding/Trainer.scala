@@ -259,6 +259,7 @@ case class Trainer[K: Ordering, V, T: Monoid](
               ) yield (treeIndex, leaf.index) -> instance
             }
             .group
+            .forceToReducers
             .toList
             .flatMap {
               case ((treeIndex, leafIndex), instances) =>
