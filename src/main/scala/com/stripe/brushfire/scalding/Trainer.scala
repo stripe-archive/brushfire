@@ -272,6 +272,7 @@ case class Trainer[K: Ordering, V, T: Monoid](
 
         (expansions ++ emptyExpansions)
           .group
+          .withReducers(reducers)
           .sum
           .map {
             case (treeIndex, list) =>
