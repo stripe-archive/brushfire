@@ -106,6 +106,17 @@ class MyJob(args: Args) extends TrainerJob(args) {
 }
 ````
 
+#In Memory Expansion
+
+Having expanded as deep as you want using the distributed algorithm, you may wish to ask for further, in-memory expansion of any nodes that are sufficiently small at this point by calling `expandSmallNodes(path: String, times: Int)`. By default, this will expand any nodes with fewer than 10,000 instances of training data, until they have fewer than 10 instances, but you will very likely need to tune this value, which you do by setting an implicit `Stopper`:
+
+````scala
+val implicit stopper = FrequencyStopper(10000, 10)
+trainer.expandSmallNodes(args("output") + "/mem", 100)
+```
+
+Note that the distributed algorithm will *stop* expanding at the same point that the in-memory algorithm starts, ie, 10,000 instances by default.
+
 # Dispatched
 
 If you have mixed features, the recommended value type is `Dispatched[Int,String,Double,String]`, which requires your feature values to match any one of these four cases:
@@ -128,7 +139,7 @@ Map("age" -> Ordinal(35), "gender" -> Nominal("male"), "weight" -> Continuous(13
 Brushfire is designed to be extremely pluggable. Some ways you might want to extend it are (from simplest to most involved):
 
 * Adding a new sampling strategy, to get finer grained control over how instances are allocated to trees, or between the training set and the test set: define a new [Sampler](http://stripe.github.io/brushfire/#com.stripe.brushfire.Sampler)
-* Add a new evaluation strategy (such as log-likelihood or entropy) or stopping criteria: define a new [Evaluator](http://stripe.github.io/brushfire/#com.stripe.brushfire.Evaluator)
+* Add a new evaluation strategy (such as log-likelihood or entropy): define a new [Evaluator](http://stripe.github.io/brushfire/#com.stripe.brushfire.Evaluator)
 * Adding a new feature type, or a new way of binning an existing feature type (such as log-binning real numbers): define a new [Splitter](http://stripe.github.io/brushfire/#com.stripe.brushfire.Splitter)
-* Adding a new target type (such as real-valued targets for regression trees): define a new [Evaluator](http://stripe.github.io/brushfire/#com.stripe.brushfire.Evaluator), and quite likely also define a new [Splitter](http://stripe.github.io/brushfire/#com.stripe.brushfire.Splitter) for any continuous or sparse feature types you want to be able to use.
+* Adding a new target type (such as real-valued targets for regression trees): define a new [Evaluator](http://stripe.github.io/brushfire/#com.stripe.brushfire.Evaluator), a new [Stopper](http://stripe.github.io/brushfire/#com.stripe.brushfire.Stopper) and quite likely also define a new [Splitter](http://stripe.github.io/brushfire/#com.stripe.brushfire.Splitter) for any continuous or sparse feature types you want to be able to use.
 * Add a new distributed computation platform: define a new equivalent of [Trainer](http://stripe.github.io/brushfire/#com.stripe.brushfire.scalding.Trainer), idiomatically to the platform you're using. (There's no specific interface this should implement.)
