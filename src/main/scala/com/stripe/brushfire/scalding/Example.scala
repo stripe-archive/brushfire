@@ -4,7 +4,7 @@ import com.stripe.brushfire._
 import com.twitter.scalding._
 
 class IrisJob(args: Args) extends TrainerJob(args) {
-  import KryoInjections._
+  import JsonInjections._
 
   val cols = List("petal-width", "petal-length", "sepal-width", "sepal-length")
 

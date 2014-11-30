@@ -79,6 +79,7 @@ case class Tree[K, V, T](root: Node[K, V, T]) {
     }
 
     Tree(updateFrom(root))
+      .growByLeafIndex { i => Nil } //this will renumber all the leaves
   }
 }
 
@@ -105,7 +106,7 @@ object Tree {
           (pred, target, newInstances)
       }
 
-      if (edges.filter { case (pred, target, newInstances) => newInstances.size > 0 }.size > 1) {
+      if (edges.count { case (pred, target, newInstances) => newInstances.size > 0 } > 1) {
         SplitNode(edges.map {
           case (pred, target, newInstances) =>
             (splitFeature, pred, expand(times - 1, LeafNode[K, V, T](0, target), splitter, evaluator, stopper, newInstances))
