@@ -66,9 +66,13 @@ import com.stripe.brushfire.scalding._
 import com.twitter.scalding._
 
 class MyJob(args: Args) extends TrainerJob(args) {
+  import JsonInjections._
+
   def trainer = ???
 }
 ```
+
+You should import either `JsonInjections` or `KryoInjections` to specify serialization in either JSON or base64-encoded Kryo, respectively; the former has the advantage of being human readable, the former is more efficient, which can be important for very large trees.
 
 To construct a `Trainer`, you need to pass it training data as a Scalding `TypedPipe` of Brushfire [Instance[K, V,T]](http://stripe.github.io/brushfire/#com.stripe.brushfire.Instance) objects. `Instance` looks like this:
 
@@ -101,6 +105,8 @@ import com.stripe.brushfire.scalding._
 import com.twitter.scalding._
 
 class MyJob(args: Args) extends TrainerJob(args) {
+  import JsonInjections._
+
   def trainingData: TypedPipe[Instance[K, V,T]] = ???
   def trainer = Trainer(trainingData, KFoldSampler(4)).expandTimes(args("output"), 5)
 }
