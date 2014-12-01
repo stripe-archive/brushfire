@@ -109,9 +109,13 @@ case class Trainer[K: Ordering, V, T: Monoid](
         Execution.withId { implicit uid =>
           implicit val splitSemigroup = new SplitSemigroup[K, V, T]
           implicit val jdSemigroup = splitter.semigroup
+
           lazy val treeMap = trees.toMap
 
-          val newLeaves = Stat("New Leaves", "Brushfire")
+          lazy val countFeatureValues = Stat("Feature Values", "Brushfire")
+          lazy val countFeatures = Stat("Features", "Brushfire")
+          lazy val countCandidateSplits = Stat("Candidate Splits", "Brushfire")
+          lazy val countNewLeaves = Stat("New Leaves", "Brushfire")
 
           val stats =
             trainingData
@@ -123,7 +127,10 @@ case class Trainer[K: Ordering, V, T: Monoid](
                   i <- 1.to(sampler.timesInTrainingSet(instance.id, instance.timestamp, treeIndex)).toList;
                   leaf <- tree.leafFor(instance.features).toList if stopper.canSplit(leaf.target) && stopper.shouldSplitDistributed(leaf.target);
                   (feature, stats) <- features if (sampler.includeFeature(feature, treeIndex, leaf.index))
-                ) yield (treeIndex, leaf.index, feature) -> stats
+                ) yield {
+                  countFeatureValues.inc
+                  (treeIndex, leaf.index, feature) -> stats
+                }
               }
 
           val splits =
@@ -133,9 +140,11 @@ case class Trainer[K: Ordering, V, T: Monoid](
               .flatMap {
                 case ((treeIndex, leafIndex, feature), target) =>
                   treeMap(treeIndex).leafAt(leafIndex).toList.flatMap { leaf =>
+                    countFeatures.inc
                     splitter
                       .split(leaf.target, target)
                       .map { rawSplit =>
+                        countCandidateSplits.inc
                         val (split, goodness) = evaluator.evaluate(rawSplit)
                         treeIndex -> Map(leafIndex -> (feature, split, goodness))
                       }
@@ -158,7 +167,7 @@ case class Trainer[K: Ordering, V, T: Monoid](
                         (feature, split, _) <- map.get(index).toList;
                         (predicate, target) <- split.predicates
                       ) yield {
-                        newLeaves.inc
+                        countNewLeaves.inc
                         (feature, predicate, target)
                       }
                     }
