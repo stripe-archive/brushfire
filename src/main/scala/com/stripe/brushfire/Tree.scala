@@ -89,31 +89,31 @@ object Tree {
     if (times > 0 && stopper.canSplit(leaf.target) && stopper.shouldSplitLocally(leaf.target)) {
       implicit val jdSemigroup = splitter.semigroup
 
-      val stats = Semigroup.sumOption(instances.flatMap { instance =>
+      Semigroup.sumOption(instances.flatMap { instance =>
         instance.features.map { case (f, v) => Map(f -> splitter.create(v, instance.target)) }
-      }).get
+      }).flatMap { featureMap =>
+        val splits = featureMap.toList.flatMap {
+          case (f, s) =>
+            splitter.split(leaf.target, s).map { x => f -> evaluator.evaluate(x) }
+        }
 
-      val splits = stats.toList.flatMap {
-        case (f, s) =>
-          splitter.split(leaf.target, s).map { x => f -> evaluator.evaluate(x) }
-      }
+        val (splitFeature, (split, score)) = splits.maxBy { case (f, (x, s)) => s }
+        val edges = split.predicates.toList.map {
+          case (pred, _) =>
+            val newInstances = instances.filter { inst => pred(inst.features.get(splitFeature)) }
+            val target = Monoid.sum(newInstances.map { _.target })
+            (pred, target, newInstances)
+        }
 
-      val (splitFeature, (split, score)) = splits.maxBy { case (f, (x, s)) => s }
-      val edges = split.predicates.toList.map {
-        case (pred, _) =>
-          val newInstances = instances.filter { inst => pred(inst.features.get(splitFeature)) }
-          val target = Monoid.sum(newInstances.map { _.target })
-          (pred, target, newInstances)
-      }
-
-      if (edges.count { case (pred, target, newInstances) => newInstances.size > 0 } > 1) {
-        SplitNode(edges.map {
-          case (pred, target, newInstances) =>
-            (splitFeature, pred, expand(times - 1, LeafNode[K, V, T](0, target), splitter, evaluator, stopper, newInstances))
-        })
-      } else {
-        leaf
-      }
+        if (edges.count { case (pred, target, newInstances) => newInstances.size > 0 } > 1) {
+          Some(SplitNode(edges.map {
+            case (pred, target, newInstances) =>
+              (splitFeature, pred, expand(times - 1, LeafNode[K, V, T](0, target), splitter, evaluator, stopper, newInstances))
+          }))
+        } else {
+          None
+        }
+      }.getOrElse(leaf)
     } else {
       leaf
     }
