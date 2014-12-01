@@ -2,6 +2,7 @@ package com.stripe.brushfire
 
 import com.twitter.algebird._
 import com.twitter.bijection._
+import com.twitter.chill._
 import com.twitter.bijection.json._
 import com.twitter.bijection.Inversion.{ attempt, attemptWhen }
 import com.twitter.bijection.InversionFailure.{ failedAttempt, partialFailure }
@@ -12,7 +13,7 @@ import scala.util._
 import scala.collection.JavaConverters._
 import scala.util.control.NonFatal
 
-trait JsonInjections {
+object JsonInjections {
   implicit def mapInjection[L, W](implicit labelInj: Injection[L, String], weightInj: JsonNodeInjection[W]): JsonNodeInjection[Map[L, W]] =
     new AbstractJsonNodeInjection[Map[L, W]] {
       def apply(frequencies: Map[L, W]) =
@@ -179,4 +180,13 @@ trait JsonInjections {
 
     JsonInjection.toString[Tree[K, V, T]]
   }
+}
+
+object KryoInjections {
+  implicit def tree2Bytes[K, V, T]: Injection[Tree[K, V, T], Array[Byte]] = new AbstractInjection[Tree[K, V, T], Array[Byte]] {
+    override def apply(a: Tree[K, V, T]) = KryoInjection(a)
+    override def invert(b: Array[Byte]) = KryoInjection.invert(b).asInstanceOf[util.Try[Tree[K, V, T]]]
+  }
+
+  implicit def tree2String[K, V, T]: Injection[Tree[K, V, T], String] = Injection.connect[Tree[K, V, T], Array[Byte], Base64String, String]
 }

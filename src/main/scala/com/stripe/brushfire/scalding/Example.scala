@@ -4,6 +4,7 @@ import com.stripe.brushfire._
 import com.twitter.scalding._
 
 class IrisJob(args: Args) extends TrainerJob(args) {
+  import JsonInjections._
 
   val cols = List("petal-width", "petal-length", "sepal-width", "sepal-length")
 
@@ -17,9 +18,11 @@ class IrisJob(args: Args) extends TrainerJob(args) {
         Instance(line, 0L, Map(cols.zip(values): _*), Map(label -> 1L))
       }
 
+  implicit val stopper = FrequencyStopper[String](10, 3)
   val trainer =
     Trainer(trainingData, KFoldSampler(4))
       .expandTimes(args("output"), 3)
+      .expandSmallNodes(args("output") + "/mem", 10)
       .featureImportance(BrierScoreError[String]) { results =>
         results.map { case (k, v) => (k, v.value) }.writeExecution(TypedTsv(args("output") + "/fi"))
       }
