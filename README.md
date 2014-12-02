@@ -96,7 +96,11 @@ You also need to pass it a [Sampler](http://stripe.github.io/brushfire/#com.stri
 * [KFoldSampler(numTrees: Int)](http://stripe.github.io/brushfire/#com.stripe.brushfire.KFoldSampler) will construct k different trees, each excluding a random 1/k of the data, for use in cross-validation.
 * [RFSampler(numTrees: Int, featureRate: Double, samplingRate: Double)](http://stripe.github.io/brushfire/#com.stripe.brushfire.RFSampler) will construct multiple trees, each using a separate bootstrap sample (using `samplingRate`, which defaults to `1.0`). Each node in the tree will also only consider a random `featureRate` sample of the features available. (This is the approach used for random forests).
 
-One you have constructed a `Trainer`, you most likely want to call `expandTimes(base: String, times: Int)`. This will build a new ensemble of trees from the training data and expand them `times` times, to depth `times + 1`. At each step, the trees will be serialized to a directory (on HDFS, unless you're running in local mode) under `base`.
+One you have constructed a `Trainer`, you most likely want to call
+`expandTimes(base: String, times: Int)`. This will build a new ensemble of trees
+from the training data and expand them `times` times, to depth `times`. At each
+step, the trees will be serialized to a directory (on HDFS, unless you're
+running in local mode) under `base`.
 
 Fuller example:
 ````scala
@@ -130,7 +134,7 @@ If you have mixed features, the recommended value type is `Dispatched[Int,String
 * `Ordinal(v: Int)` for numeric features with a reasonably small number of possible values
 * `Nominal(v: String)` for categorical features with a reasonably small number of possible values
 * `Continuous(v: Double)` for numeric features with a large or infinite number of possible values
-* `Sparse(v: String)` for categorical features with a large of infinite number of possible values
+* `Sparse(v: String)` for categorical features with a large or infinite number of possible values
 
 Note that using `Sparse` and especially `Continuous` features will currently slow learning down considerably. (But on the other hand, if you try to use `Ordinal` or `Nominal` with a feature that has hundreds of thousands of unique values, it will be even slower, and then fail).
 
