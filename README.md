@@ -114,14 +114,14 @@ class MyJob(args: Args) extends TrainerJob(args) {
 
 #In Memory Expansion
 
-Having expanded as deep as you want using the distributed algorithm, you may wish to ask for further, in-memory expansion of any nodes that are sufficiently small at this point by calling `expandSmallNodes(path: String, times: Int)`. By default, this will expand any nodes with fewer than 10,000 instances of training data, until they have fewer than 10 instances, but you will very likely need to tune this value, which you do by setting an implicit `Stopper`:
+Having expanded as deep as you want using the distributed algorithm, you may wish to ask for further, in-memory expansion of any nodes that are sufficiently small at this point by calling `expandSmallNodes(path: String, times: Int)`. By default, this will downsample every node to at most 10,000 instances of training data, and expand until they have fewer than 10 instances. You may need to tune this value, which you do by setting an implicit `Stopper`:
 
 ````scala
 val implicit stopper = FrequencyStopper(10000, 10)
-trainer.expandSmallNodes(args("output") + "/mem", 100)
+trainer.expandInMemory(args("output") + "/mem", 100)
 ```
 
-Note that the distributed algorithm will *stop* expanding at the same point that the in-memory algorithm starts, ie, 10,000 instances by default.
+Note that the distributed algorithm will *stop* expanding at the same instance count that the in-memory algorithm wants, ie, 10,000 instances by default.
 
 # Dispatched
 
