@@ -54,9 +54,9 @@ trait Evaluator[V, T] {
 
 /** Provides stopping conditions which guide when splits will be attempted */
 trait Stopper[T] {
-  def canSplit(target: T): Boolean
-  def shouldSplitLocally(target: T): Boolean
+  def shouldSplit(target: T): Boolean
   def shouldSplitDistributed(target: T): Boolean
+  def samplingRateToSplitLocally(target: T): Double
 }
 
 /** Allocates instances and features to trees and training or validation sets */
