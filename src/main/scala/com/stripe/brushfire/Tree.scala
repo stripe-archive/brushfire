@@ -85,7 +85,7 @@ case class Tree[K, V, T](root: Node[K, V, T]) {
 
 object Tree {
   def empty[K, V, T](t: T): Tree[K, V, T] = Tree(LeafNode[K, V, T](0, t))
-  def expand[K, V, T: Monoid](times: Int, leaf: LeafNode[K, V, T], splitter: Splitter[V, T], evaluator: Evaluator[V, T], stopper: Stopper[T], instances: Iterable[Instance[K, V, T]]): Node[K, V, T] = {
+  def expand[K, V, T: Monoid, E](times: Int, leaf: LeafNode[K, V, T], splitter: Splitter[V, T], error: Error[T, E], stopper: Stopper[T], instances: Iterable[Instance[K, V, T]]): Node[K, V, T] = {
     if (times > 0 && stopper.shouldSplit(leaf.target)) {
       implicit val jdSemigroup = splitter.semigroup
 
@@ -94,10 +94,10 @@ object Tree {
       }).flatMap { featureMap =>
         val splits = featureMap.toList.flatMap {
           case (f, s) =>
-            splitter.split(leaf.target, s).map { x => f -> evaluator.evaluate(x) }
+            splitter.split(leaf.target, s).map { x => f -> x }
         }
 
-        val (splitFeature, (split, score)) = splits.maxBy { case (f, (x, s)) => s }
+        val (splitFeature, split) = splits.minBy { case (f, x) => x.trainingError(error) }(error.ordering)
         val edges = split.predicates.toList.map {
           case (pred, _) =>
             val newInstances = instances.filter { inst => pred(inst.features.get(splitFeature)) }
@@ -108,7 +108,7 @@ object Tree {
         if (edges.count { case (pred, target, newInstances) => newInstances.size > 0 } > 1) {
           Some(SplitNode(edges.map {
             case (pred, target, newInstances) =>
-              (splitFeature, pred, expand(times - 1, LeafNode[K, V, T](0, target), splitter, evaluator, stopper, newInstances))
+              (splitFeature, pred, expand(times - 1, LeafNode[K, V, T](0, target), splitter, error, stopper, newInstances))
           }))
         } else {
           None

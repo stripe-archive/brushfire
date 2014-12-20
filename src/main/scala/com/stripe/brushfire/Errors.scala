@@ -2,11 +2,14 @@ package com.stripe.brushfire
 
 import com.twitter.algebird._
 
-case class BinnedError[B, T: Monoid](binner: Iterable[T] => B) extends Error[T, Map[B, T]] {
-  val semigroup = implicitly[Semigroup[Map[B, T]]]
-
-  def create(actual: T, predicted: Iterable[T]) = Map(binner(predicted) -> actual)
-}
+/**
+ * TODO: come up with a reasonable default Ordering for this
+ * case class BinnedError[B, T: Monoid](binner: Iterable[T] => B) extends Error[T, Map[B, T]] {
+ * val semigroup = implicitly[Semigroup[Map[B, T]]]
+ *
+ * def create(actual: T, predicted: Iterable[T]) = Map(binner(predicted) -> actual)
+ * }
+ */
 
 object Errors {
   def averageProbability(predicted: Iterable[Map[Boolean, Long]]): Double = {
@@ -29,26 +32,31 @@ object Errors {
     Math.floor(averageProbability(predicted) * 100) / 100.0
 }
 
-case class BrierScoreError[A] extends Error[Map[A, Long], AveragedValue] {
+case class BrierScoreError[L] extends Error[Map[L, Long], AveragedValue] {
   val semigroup = AveragedValue.group
+  val ordering = Ordering.by { a: AveragedValue => a.value }
 
-  def normalizedFrequencies(m: Map[A, Long]): Map[A, Double] = {
+  def normalizedFrequencies(m: Map[L, Long]): Map[L, Double] = {
     val nonNeg = m.mapValues { n => math.max(n, 0L) }
     val total = math.max(nonNeg.values.sum, 1L)
     nonNeg.mapValues { _.toDouble / total }
   }
 
-  def create(actual: Map[A, Long], predicted: Iterable[Map[A, Long]]): AveragedValue = {
-    // actual is expected to be a Map[class -> indicator]
-    // where indicator is {0,1} for membership of this instance to the class
+  def create(actual: Map[L, Long], predicted: Iterable[Map[L, Long]]): AveragedValue = {
     predicted match {
       case Nil => AveragedValue(0L, 0.0)
       case _ =>
         val probs = predicted.map(normalizedFrequencies)
         val averagedScores = Monoid.sum(probs).mapValues { _ / predicted.size }
-        val differences = Group.minus(actual.mapValues { _.toDouble }, averagedScores)
-        val sumSquareDifferences = differences.values.map { math.pow(_, 2) }.sum
-        AveragedValue(1L, sumSquareDifferences / math.max(differences.size, 1L))
+        val count = actual.values.sum
+        val allLabels = averagedScores.keys.toSet ++ actual.keys.toSet
+        Monoid.sum(allLabels.flatMap { label =>
+          val matches = actual.getOrElse(label, 0L)
+          val prob = averagedScores.getOrElse(label, 0.0)
+          List(
+            AveragedValue(matches, math.pow(1.0 - prob, 2)),
+            AveragedValue(count - matches, math.pow(prob, 2)))
+        })
     }
   }
 }

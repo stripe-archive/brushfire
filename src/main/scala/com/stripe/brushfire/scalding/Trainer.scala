@@ -101,12 +101,12 @@ case class Trainer[K: Ordering, V, T: Monoid](
    * expand each tree by one level, by attempting to split every leaf.
    * @param path where to save the new tree
    * @param splitter the splitter to use to generate candidate splits for each leaf
-   * @param evaluator the evaluator to use to decide which split to use for each leaf
+   * @param error the error function to use to decide which split to use for each leaf
    */
-  def expand[S](path: String)(implicit splitter: Splitter[V, T], evaluator: Evaluator[V, T], stopper: Stopper[T], inj: Injection[Tree[K, V, T], String]) = {
+  def expand[E](path: String)(implicit splitter: Splitter[V, T], error: Error[T, E], stopper: Stopper[T], inj: Injection[Tree[K, V, T], String]) = {
     flatMapTrees {
       case (trainingData, sampler, trees) =>
-        implicit val splitSemigroup = new SplitSemigroup[K, V, T]
+        implicit val splitSemigroup = new SplitSemigroup[K, V, T, E](error.ordering)
         implicit val jdSemigroup = splitter.semigroup
         lazy val treeMap = trees.toMap
 
@@ -132,15 +132,15 @@ case class Trainer[K: Ordering, V, T: Monoid](
                 treeMap(treeIndex).leafAt(leafIndex).toList.flatMap { leaf =>
                   splitter
                     .split(leaf.target, target)
-                    .map { rawSplit =>
-                      val (split, goodness) = evaluator.evaluate(rawSplit)
-                      treeIndex -> Map(leafIndex -> (feature, split, goodness))
+                    .map { split =>
+                      val err = split.trainingError(error)
+                      treeIndex -> Map(leafIndex -> (feature, split, err))
                     }
                 }
             }
 
         val emptySplits = TypedPipe.from(0.until(sampler.numTrees))
-          .map { i => i -> Map[Int, (K, Split[V, T], Double)]() }
+          .map { i => i -> Map[Int, (K, Split[V, T], E)]() }
 
         (splits ++ emptySplits)
           .group
@@ -229,21 +229,21 @@ case class Trainer[K: Ordering, V, T: Monoid](
   }
 
   /** recursively expand multiple times, writing out the new tree at each step */
-  def expandTimes(base: String, times: Int)(implicit splitter: Splitter[V, T], evaluator: Evaluator[V, T], stopper: Stopper[T], inj: Injection[Tree[K, V, T], String]) = {
+  def expandTimes[E](base: String, times: Int)(implicit splitter: Splitter[V, T], error: Error[T, E], stopper: Stopper[T], inj: Injection[Tree[K, V, T], String]) = {
     updateTargets(stepPath(base, 0))
       .expandFrom(base, 1, times)
   }
 
-  def expandFrom(base: String, step: Int, to: Int)(implicit splitter: Splitter[V, T], evaluator: Evaluator[V, T], stopper: Stopper[T], inj: Injection[Tree[K, V, T], String]): Trainer[K, V, T] = {
+  def expandFrom[E](base: String, step: Int, to: Int)(implicit splitter: Splitter[V, T], error: Error[T, E], stopper: Stopper[T], inj: Injection[Tree[K, V, T], String]): Trainer[K, V, T] = {
     if (step > to)
       this
     else {
-      expand(stepPath(base, step))(splitter, evaluator, stopper, inj)
+      expand(stepPath(base, step))(splitter, error, stopper, inj)
         .expandFrom(base, step + 1, to)
     }
   }
 
-  def expandInMemory(path: String, times: Int)(implicit splitter: Splitter[V, T], evaluator: Evaluator[V, T], stopper: Stopper[T], inj: Injection[Tree[K, V, T], String]): Trainer[K, V, T] = {
+  def expandInMemory[E](path: String, times: Int)(implicit splitter: Splitter[V, T], error: Error[T, E], stopper: Stopper[T], inj: Injection[Tree[K, V, T], String]): Trainer[K, V, T] = {
     flatMapTrees {
       case (trainingData, sampler, trees) =>
 
@@ -266,7 +266,7 @@ case class Trainer[K: Ordering, V, T: Monoid](
               case ((treeIndex, leafIndex), instances) =>
                 val target = Monoid.sum(instances.map { _.target })
                 val leaf = LeafNode[K, V, T](0, target)
-                val expanded = Tree.expand(times, leaf, splitter, evaluator, stopper, instances)
+                val expanded = Tree.expand(times, leaf, splitter, error, stopper, instances)
                 treeIndex -> List(leafIndex -> expanded)
             }
 
@@ -322,9 +322,9 @@ object Trainer {
   }
 }
 
-class SplitSemigroup[K, V, T] extends Semigroup[(K, Split[V, T], Double)] {
-  def plus(a: (K, Split[V, T], Double), b: (K, Split[V, T], Double)) = {
-    if (a._3 > b._3)
+class SplitSemigroup[K, V, T, E](ordering: Ordering[E]) extends Semigroup[(K, Split[V, T], E)] {
+  def plus(a: (K, Split[V, T], E), b: (K, Split[V, T], E)) = {
+    if (ordering.lt(a._3, b._3))
       a
     else
       b

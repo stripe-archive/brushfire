@@ -44,12 +44,12 @@ trait Splitter[V, T] {
 /** Candidate split for a tree node */
 trait Split[V, T] {
   def predicates: Iterable[(Predicate[V], T)]
-}
 
-/** Evaluates the goodness of a candidate split */
-trait Evaluator[V, T] {
-  /** returns a (possibly transformed) version of the input split, and a numeric goodness score */
-  def evaluate(split: Split[V, T]): (Split[V, T], Double)
+  def trainingError[E](error: Error[T, E]): E =
+    error.semigroup.sumOption(predicates.map {
+      case (_, target) =>
+        error.create(target, Some(target))
+    }).get
 }
 
 /** Provides stopping conditions which guide when splits will be attempted */
@@ -78,6 +78,9 @@ trait Sampler[-K] {
 trait Error[T, E] {
   /** semigroup to sum up error values */
   def semigroup: Semigroup[E]
+
+  /** ordering of error (from least error to most error) */
+  def ordering: Ordering[E]
 
   /**
    * create an single component of the error value
