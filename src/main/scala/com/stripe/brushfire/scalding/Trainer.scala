@@ -132,9 +132,10 @@ case class Trainer[K: Ordering, V, T: Monoid](
                 treeMap(treeIndex).leafAt(leafIndex).toList.flatMap { leaf =>
                   splitter
                     .split(leaf.target, target)
-                    .map { split =>
-                      val err = split.trainingError(error)
-                      treeIndex -> Map(leafIndex -> (feature, split, err))
+                    .flatMap { split =>
+                      split.trainingError(error).map { err =>
+                        treeIndex -> Map(leafIndex -> (feature, split, err))
+                      }
                     }
                 }
             }

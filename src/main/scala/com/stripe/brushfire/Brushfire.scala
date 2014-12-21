@@ -1,6 +1,7 @@
 package com.stripe.brushfire
 
 import com.twitter.algebird._
+import scala.util.{ Try, Success }
 
 /**
  * Represents a single instance of training data.
@@ -45,11 +46,17 @@ trait Splitter[V, T] {
 trait Split[V, T] {
   def predicates: Iterable[(Predicate[V], T)]
 
-  def trainingError[E](error: Error[T, E]): E =
-    error.semigroup.sumOption(predicates.map {
+  def trainingError[E](error: Error[T, E]): Option[E] = {
+    val errorTries = predicates.map {
       case (_, target) =>
-        error.create(target, Some(target))
-    }).get
+        error.trainingError(target)
+    }
+    val errorSuccesses = errorTries.collect { case Success(e) => e }
+    if (errorSuccesses.size == errorTries.size)
+      error.semigroup.sumOption(errorSuccesses)
+    else
+      None
+  }
 }
 
 /** Provides stopping conditions which guide when splits will be attempted */
@@ -89,4 +96,10 @@ trait Error[T, E] {
    * @param predicted the set of predicted distributions from the trees
    */
   def create(actual: T, predicted: Iterable[T]): E
+
+  /**
+   * find the training error for a candidate leaf's target distribution
+   * if this is not an acceptable leaf, this can return Failure
+   */
+  def trainingError(target: T): Try[E] = Success(create(target, Some(target)))
 }

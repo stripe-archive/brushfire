@@ -93,25 +93,31 @@ object Tree {
         instance.features.map { case (f, v) => Map(f -> splitter.create(v, instance.target)) }
       }).flatMap { featureMap =>
         val splits = featureMap.toList.flatMap {
-          case (f, s) =>
-            splitter.split(leaf.target, s).map { x => f -> x }
+          case (feature, stats) =>
+            splitter.split(leaf.target, stats).flatMap { split =>
+              split.trainingError(error).map { err => (feature, split, err) }
+            }
         }
 
-        val (splitFeature, split) = splits.minBy { case (f, x) => x.trainingError(error) }(error.ordering)
-        val edges = split.predicates.toList.map {
-          case (pred, _) =>
-            val newInstances = instances.filter { inst => pred(inst.features.get(splitFeature)) }
-            val target = Monoid.sum(newInstances.map { _.target })
-            (pred, target, newInstances)
-        }
-
-        if (edges.count { case (pred, target, newInstances) => newInstances.size > 0 } > 1) {
-          Some(SplitNode(edges.map {
-            case (pred, target, newInstances) =>
-              (splitFeature, pred, expand(times - 1, LeafNode[K, V, T](0, target), splitter, error, stopper, newInstances))
-          }))
-        } else {
+        if (splits.isEmpty)
           None
+        else {
+          val (splitFeature, split, _) = splits.minBy { _._3 }(error.ordering)
+          val edges = split.predicates.toList.map {
+            case (pred, _) =>
+              val newInstances = instances.filter { inst => pred(inst.features.get(splitFeature)) }
+              val target = Monoid.sum(newInstances.map { _.target })
+              (pred, target, newInstances)
+          }
+
+          if (edges.count { case (pred, target, newInstances) => newInstances.size > 0 } > 1) {
+            Some(SplitNode(edges.map {
+              case (pred, target, newInstances) =>
+                (splitFeature, pred, expand(times - 1, LeafNode[K, V, T](0, target), splitter, error, stopper, newInstances))
+            }))
+          } else {
+            None
+          }
         }
       }.getOrElse(leaf)
     } else {
