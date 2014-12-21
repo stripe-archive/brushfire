@@ -2,14 +2,12 @@ package com.stripe.brushfire
 
 import com.twitter.algebird._
 
-/**
- * TODO: come up with a reasonable default Ordering for this
- * case class BinnedError[B, T: Monoid](binner: Iterable[T] => B) extends Error[T, Map[B, T]] {
- * val semigroup = implicitly[Semigroup[Map[B, T]]]
- *
- * def create(actual: T, predicted: Iterable[T]) = Map(binner(predicted) -> actual)
- * }
- */
+
+ case class BinnedError[B, T: Monoid](binner: Iterable[T] => B) extends Error[T, Map[B, T]] {
+  val semigroup = implicitly[Semigroup[Map[B, T]]]
+  val ordering = Ordering.by{err: Map[B, T] => 1} //TODO: this is awful
+  def create(actual: T, predicted: Iterable[T]) = Map(binner(predicted) -> actual)
+ }
 
 object Errors {
   def averageProbability(predicted: Iterable[Map[Boolean, Long]]): Double = {
