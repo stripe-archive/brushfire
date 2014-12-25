@@ -21,9 +21,9 @@ class IrisJob(args: Args) extends TrainerJob(args) {
   implicit val stopper = FrequencyStopper[String](10, 3)
   val trainer =
     Trainer(trainingData, KFoldSampler(4))
-      .expandTimes(args("output"), 3)
+      //   .expandTimes(args("output"), 3)
       .expandInMemory(args("output") + "/mem", 10)
-      .featureImportance(BrierScoreError[String]) { results =>
+  /* .featureImportance(BrierScoreError[String]) { results =>
         results.map { case (k, v) => (k, v.value) }.writeExecution(TypedTsv(args("output") + "/fi"))
-      }
+      }*/
 }

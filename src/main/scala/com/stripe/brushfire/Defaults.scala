@@ -12,7 +12,7 @@ trait LowPriorityDefaults {
 }
 
 trait Defaults extends LowPriorityDefaults {
-  implicit def brierError[L]: Error[Map[L, Long], AveragedValue] = BrierScoreError[L]
+  implicit def brierError[L]: Error[Map[L, Long], AveragedValue] = LLRError[L]
   implicit def frequencyStopper[L]: Stopper[Map[L, Long]] = FrequencyStopper(10000, 10)
 
   implicit def intSplitter[T: Monoid]: Splitter[Int, T] = BinarySplitter[Int, T](LessThan(_))
