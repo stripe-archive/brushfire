@@ -45,3 +45,18 @@ case class EmptySplit[V, P] extends Split[V, P] {
   val predicates = Nil
 }
 
+case class ErrorEvaluator[V, T, E](error: Error[T, E])(fn: E => Double)
+    extends Evaluator[V, T] {
+  def evaluate(split: Split[V, T]) = {
+    val totalErrorOption =
+      error.semigroup.sumOption(
+        split
+          .predicates
+          .map { case (_, target) => error.create(target, Some(target)) })
+
+    totalErrorOption match {
+      case Some(totalError) => (split, fn(totalError) * -1)
+      case None => (EmptySplit[V, T], Double.NegativeInfinity)
+    }
+  }
+}

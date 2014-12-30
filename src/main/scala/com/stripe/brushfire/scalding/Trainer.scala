@@ -118,7 +118,7 @@ case class Trainer[K: Ordering, V, T: Monoid](
               for (
                 (treeIndex, tree) <- treeMap;
                 i <- 1.to(sampler.timesInTrainingSet(instance.id, instance.timestamp, treeIndex)).toList;
-                leaf <- tree.leafFor(instance.features).toList if stopper.canSplit(leaf.target) && stopper.shouldSplitDistributed(leaf.target);
+                leaf <- tree.leafFor(instance.features).toList if stopper.shouldSplit(leaf.target) && stopper.shouldSplitDistributed(leaf.target);
                 (feature, stats) <- features if (sampler.includeFeature(feature, treeIndex, leaf.index))
               ) yield (treeIndex, leaf.index, feature) -> stats
             }
@@ -243,11 +243,12 @@ case class Trainer[K: Ordering, V, T: Monoid](
     }
   }
 
-  def expandSmallNodes(path: String, times: Int)(implicit splitter: Splitter[V, T], evaluator: Evaluator[V, T], stopper: Stopper[T], inj: Injection[Tree[K, V, T], String]): Trainer[K, V, T] = {
+  def expandInMemory(path: String, times: Int)(implicit splitter: Splitter[V, T], evaluator: Evaluator[V, T], stopper: Stopper[T], inj: Injection[Tree[K, V, T], String]): Trainer[K, V, T] = {
     flatMapTrees {
       case (trainingData, sampler, trees) =>
 
         lazy val treeMap = trees.toMap
+        lazy val r = new Random(123)
 
         val expansions =
           trainingData
@@ -255,17 +256,18 @@ case class Trainer[K: Ordering, V, T: Monoid](
               for (
                 (treeIndex, tree) <- treeMap;
                 i <- 1.to(sampler.timesInTrainingSet(instance.id, instance.timestamp, treeIndex)).toList;
-                leaf <- tree.leafFor(instance.features).toList if stopper.canSplit(leaf.target) && !stopper.shouldSplitDistributed(leaf.target) && stopper.shouldSplitLocally(leaf.target)
+                leaf <- tree.leafFor(instance.features).toList if stopper.shouldSplit(leaf.target) && (r.nextDouble < stopper.samplingRateToSplitLocally(leaf.target))
               ) yield (treeIndex, leaf.index) -> instance
             }
             .group
             .forceToReducers
             .toList
-            .flatMap {
+            .map {
               case ((treeIndex, leafIndex), instances) =>
-                treeMap(treeIndex).leafAt(leafIndex).map { leaf =>
-                  treeIndex -> List(leafIndex -> Tree.expand(times, leaf, splitter, evaluator, stopper, instances))
-                }
+                val target = Monoid.sum(instances.map { _.target })
+                val leaf = LeafNode[K, V, T](0, target)
+                val expanded = Tree.expand(times, leaf, splitter, evaluator, stopper, instances)
+                treeIndex -> List(leafIndex -> expanded)
             }
 
         val emptyExpansions = TypedPipe.from(0.until(sampler.numTrees))
