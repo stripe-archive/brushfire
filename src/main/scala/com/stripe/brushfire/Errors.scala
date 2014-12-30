@@ -44,7 +44,7 @@ object Errors {
 case class BrierScore[A, B](predicted: Map[(A, B), Double], actual: Map[(A, B), Long], counts: Map[(A, B), Long], totalCount: Long) {
 
   /**
-   * classRates contains the percentage of examples that fall into each class.
+   * actualClassRates contains the percentage of observations that fall into each class.
    */
   def actualClassRates: Map[A, Double] = {
     val actualClassCounts = actual.groupBy { case (ab, ct) => ab._1 }.mapValues { _.map(_._2).sum }
