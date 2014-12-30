@@ -55,17 +55,23 @@ case class BrierScore[A, B](predicted: Map[(A, B), Double], actual: Map[(A, B), 
   /**
    * Reliability measures how close forecast probabilities are to the true probabilities, and is defined as
    *
-   *   reliability = 1/(total # of examples) * sum_{class a} sum_{bin b} [
-   *     (# of examples that are predicted to fall into class a with probability in bin b) *
-   *       (predicted probability - % of these examples that actually fall into bin b)^2 ]
+   *   reliability = 1 / (total # of examples) * sum_{class a} sum_{bin b} [
+   *                   (# of examples that are predicted to fall into class a with probability in bin b) *
+   *                   (predicted probability - % of these examples that actually fall into class a)^2 ]
+   *               = 1 / (total # of examples) * sum_{class a} sum_{bin b} [
+   *                   (weighted count of examples that fall into class a with probability in bin b, where weights are the probability -
+   *                   # of these examples that actually fall into bin b)^2 /
+   *                   (# of examples that are predicted to fall into class a with probability in bin b)]
    */
   def reliability: Double = {
     if (totalCount == 0) {
       0.0
     } else {
-      val sqDiffs = Group.minus(predicted, actual.mapValues { _.toDouble }).mapValues { math.pow(_, 2) }
       val inverseCounts = counts.filter { _._2 > 0.0 }.mapValues { 1.0 / _ }
-      val weightedSum = Ring.times(sqDiffs, inverseCounts).values.sum
+      val predictedProbs = Ring.times(predicted, inverseCounts)
+      val actualRates = Ring.times(actual.mapValues { _.toDouble }, inverseCounts)
+      val sqDiffs = Group.minus(predictedProbs, actualRates).mapValues { math.pow(_, 2) }
+      val weightedSum = Ring.times(sqDiffs, counts.mapValues { _.toDouble }).values.sum
 
       weightedSum / totalCount
     }
@@ -76,8 +82,8 @@ case class BrierScore[A, B](predicted: Map[(A, B), Double], actual: Map[(A, B), 
    * and is defined as
    *
    *   resolution = 1 / (total # of examples) * sum_{class a} sum_{bin b} [
-   *      (# of examples that are predicted to fall into class a with probability in bin b) *
-   *        (% of these examples that actually fall into class a - % of all examples that fall into class a)^2 ]
+   *                  (# of examples that are predicted to fall into class a with probability in bin b) *
+   *                  (% of these examples that actually fall into class a - % of all examples that fall into class a)^2 ]
    */
   def resolution: Double = {
     if (totalCount == 0) {
@@ -122,11 +128,14 @@ case class BrierScoreSemigroup[A, B] extends Semigroup[BrierScore[A, B]] {
 /**
  * BrierDecompositionError computes Brier scores and their decompositions.
  *
+ * The bins used in the Brier score calculation are deciles (represented by a Double of the lower endpoint).
+ *
  * @tparam A the classes to be predicted into.
- * @tparam B the probability distribution bins.
  */
-case class BrierDecompositionError[A, B](binner: Double => B) extends Error[Map[A, Long], BrierScore[A, B]] {
-  val semigroup = BrierScoreSemigroup[A, B]()
+case class BrierDecompositionError[A] extends Error[Map[A, Long], BrierScore[A, Double]] {
+  val semigroup = BrierScoreSemigroup[A, Double]()
+
+  def decileBinner(x: Double): Double = (x * 10).toInt / 10.0
 
   def normalizedFrequencies(m: Map[A, Long]): Map[A, Double] = {
     val nonNeg = m.mapValues { n => math.max(n, 0L) }
@@ -134,18 +143,18 @@ case class BrierDecompositionError[A, B](binner: Double => B) extends Error[Map[
     nonNeg.mapValues { _.toDouble / total }
   }
 
-  def create(actual: Map[A, Long], predicted: Iterable[Map[A, Long]]): BrierScore[A, B] = {
+  def create(actual: Map[A, Long], predicted: Iterable[Map[A, Long]]): BrierScore[A, Double] = {
     predicted match {
-      case Nil => BrierScore[A, B](Map[(A, B), Double](), Map[(A, B), Long](), Map[(A, B), Long](), 0L)
+      case Nil => BrierScore[A, Double](Map[(A, Double), Double](), Map[(A, Double), Long](), Map[(A, Double), Long](), 0L)
       case _ =>
         val probs = predicted.map(normalizedFrequencies)
         val averagedScores = Monoid.sum(probs).mapValues { _ / predicted.size }
-        val binnedPredictions = averagedScores.map { case (a, score) => ((a, binner(score)), score) }
 
-        val binnedActuals = binnedPredictions.map { case (ab, score) => (ab, actual.getOrElse(ab._1, 0L)) }
-        val binCounts = binnedPredictions.map { case (ab, score) => (ab, 1L) }
+        val binnedPredictions = (averagedScores).map { case (a, score) => ((a, decileBinner(score)), score) }
+        val binnedActuals = binnedPredictions.map { case (ab, _) => (ab, actual.getOrElse(ab._1, 0L)) }
+        val binCounts = binnedPredictions.map { case (ab, _) => (ab, 1L) }
 
-        BrierScore[A, B](binnedPredictions, binnedActuals, binCounts, 1L)
+        BrierScore[A, Double](binnedPredictions, binnedActuals, binCounts, 1L)
     }
   }
 }

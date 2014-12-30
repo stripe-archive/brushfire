@@ -19,12 +19,11 @@ class IrisJob(args: Args) extends TrainerJob(args) {
       }
 
   implicit val stopper = FrequencyStopper[String](10, 3)
-  val decileBinner = (x: Double) => (x * 10).toInt / 10.0
   val trainer =
     Trainer(trainingData, KFoldSampler(4))
       .expandTimes(args("output"), 3)
       .expandSmallNodes(args("output") + "/mem", 10)
-      .validate(BrierDecompositionError[String, Double](decileBinner)) { results =>
+      .validate(BrierDecompositionError[String]) { results =>
         results.map { v => (v.reliability, v.resolution, v.uncertainty, v.score) }.writeExecution(TypedTsv(args("output") + "/bs"))
       }
 }
