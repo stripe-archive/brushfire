@@ -86,7 +86,7 @@ case class Tree[K, V, T](root: Node[K, V, T]) {
 object Tree {
   def empty[K, V, T](t: T): Tree[K, V, T] = Tree(LeafNode[K, V, T](0, t))
   def expand[K, V, T: Monoid](times: Int, leaf: LeafNode[K, V, T], splitter: Splitter[V, T], evaluator: Evaluator[V, T], stopper: Stopper[T], instances: Iterable[Instance[K, V, T]]): Node[K, V, T] = {
-    if (times > 0 && stopper.canSplit(leaf.target) && stopper.shouldSplitLocally(leaf.target)) {
+    if (times > 0 && stopper.shouldSplit(leaf.target)) {
       implicit val jdSemigroup = splitter.semigroup
 
       Semigroup.sumOption(instances.flatMap { instance =>

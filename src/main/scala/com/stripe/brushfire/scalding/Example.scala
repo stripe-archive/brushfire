@@ -22,7 +22,7 @@ class IrisJob(args: Args) extends TrainerJob(args) {
   val trainer =
     Trainer(trainingData, KFoldSampler(4))
       .expandTimes(args("output"), 3)
-      .expandSmallNodes(args("output") + "/mem", 10)
+      .expandInMemory(args("output") + "/mem", 10)
       .validate(BrierDecompositionError[String]) { results =>
         results.map { v => (v.reliability, v.resolution, v.uncertainty, v.score) }.writeExecution(TypedTsv(args("output") + "/bs"))
       }
