@@ -139,7 +139,7 @@ object BrierScore {
  */
 
 case class BrierDecompositionError[A](bins: Int = 10) extends FrequencyError[A, BrierScore[A, Double]] {
-  val monoid = BrierScore.monoid[A, Double]
+  lazy val monoid = BrierScore.monoid[A, Double]
 
   def bin(x: Double): Double = (x * bins).toInt / bins.toDouble
 
