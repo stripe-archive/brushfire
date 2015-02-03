@@ -5,30 +5,20 @@ import com.twitter.algebird._
 /**
  * FrequencyError sets up the most common case when dealing
  * with discrete distributions:
- * - normalize each prediction before combining them
- * - normalize to probablities after combining
  * - compute and sum errors separately for each component of the actual distribution
  * - provide a zero for when predictions or actuals are missing
  */
-trait FrequencyError[L, E] extends Error[Map[L, Long], E] {
+trait FrequencyError[L, E] extends Error[Map[L, Long], Map[L, Double], E] {
 
   val semigroup = monoid
 
   def monoid: Monoid[E]
 
-  def normalizedFrequencies(m: Map[L, Long]): Map[L, Double] = {
-    val nonNeg = m.mapValues { n => math.max(n, 0L) }
-    val total = math.max(nonNeg.values.sum, 1L)
-    nonNeg.mapValues { _.toDouble / total }
-  }
-
-  def create(actual: Map[L, Long], predicted: Iterable[Map[L, Long]]) = {
+  def create(actual: Map[L, Long], predicted: Map[L, Double]) = {
     if (predicted.isEmpty)
       monoid.zero
     else {
-      val normalized = predicted.map(normalizedFrequencies)
-      val probabilities = Monoid.sum(normalized).mapValues { _ / predicted.size }
-      monoid.sum(actual.map { case (label, count) => error(label, count, probabilities) })
+      monoid.sum(actual.map { case (label, count) => error(label, count, predicted) })
     }
   }
 
