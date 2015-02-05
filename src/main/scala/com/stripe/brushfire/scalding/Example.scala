@@ -26,4 +26,7 @@ class IrisJob(args: Args) extends TrainerJob(args) {
       .validate(BrierScoreError[String]) { results =>
         results.map { _.toString }.writeExecution(TypedTsv(args("output") + "/bs"))
       }
+      .featureImportance(BrierScoreError[String]) { results =>
+        results.map { _.toString }.writeExecution(TypedTsv(args("output") + "/fi"))
+      }
 }
