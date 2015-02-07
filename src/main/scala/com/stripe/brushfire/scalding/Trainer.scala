@@ -22,10 +22,10 @@ object TreeSource {
 }
 
 case class Trainer[K: Ordering, V, T: Monoid](
-    trainingDataExecution: Execution[TypedPipe[Instance[K, V, T]]],
-    samplerExecution: Execution[Sampler[K]],
-    treeExecution: Execution[TypedPipe[(Int, Tree[K, V, T])]],
-    unitExecution: Execution[Unit],
+    @transient trainingDataExecution: Execution[TypedPipe[Instance[K, V, T]]],
+    @transient samplerExecution: Execution[Sampler[K]],
+    @transient treeExecution: Execution[TypedPipe[(Int, Tree[K, V, T])]],
+    @transient unitExecution: Execution[Unit],
     reducers: Int) {
 
   private def stepPath(base: String, n: Int) = base + "/step_%02d".format(n)
