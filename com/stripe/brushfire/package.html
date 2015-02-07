@@ -1,0 +1,827 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.1//EN" "http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd">
+<html>
+        <head>
+          <title>brushfire - Brushfire 0.4.3-SNAPSHOT API - com.stripe.brushfire</title>
+          <meta name="description" content="brushfire - Brushfire 0.4.3 - SNAPSHOT API - com.stripe.brushfire" />
+          <meta name="keywords" content="brushfire Brushfire 0.4.3 SNAPSHOT API com.stripe.brushfire" />
+          <meta http-equiv="content-type" content="text/html; charset=UTF-8" />
+          
+      <link href="../../../lib/template.css" media="screen" type="text/css" rel="stylesheet" />
+      <link href="../../../lib/diagrams.css" media="screen" type="text/css" rel="stylesheet" id="diagrams-css" />
+      <script type="text/javascript">
+         if(top === self) {
+            var url = '../../../index.html';
+            var hash = 'com.stripe.brushfire.package';
+            var anchor = window.location.hash;
+            var anchor_opt = '';
+            if (anchor.length >= 1)
+              anchor_opt = '@' + anchor.substring(1);
+            window.location.href = url + '#' + hash + anchor_opt;
+         }
+   	  </script>
+    
+        </head>
+        <body class="value">
+      <div id="definition">
+        <img src="../../../lib/package_big.png" />
+        <p id="owner"><a href="../../package.html" class="extype" name="com">com</a>.<a href="../package.html" class="extype" name="com.stripe">stripe</a></p>
+        <h1>brushfire</h1>
+      </div>
+
+      <h4 id="signature" class="signature">
+      <span class="modifier_kind">
+        <span class="modifier"></span>
+        <span class="kind">package</span>
+      </span>
+      <span class="symbol">
+        <span class="name">brushfire</span>
+      </span>
+      </h4>
+      
+          <div id="comment" class="fullcommenttop"></div>
+        
+
+      <div id="mbrsel">
+        <div id="textfilter"><span class="pre"></span><span class="input"><input id="mbrsel-input" type="text" accesskey="/" /></span><span class="post"></span></div>
+        
+        
+        <div id="visbl">
+            <span class="filtertype">Visibility</span>
+            <ol><li class="public in"><span>Public</span></li><li class="all out"><span>All</span></li></ol>
+          </div>
+      </div>
+
+      <div id="template">
+        <div id="allMembers">
+        
+
+        <div id="types" class="types members">
+              <h3>Type Members</h3>
+              <ol><li name="com.stripe.brushfire.AnyOf" visbl="pub" data-isabs="false" fullComment="no" group="Ungrouped">
+      <a id="AnyOf[V]extendsPredicate[V]withProductwithSerializable"></a>
+      <a id="AnyOf[V]:AnyOf[V]"></a>
+      <h4 class="signature">
+      <span class="modifier_kind">
+        <span class="modifier"></span>
+        <span class="kind">case class</span>
+      </span>
+      <span class="symbol">
+        <a href="AnyOf.html"><span class="name">AnyOf</span></a><span class="tparams">[<span name="V">V</span>]</span><span class="params">(<span name="preds">preds: <span class="extype" name="scala.Seq">Seq</span>[<a href="Predicate.html" class="extype" name="com.stripe.brushfire.Predicate">Predicate</a>[<span class="extype" name="com.stripe.brushfire.AnyOf.V">V</span>]]</span>)</span><span class="result"> extends <a href="Predicate.html" class="extype" name="com.stripe.brushfire.Predicate">Predicate</a>[<span class="extype" name="com.stripe.brushfire.AnyOf.V">V</span>] with <span class="extype" name="scala.Product">Product</span> with <span class="extype" name="scala.Serializable">Serializable</span></span>
+      </span>
+      </h4>
+      
+    </li><li name="com.stripe.brushfire.BinarySplit" visbl="pub" data-isabs="false" fullComment="no" group="Ungrouped">
+      <a id="BinarySplit[V,T]extendsSplit[V,T]withProductwithSerializable"></a>
+      <a id="BinarySplit[V,T]:BinarySplit[V,T]"></a>
+      <h4 class="signature">
+      <span class="modifier_kind">
+        <span class="modifier"></span>
+        <span class="kind">case class</span>
+      </span>
+      <span class="symbol">
+        <a href="BinarySplit.html"><span class="name">BinarySplit</span></a><span class="tparams">[<span name="V">V</span>, <span name="T">T</span>]</span><span class="params">(<span name="predicate">predicate: <a href="Predicate.html" class="extype" name="com.stripe.brushfire.Predicate">Predicate</a>[<span class="extype" name="com.stripe.brushfire.BinarySplit.V">V</span>]</span>, <span name="leftDistribution">leftDistribution: <span class="extype" name="com.stripe.brushfire.BinarySplit.T">T</span></span>, <span name="rightDistribution">rightDistribution: <span class="extype" name="com.stripe.brushfire.BinarySplit.T">T</span></span>)</span><span class="result"> extends <a href="Split.html" class="extype" name="com.stripe.brushfire.Split">Split</a>[<span class="extype" name="com.stripe.brushfire.BinarySplit.V">V</span>, <span class="extype" name="com.stripe.brushfire.BinarySplit.T">T</span>] with <span class="extype" name="scala.Product">Product</span> with <span class="extype" name="scala.Serializable">Serializable</span></span>
+      </span>
+      </h4>
+      
+    </li><li name="com.stripe.brushfire.BinarySplitter" visbl="pub" data-isabs="false" fullComment="no" group="Ungrouped">
+      <a id="BinarySplitter[V,T]extendsSplitter[V,T]withProductwithSerializable"></a>
+      <a id="BinarySplitter[V,T]:BinarySplitter[V,T]"></a>
+      <h4 class="signature">
+      <span class="modifier_kind">
+        <span class="modifier"></span>
+        <span class="kind">case class</span>
+      </span>
+      <span class="symbol">
+        <a href="BinarySplitter.html"><span class="name">BinarySplitter</span></a><span class="tparams">[<span name="V">V</span>, <span name="T">T</span>]</span><span class="params">(<span name="partition">partition: (<span class="extype" name="com.stripe.brushfire.BinarySplitter.V">V</span>) ⇒ <a href="Predicate.html" class="extype" name="com.stripe.brushfire.Predicate">Predicate</a>[<span class="extype" name="com.stripe.brushfire.BinarySplitter.V">V</span>]</span>)</span><span class="params">(<span class="implicit">implicit </span><span name="evidence$1">evidence$1: <span class="extype" name="com.twitter.algebird.Monoid">Monoid</span>[<span class="extype" name="com.stripe.brushfire.BinarySplitter.T">T</span>]</span>)</span><span class="result"> extends <a href="Splitter.html" class="extype" name="com.stripe.brushfire.Splitter">Splitter</a>[<span class="extype" name="com.stripe.brushfire.BinarySplitter.V">V</span>, <span class="extype" name="com.stripe.brushfire.BinarySplitter.T">T</span>] with <span class="extype" name="scala.Product">Product</span> with <span class="extype" name="scala.Serializable">Serializable</span></span>
+      </span>
+      </h4>
+      
+    </li><li name="com.stripe.brushfire.BinnedBinaryError" visbl="pub" data-isabs="false" fullComment="no" group="Ungrouped">
+      <a id="BinnedBinaryError[M]extendsFrequencyError[Boolean,M,Map[Int,(M,M)]]withProductwithSerializable"></a>
+      <a id="BinnedBinaryError[M]:BinnedBinaryError[M]"></a>
+      <h4 class="signature">
+      <span class="modifier_kind">
+        <span class="modifier"></span>
+        <span class="kind">case class</span>
+      </span>
+      <span class="symbol">
+        <a href="BinnedBinaryError.html"><span class="name">BinnedBinaryError</span></a><span class="tparams">[<span name="M">M</span>]</span><span class="params">()</span><span class="params">(<span class="implicit">implicit </span><span name="evidence$1">evidence$1: <span class="extype" name="com.twitter.algebird.Monoid">Monoid</span>[<span class="extype" name="com.stripe.brushfire.BinnedBinaryError.M">M</span>]</span>)</span><span class="result"> extends <a href="FrequencyError.html" class="extype" name="com.stripe.brushfire.FrequencyError">FrequencyError</a>[<span class="extype" name="scala.Boolean">Boolean</span>, <span class="extype" name="com.stripe.brushfire.BinnedBinaryError.M">M</span>, <span class="extype" name="scala.Predef.Map">Map</span>[<span class="extype" name="scala.Int">Int</span>, (<span class="extype" name="com.stripe.brushfire.BinnedBinaryError.M">M</span>, <span class="extype" name="com.stripe.brushfire.BinnedBinaryError.M">M</span>)]] with <span class="extype" name="scala.Product">Product</span> with <span class="extype" name="scala.Serializable">Serializable</span></span>
+      </span>
+      </h4>
+      
+    </li><li name="com.stripe.brushfire.BinnedSplitter" visbl="pub" data-isabs="false" fullComment="no" group="Ungrouped">
+      <a id="BinnedSplitter[V,T]extendsSplitter[V,T]withProductwithSerializable"></a>
+      <a id="BinnedSplitter[V,T]:BinnedSplitter[V,T]"></a>
+      <h4 class="signature">
+      <span class="modifier_kind">
+        <span class="modifier"></span>
+        <span class="kind">case class</span>
+      </span>
+      <span class="symbol">
+        <a href="BinnedSplitter.html"><span class="name">BinnedSplitter</span></a><span class="tparams">[<span name="V">V</span>, <span name="T">T</span>]</span><span class="params">(<span name="original">original: <a href="Splitter.html" class="extype" name="com.stripe.brushfire.Splitter">Splitter</a>[<span class="extype" name="com.stripe.brushfire.BinnedSplitter.V">V</span>, <span class="extype" name="com.stripe.brushfire.BinnedSplitter.T">T</span>]</span>)</span><span class="params">(<span name="fn">fn: (<span class="extype" name="com.stripe.brushfire.BinnedSplitter.V">V</span>) ⇒ <span class="extype" name="com.stripe.brushfire.BinnedSplitter.V">V</span></span>)</span><span class="result"> extends <a href="Splitter.html" class="extype" name="com.stripe.brushfire.Splitter">Splitter</a>[<span class="extype" name="com.stripe.brushfire.BinnedSplitter.V">V</span>, <span class="extype" name="com.stripe.brushfire.BinnedSplitter.T">T</span>] with <span class="extype" name="scala.Product">Product</span> with <span class="extype" name="scala.Serializable">Serializable</span></span>
+      </span>
+      </h4>
+      
+    </li><li name="com.stripe.brushfire.BrierScoreError" visbl="pub" data-isabs="false" fullComment="no" group="Ungrouped">
+      <a id="BrierScoreError[L,M]extendsFrequencyError[L,M,com.twitter.algebird.AveragedValue]withProductwithSerializable"></a>
+      <a id="BrierScoreError[L,M]:BrierScoreError[L,M]"></a>
+      <h4 class="signature">
+      <span class="modifier_kind">
+        <span class="modifier"></span>
+        <span class="kind">case class</span>
+      </span>
+      <span class="symbol">
+        <a href="BrierScoreError.html"><span class="name">BrierScoreError</span></a><span class="tparams">[<span name="L">L</span>, <span name="M">M</span>]</span><span class="params">()</span><span class="params">(<span class="implicit">implicit </span><span name="num">num: <span class="extype" name="scala.Numeric">Numeric</span>[<span class="extype" name="com.stripe.brushfire.BrierScoreError.M">M</span>]</span>)</span><span class="result"> extends <a href="FrequencyError.html" class="extype" name="com.stripe.brushfire.FrequencyError">FrequencyError</a>[<span class="extype" name="com.stripe.brushfire.BrierScoreError.L">L</span>, <span class="extype" name="com.stripe.brushfire.BrierScoreError.M">M</span>, <span class="extype" name="com.twitter.algebird.AveragedValue">AveragedValue</span>] with <span class="extype" name="scala.Product">Product</span> with <span class="extype" name="scala.Serializable">Serializable</span></span>
+      </span>
+      </h4>
+      
+    </li><li name="com.stripe.brushfire.ChiSquaredEvaluator" visbl="pub" data-isabs="false" fullComment="no" group="Ungrouped">
+      <a id="ChiSquaredEvaluator[V,L,W]extendsEvaluator[V,Map[L,W]]withProductwithSerializable"></a>
+      <a id="ChiSquaredEvaluator[V,L,W]:ChiSquaredEvaluator[V,L,W]"></a>
+      <h4 class="signature">
+      <span class="modifier_kind">
+        <span class="modifier"></span>
+        <span class="kind">case class</span>
+      </span>
+      <span class="symbol">
+        <a href="ChiSquaredEvaluator.html"><span class="name">ChiSquaredEvaluator</span></a><span class="tparams">[<span name="V">V</span>, <span name="L">L</span>, <span name="W">W</span>]</span><span class="params">()</span><span class="params">(<span class="implicit">implicit </span><span name="evidence$1">evidence$1: (<span class="extype" name="com.stripe.brushfire.ChiSquaredEvaluator.W">W</span>) ⇒ <span class="extype" name="scala.Double">Double</span></span>, <span name="weightMonoid">weightMonoid: <span class="extype" name="com.twitter.algebird.Monoid">Monoid</span>[<span class="extype" name="com.stripe.brushfire.ChiSquaredEvaluator.W">W</span>]</span>)</span><span class="result"> extends <a href="Evaluator.html" class="extype" name="com.stripe.brushfire.Evaluator">Evaluator</a>[<span class="extype" name="com.stripe.brushfire.ChiSquaredEvaluator.V">V</span>, <span class="extype" name="scala.Predef.Map">Map</span>[<span class="extype" name="com.stripe.brushfire.ChiSquaredEvaluator.L">L</span>, <span class="extype" name="com.stripe.brushfire.ChiSquaredEvaluator.W">W</span>]] with <span class="extype" name="scala.Product">Product</span> with <span class="extype" name="scala.Serializable">Serializable</span></span>
+      </span>
+      </h4>
+      
+    </li><li name="com.stripe.brushfire.Continuous" visbl="pub" data-isabs="false" fullComment="no" group="Ungrouped">
+      <a id="Continuous[C]extendsDispatched[Nothing,Nothing,C,Nothing]withProductwithSerializable"></a>
+      <a id="Continuous[C]:Continuous[C]"></a>
+      <h4 class="signature">
+      <span class="modifier_kind">
+        <span class="modifier"></span>
+        <span class="kind">case class</span>
+      </span>
+      <span class="symbol">
+        <a href="Continuous.html"><span class="name">Continuous</span></a><span class="tparams">[<span name="C">C</span>]</span><span class="params">(<span name="continuous">continuous: <span class="extype" name="com.stripe.brushfire.Continuous.C">C</span></span>)</span><span class="result"> extends <a href="Dispatched.html" class="extype" name="com.stripe.brushfire.Dispatched">Dispatched</a>[<span class="extype" name="scala.Nothing">Nothing</span>, <span class="extype" name="scala.Nothing">Nothing</span>, <span class="extype" name="com.stripe.brushfire.Continuous.C">C</span>, <span class="extype" name="scala.Nothing">Nothing</span>] with <span class="extype" name="scala.Product">Product</span> with <span class="extype" name="scala.Serializable">Serializable</span></span>
+      </span>
+      </h4>
+      
+    </li><li name="com.stripe.brushfire.Defaults" visbl="pub" data-isabs="true" fullComment="no" group="Ungrouped">
+      <a id="DefaultsextendsLowPriorityDefaults"></a>
+      <a id="Defaults:Defaults"></a>
+      <h4 class="signature">
+      <span class="modifier_kind">
+        <span class="modifier"></span>
+        <span class="kind">trait</span>
+      </span>
+      <span class="symbol">
+        <a href="Defaults.html"><span class="name">Defaults</span></a><span class="result"> extends <a href="LowPriorityDefaults.html" class="extype" name="com.stripe.brushfire.LowPriorityDefaults">LowPriorityDefaults</a></span>
+      </span>
+      </h4>
+      
+    </li><li name="com.stripe.brushfire.Dispatched" visbl="pub" data-isabs="true" fullComment="no" group="Ungrouped">
+      <a id="Dispatched[+A,+B,+C,+D]extendsAnyRef"></a>
+      <a id="Dispatched[+A,+B,+C,+D]:Dispatched[A,B,C,D]"></a>
+      <h4 class="signature">
+      <span class="modifier_kind">
+        <span class="modifier">sealed </span>
+        <span class="kind">trait</span>
+      </span>
+      <span class="symbol">
+        <a href="Dispatched.html"><span class="name">Dispatched</span></a><span class="tparams">[<span name="A">+A</span>, <span name="B">+B</span>, <span name="C">+C</span>, <span name="D">+D</span>]</span><span class="result"> extends <span class="extype" name="scala.AnyRef">AnyRef</span></span>
+      </span>
+      </h4>
+      
+    </li><li name="com.stripe.brushfire.DispatchedSplitter" visbl="pub" data-isabs="false" fullComment="no" group="Ungrouped">
+      <a id="DispatchedSplitter[A,B,C,D,T]extendsSplitter[com.stripe.brushfire.Dispatched[A,B,C,D],T]"></a>
+      <a id="DispatchedSplitter[A,B,C,D,T]:DispatchedSplitter[A,B,C,D,T]"></a>
+      <h4 class="signature">
+      <span class="modifier_kind">
+        <span class="modifier"></span>
+        <span class="kind">class</span>
+      </span>
+      <span class="symbol">
+        <a href="DispatchedSplitter.html"><span class="name">DispatchedSplitter</span></a><span class="tparams">[<span name="A">A</span>, <span name="B">B</span>, <span name="C">C</span>, <span name="D">D</span>, <span name="T">T</span>]</span><span class="result"> extends <a href="Splitter.html" class="extype" name="com.stripe.brushfire.Splitter">Splitter</a>[<a href="Dispatched.html" class="extype" name="com.stripe.brushfire.Dispatched">Dispatched</a>[<span class="extype" name="com.stripe.brushfire.DispatchedSplitter.A">A</span>, <span class="extype" name="com.stripe.brushfire.DispatchedSplitter.B">B</span>, <span class="extype" name="com.stripe.brushfire.DispatchedSplitter.C">C</span>, <span class="extype" name="com.stripe.brushfire.DispatchedSplitter.D">D</span>], <span class="extype" name="com.stripe.brushfire.DispatchedSplitter.T">T</span>]</span>
+      </span>
+      </h4>
+      
+    </li><li name="com.stripe.brushfire.EmptySplit" visbl="pub" data-isabs="false" fullComment="no" group="Ungrouped">
+      <a id="EmptySplit[V,P]extendsSplit[V,P]withProductwithSerializable"></a>
+      <a id="EmptySplit[V,P]:EmptySplit[V,P]"></a>
+      <h4 class="signature">
+      <span class="modifier_kind">
+        <span class="modifier"></span>
+        <span class="kind">case class</span>
+      </span>
+      <span class="symbol">
+        <a href="EmptySplit.html"><span class="name">EmptySplit</span></a><span class="tparams">[<span name="V">V</span>, <span name="P">P</span>]</span><span class="params">()</span><span class="result"> extends <a href="Split.html" class="extype" name="com.stripe.brushfire.Split">Split</a>[<span class="extype" name="com.stripe.brushfire.EmptySplit.V">V</span>, <span class="extype" name="com.stripe.brushfire.EmptySplit.P">P</span>] with <span class="extype" name="scala.Product">Product</span> with <span class="extype" name="scala.Serializable">Serializable</span></span>
+      </span>
+      </h4>
+      
+    </li><li name="com.stripe.brushfire.EqualTo" visbl="pub" data-isabs="false" fullComment="no" group="Ungrouped">
+      <a id="EqualTo[V]extendsPredicate[V]withProductwithSerializable"></a>
+      <a id="EqualTo[V]:EqualTo[V]"></a>
+      <h4 class="signature">
+      <span class="modifier_kind">
+        <span class="modifier"></span>
+        <span class="kind">case class</span>
+      </span>
+      <span class="symbol">
+        <a href="EqualTo.html"><span class="name">EqualTo</span></a><span class="tparams">[<span name="V">V</span>]</span><span class="params">(<span name="value">value: <span class="extype" name="com.stripe.brushfire.EqualTo.V">V</span></span>)</span><span class="result"> extends <a href="Predicate.html" class="extype" name="com.stripe.brushfire.Predicate">Predicate</a>[<span class="extype" name="com.stripe.brushfire.EqualTo.V">V</span>] with <span class="extype" name="scala.Product">Product</span> with <span class="extype" name="scala.Serializable">Serializable</span></span>
+      </span>
+      </h4>
+      
+    </li><li name="com.stripe.brushfire.Error" visbl="pub" data-isabs="true" fullComment="no" group="Ungrouped">
+      <a id="Error[T,P,E]extendsAnyRef"></a>
+      <a id="Error[T,P,E]:Error[T,P,E]"></a>
+      <h4 class="signature">
+      <span class="modifier_kind">
+        <span class="modifier"></span>
+        <span class="kind">trait</span>
+      </span>
+      <span class="symbol">
+        <a href="Error.html"><span class="name">Error</span></a><span class="tparams">[<span name="T">T</span>, <span name="P">P</span>, <span name="E">E</span>]</span><span class="result"> extends <span class="extype" name="scala.AnyRef">AnyRef</span></span>
+      </span>
+      </h4>
+      <p class="comment cmt">Computes some kind of error by comparing the trees' predictions to the validation set</p>
+    </li><li name="com.stripe.brushfire.ErrorEvaluator" visbl="pub" data-isabs="false" fullComment="no" group="Ungrouped">
+      <a id="ErrorEvaluator[V,T,P,E]extendsEvaluator[V,T]withProductwithSerializable"></a>
+      <a id="ErrorEvaluator[V,T,P,E]:ErrorEvaluator[V,T,P,E]"></a>
+      <h4 class="signature">
+      <span class="modifier_kind">
+        <span class="modifier"></span>
+        <span class="kind">case class</span>
+      </span>
+      <span class="symbol">
+        <a href="ErrorEvaluator.html"><span class="name">ErrorEvaluator</span></a><span class="tparams">[<span name="V">V</span>, <span name="T">T</span>, <span name="P">P</span>, <span name="E">E</span>]</span><span class="params">(<span name="error">error: <a href="Error.html" class="extype" name="com.stripe.brushfire.Error">Error</a>[<span class="extype" name="com.stripe.brushfire.ErrorEvaluator.T">T</span>, <span class="extype" name="com.stripe.brushfire.ErrorEvaluator.P">P</span>, <span class="extype" name="com.stripe.brushfire.ErrorEvaluator.E">E</span>]</span>, <span name="voter">voter: <a href="Voter.html" class="extype" name="com.stripe.brushfire.Voter">Voter</a>[<span class="extype" name="com.stripe.brushfire.ErrorEvaluator.T">T</span>, <span class="extype" name="com.stripe.brushfire.ErrorEvaluator.P">P</span>]</span>)</span><span class="params">(<span name="fn">fn: (<span class="extype" name="com.stripe.brushfire.ErrorEvaluator.E">E</span>) ⇒ <span class="extype" name="scala.Double">Double</span></span>)</span><span class="result"> extends <a href="Evaluator.html" class="extype" name="com.stripe.brushfire.Evaluator">Evaluator</a>[<span class="extype" name="com.stripe.brushfire.ErrorEvaluator.V">V</span>, <span class="extype" name="com.stripe.brushfire.ErrorEvaluator.T">T</span>] with <span class="extype" name="scala.Product">Product</span> with <span class="extype" name="scala.Serializable">Serializable</span></span>
+      </span>
+      </h4>
+      
+    </li><li name="com.stripe.brushfire.Evaluator" visbl="pub" data-isabs="true" fullComment="no" group="Ungrouped">
+      <a id="Evaluator[V,T]extendsAnyRef"></a>
+      <a id="Evaluator[V,T]:Evaluator[V,T]"></a>
+      <h4 class="signature">
+      <span class="modifier_kind">
+        <span class="modifier"></span>
+        <span class="kind">trait</span>
+      </span>
+      <span class="symbol">
+        <a href="Evaluator.html"><span class="name">Evaluator</span></a><span class="tparams">[<span name="V">V</span>, <span name="T">T</span>]</span><span class="result"> extends <span class="extype" name="scala.AnyRef">AnyRef</span></span>
+      </span>
+      </h4>
+      <p class="comment cmt">Evaluates the goodness of a candidate split</p>
+    </li><li name="com.stripe.brushfire.FrequencyError" visbl="pub" data-isabs="true" fullComment="no" group="Ungrouped">
+      <a id="FrequencyError[L,M,E]extendsError[Map[L,M],Map[L,Double],E]"></a>
+      <a id="FrequencyError[L,M,E]:FrequencyError[L,M,E]"></a>
+      <h4 class="signature">
+      <span class="modifier_kind">
+        <span class="modifier"></span>
+        <span class="kind">trait</span>
+      </span>
+      <span class="symbol">
+        <a href="FrequencyError.html"><span class="name">FrequencyError</span></a><span class="tparams">[<span name="L">L</span>, <span name="M">M</span>, <span name="E">E</span>]</span><span class="result"> extends <a href="Error.html" class="extype" name="com.stripe.brushfire.Error">Error</a>[<span class="extype" name="scala.Predef.Map">Map</span>[<span class="extype" name="com.stripe.brushfire.FrequencyError.L">L</span>, <span class="extype" name="com.stripe.brushfire.FrequencyError.M">M</span>], <span class="extype" name="scala.Predef.Map">Map</span>[<span class="extype" name="com.stripe.brushfire.FrequencyError.L">L</span>, <span class="extype" name="scala.Double">Double</span>], <span class="extype" name="com.stripe.brushfire.FrequencyError.E">E</span>]</span>
+      </span>
+      </h4>
+      <p class="comment cmt">FrequencyError sets up the most common case when dealing
+with discrete distributions:
+- compute and sum errors separately for each component of the actual distribution
+- provide a zero for when predictions or actuals are missing
+</p>
+    </li><li name="com.stripe.brushfire.FrequencyStopper" visbl="pub" data-isabs="false" fullComment="no" group="Ungrouped">
+      <a id="FrequencyStopper[L]extendsStopper[Map[L,Long]]withProductwithSerializable"></a>
+      <a id="FrequencyStopper[L]:FrequencyStopper[L]"></a>
+      <h4 class="signature">
+      <span class="modifier_kind">
+        <span class="modifier"></span>
+        <span class="kind">case class</span>
+      </span>
+      <span class="symbol">
+        <a href="FrequencyStopper.html"><span class="name">FrequencyStopper</span></a><span class="tparams">[<span name="L">L</span>]</span><span class="params">(<span name="maxInMemorySize">maxInMemorySize: <span class="extype" name="scala.Long">Long</span></span>, <span name="minSize">minSize: <span class="extype" name="scala.Long">Long</span></span>)</span><span class="result"> extends <a href="Stopper.html" class="extype" name="com.stripe.brushfire.Stopper">Stopper</a>[<span class="extype" name="scala.Predef.Map">Map</span>[<span class="extype" name="com.stripe.brushfire.FrequencyStopper.L">L</span>, <span class="extype" name="scala.Long">Long</span>]] with <span class="extype" name="scala.Product">Product</span> with <span class="extype" name="scala.Serializable">Serializable</span></span>
+      </span>
+      </h4>
+      
+    </li><li name="com.stripe.brushfire.FrequencyVoter" visbl="pub" data-isabs="true" fullComment="no" group="Ungrouped">
+      <a id="FrequencyVoter[L,M]extendsVoter[Map[L,M],Map[L,Double]]"></a>
+      <a id="FrequencyVoter[L,M]:FrequencyVoter[L,M]"></a>
+      <h4 class="signature">
+      <span class="modifier_kind">
+        <span class="modifier"></span>
+        <span class="kind">trait</span>
+      </span>
+      <span class="symbol">
+        <a href="FrequencyVoter.html"><span class="name">FrequencyVoter</span></a><span class="tparams">[<span name="L">L</span>, <span name="M">M</span>]</span><span class="result"> extends <a href="Voter.html" class="extype" name="com.stripe.brushfire.Voter">Voter</a>[<span class="extype" name="scala.Predef.Map">Map</span>[<span class="extype" name="com.stripe.brushfire.FrequencyVoter.L">L</span>, <span class="extype" name="com.stripe.brushfire.FrequencyVoter.M">M</span>], <span class="extype" name="scala.Predef.Map">Map</span>[<span class="extype" name="com.stripe.brushfire.FrequencyVoter.L">L</span>, <span class="extype" name="scala.Double">Double</span>]]</span>
+      </span>
+      </h4>
+      
+    </li><li name="com.stripe.brushfire.Instance" visbl="pub" data-isabs="false" fullComment="no" group="Ungrouped">
+      <a id="Instance[K,V,T]extendsProductwithSerializable"></a>
+      <a id="Instance[K,V,T]:Instance[K,V,T]"></a>
+      <h4 class="signature">
+      <span class="modifier_kind">
+        <span class="modifier"></span>
+        <span class="kind">case class</span>
+      </span>
+      <span class="symbol">
+        <a href="Instance.html"><span class="name">Instance</span></a><span class="tparams">[<span name="K">K</span>, <span name="V">V</span>, <span name="T">T</span>]</span><span class="params">(<span name="id">id: <span class="extype" name="scala.Predef.String">String</span></span>, <span name="timestamp">timestamp: <span class="extype" name="scala.Long">Long</span></span>, <span name="features">features: <span class="extype" name="scala.Predef.Map">Map</span>[<span class="extype" name="com.stripe.brushfire.Instance.K">K</span>, <span class="extype" name="com.stripe.brushfire.Instance.V">V</span>]</span>, <span name="target">target: <span class="extype" name="com.stripe.brushfire.Instance.T">T</span></span>)</span><span class="result"> extends <span class="extype" name="scala.Product">Product</span> with <span class="extype" name="scala.Serializable">Serializable</span></span>
+      </span>
+      </h4>
+      <p class="comment cmt">Represents a single instance of training data.</p>
+    </li><li name="com.stripe.brushfire.KFoldSampler" visbl="pub" data-isabs="false" fullComment="no" group="Ungrouped">
+      <a id="KFoldSamplerextendsSampler[Any]withProductwithSerializable"></a>
+      <a id="KFoldSampler:KFoldSampler"></a>
+      <h4 class="signature">
+      <span class="modifier_kind">
+        <span class="modifier"></span>
+        <span class="kind">case class</span>
+      </span>
+      <span class="symbol">
+        <a href="KFoldSampler.html"><span class="name">KFoldSampler</span></a><span class="params">(<span name="numTrees">numTrees: <span class="extype" name="scala.Int">Int</span></span>)</span><span class="result"> extends <a href="Sampler.html" class="extype" name="com.stripe.brushfire.Sampler">Sampler</a>[<span class="extype" name="scala.Any">Any</span>] with <span class="extype" name="scala.Product">Product</span> with <span class="extype" name="scala.Serializable">Serializable</span></span>
+      </span>
+      </h4>
+      
+    </li><li name="com.stripe.brushfire.LeafNode" visbl="pub" data-isabs="false" fullComment="no" group="Ungrouped">
+      <a id="LeafNode[K,V,T]extendsNode[K,V,T]withProductwithSerializable"></a>
+      <a id="LeafNode[K,V,T]:LeafNode[K,V,T]"></a>
+      <h4 class="signature">
+      <span class="modifier_kind">
+        <span class="modifier"></span>
+        <span class="kind">case class</span>
+      </span>
+      <span class="symbol">
+        <a href="LeafNode.html"><span class="name">LeafNode</span></a><span class="tparams">[<span name="K">K</span>, <span name="V">V</span>, <span name="T">T</span>]</span><span class="params">(<span name="index">index: <span class="extype" name="scala.Int">Int</span></span>, <span name="target">target: <span class="extype" name="com.stripe.brushfire.LeafNode.T">T</span></span>)</span><span class="result"> extends <a href="Node.html" class="extype" name="com.stripe.brushfire.Node">Node</a>[<span class="extype" name="com.stripe.brushfire.LeafNode.K">K</span>, <span class="extype" name="com.stripe.brushfire.LeafNode.V">V</span>, <span class="extype" name="com.stripe.brushfire.LeafNode.T">T</span>] with <span class="extype" name="scala.Product">Product</span> with <span class="extype" name="scala.Serializable">Serializable</span></span>
+      </span>
+      </h4>
+      
+    </li><li name="com.stripe.brushfire.LessThan" visbl="pub" data-isabs="false" fullComment="no" group="Ungrouped">
+      <a id="LessThan[V]extendsPredicate[V]withProductwithSerializable"></a>
+      <a id="LessThan[V]:LessThan[V]"></a>
+      <h4 class="signature">
+      <span class="modifier_kind">
+        <span class="modifier"></span>
+        <span class="kind">case class</span>
+      </span>
+      <span class="symbol">
+        <a href="LessThan.html"><span class="name">LessThan</span></a><span class="tparams">[<span name="V">V</span>]</span><span class="params">(<span name="value">value: <span class="extype" name="com.stripe.brushfire.LessThan.V">V</span></span>)</span><span class="params">(<span class="implicit">implicit </span><span name="ord">ord: <span class="extype" name="scala.Ordering">Ordering</span>[<span class="extype" name="com.stripe.brushfire.LessThan.V">V</span>]</span>)</span><span class="result"> extends <a href="Predicate.html" class="extype" name="com.stripe.brushfire.Predicate">Predicate</a>[<span class="extype" name="com.stripe.brushfire.LessThan.V">V</span>] with <span class="extype" name="scala.Product">Product</span> with <span class="extype" name="scala.Serializable">Serializable</span></span>
+      </span>
+      </h4>
+      
+    </li><li name="com.stripe.brushfire.LowPriorityDefaults" visbl="pub" data-isabs="true" fullComment="no" group="Ungrouped">
+      <a id="LowPriorityDefaultsextendsAnyRef"></a>
+      <a id="LowPriorityDefaults:LowPriorityDefaults"></a>
+      <h4 class="signature">
+      <span class="modifier_kind">
+        <span class="modifier"></span>
+        <span class="kind">trait</span>
+      </span>
+      <span class="symbol">
+        <a href="LowPriorityDefaults.html"><span class="name">LowPriorityDefaults</span></a><span class="result"> extends <span class="extype" name="scala.AnyRef">AnyRef</span></span>
+      </span>
+      </h4>
+      
+    </li><li name="com.stripe.brushfire.MinWeightEvaluator" visbl="pub" data-isabs="false" fullComment="no" group="Ungrouped">
+      <a id="MinWeightEvaluator[V,L,W]extendsEvaluator[V,Map[L,W]]withProductwithSerializable"></a>
+      <a id="MinWeightEvaluator[V,L,W]:MinWeightEvaluator[V,L,W]"></a>
+      <h4 class="signature">
+      <span class="modifier_kind">
+        <span class="modifier"></span>
+        <span class="kind">case class</span>
+      </span>
+      <span class="symbol">
+        <a href="MinWeightEvaluator.html"><span class="name">MinWeightEvaluator</span></a><span class="tparams">[<span name="V">V</span>, <span name="L">L</span>, <span name="W">W</span>]</span><span class="params">(<span name="minWeight">minWeight: (<span class="extype" name="com.stripe.brushfire.MinWeightEvaluator.W">W</span>) ⇒ <span class="extype" name="scala.Boolean">Boolean</span></span>, <span name="wrapped">wrapped: <a href="Evaluator.html" class="extype" name="com.stripe.brushfire.Evaluator">Evaluator</a>[<span class="extype" name="com.stripe.brushfire.MinWeightEvaluator.V">V</span>, <span class="extype" name="scala.Predef.Map">Map</span>[<span class="extype" name="com.stripe.brushfire.MinWeightEvaluator.L">L</span>, <span class="extype" name="com.stripe.brushfire.MinWeightEvaluator.W">W</span>]]</span>)</span><span class="params">(<span class="implicit">implicit </span><span name="evidence$2">evidence$2: <span class="extype" name="com.twitter.algebird.Monoid">Monoid</span>[<span class="extype" name="com.stripe.brushfire.MinWeightEvaluator.W">W</span>]</span>)</span><span class="result"> extends <a href="Evaluator.html" class="extype" name="com.stripe.brushfire.Evaluator">Evaluator</a>[<span class="extype" name="com.stripe.brushfire.MinWeightEvaluator.V">V</span>, <span class="extype" name="scala.Predef.Map">Map</span>[<span class="extype" name="com.stripe.brushfire.MinWeightEvaluator.L">L</span>, <span class="extype" name="com.stripe.brushfire.MinWeightEvaluator.W">W</span>]] with <span class="extype" name="scala.Product">Product</span> with <span class="extype" name="scala.Serializable">Serializable</span></span>
+      </span>
+      </h4>
+      
+    </li><li name="com.stripe.brushfire.ModeVoter" visbl="pub" data-isabs="false" fullComment="no" group="Ungrouped">
+      <a id="ModeVoter[L,M]extendsFrequencyVoter[L,M]withProductwithSerializable"></a>
+      <a id="ModeVoter[L,M]:ModeVoter[L,M]"></a>
+      <h4 class="signature">
+      <span class="modifier_kind">
+        <span class="modifier"></span>
+        <span class="kind">case class</span>
+      </span>
+      <span class="symbol">
+        <a href="ModeVoter.html"><span class="name">ModeVoter</span></a><span class="tparams">[<span name="L">L</span>, <span name="M">M</span>]</span><span class="params">()</span><span class="params">(<span class="implicit">implicit </span><span name="evidence$2">evidence$2: <span class="extype" name="scala.Ordering">Ordering</span>[<span class="extype" name="com.stripe.brushfire.ModeVoter.M">M</span>]</span>)</span><span class="result"> extends <a href="FrequencyVoter.html" class="extype" name="com.stripe.brushfire.FrequencyVoter">FrequencyVoter</a>[<span class="extype" name="com.stripe.brushfire.ModeVoter.L">L</span>, <span class="extype" name="com.stripe.brushfire.ModeVoter.M">M</span>] with <span class="extype" name="scala.Product">Product</span> with <span class="extype" name="scala.Serializable">Serializable</span></span>
+      </span>
+      </h4>
+      
+    </li><li name="com.stripe.brushfire.Node" visbl="pub" data-isabs="true" fullComment="no" group="Ungrouped">
+      <a id="Node[K,V,T]extendsAnyRef"></a>
+      <a id="Node[K,V,T]:Node[K,V,T]"></a>
+      <h4 class="signature">
+      <span class="modifier_kind">
+        <span class="modifier">sealed </span>
+        <span class="kind">trait</span>
+      </span>
+      <span class="symbol">
+        <a href="Node.html"><span class="name">Node</span></a><span class="tparams">[<span name="K">K</span>, <span name="V">V</span>, <span name="T">T</span>]</span><span class="result"> extends <span class="extype" name="scala.AnyRef">AnyRef</span></span>
+      </span>
+      </h4>
+      
+    </li><li name="com.stripe.brushfire.Nominal" visbl="pub" data-isabs="false" fullComment="no" group="Ungrouped">
+      <a id="Nominal[B]extendsDispatched[Nothing,B,Nothing,Nothing]withProductwithSerializable"></a>
+      <a id="Nominal[B]:Nominal[B]"></a>
+      <h4 class="signature">
+      <span class="modifier_kind">
+        <span class="modifier"></span>
+        <span class="kind">case class</span>
+      </span>
+      <span class="symbol">
+        <a href="Nominal.html"><span class="name">Nominal</span></a><span class="tparams">[<span name="B">B</span>]</span><span class="params">(<span name="nominal">nominal: <span class="extype" name="com.stripe.brushfire.Nominal.B">B</span></span>)</span><span class="result"> extends <a href="Dispatched.html" class="extype" name="com.stripe.brushfire.Dispatched">Dispatched</a>[<span class="extype" name="scala.Nothing">Nothing</span>, <span class="extype" name="com.stripe.brushfire.Nominal.B">B</span>, <span class="extype" name="scala.Nothing">Nothing</span>, <span class="extype" name="scala.Nothing">Nothing</span>] with <span class="extype" name="scala.Product">Product</span> with <span class="extype" name="scala.Serializable">Serializable</span></span>
+      </span>
+      </h4>
+      
+    </li><li name="com.stripe.brushfire.Not" visbl="pub" data-isabs="false" fullComment="no" group="Ungrouped">
+      <a id="Not[V]extendsPredicate[V]withProductwithSerializable"></a>
+      <a id="Not[V]:Not[V]"></a>
+      <h4 class="signature">
+      <span class="modifier_kind">
+        <span class="modifier"></span>
+        <span class="kind">case class</span>
+      </span>
+      <span class="symbol">
+        <a href="Not.html"><span class="name">Not</span></a><span class="tparams">[<span name="V">V</span>]</span><span class="params">(<span name="pred">pred: <a href="Predicate.html" class="extype" name="com.stripe.brushfire.Predicate">Predicate</a>[<span class="extype" name="com.stripe.brushfire.Not.V">V</span>]</span>)</span><span class="result"> extends <a href="Predicate.html" class="extype" name="com.stripe.brushfire.Predicate">Predicate</a>[<span class="extype" name="com.stripe.brushfire.Not.V">V</span>] with <span class="extype" name="scala.Product">Product</span> with <span class="extype" name="scala.Serializable">Serializable</span></span>
+      </span>
+      </h4>
+      
+    </li><li name="com.stripe.brushfire.Ordinal" visbl="pub" data-isabs="false" fullComment="no" group="Ungrouped">
+      <a id="Ordinal[A]extendsDispatched[A,Nothing,Nothing,Nothing]withProductwithSerializable"></a>
+      <a id="Ordinal[A]:Ordinal[A]"></a>
+      <h4 class="signature">
+      <span class="modifier_kind">
+        <span class="modifier"></span>
+        <span class="kind">case class</span>
+      </span>
+      <span class="symbol">
+        <a href="Ordinal.html"><span class="name">Ordinal</span></a><span class="tparams">[<span name="A">A</span>]</span><span class="params">(<span name="ordinal">ordinal: <span class="extype" name="com.stripe.brushfire.Ordinal.A">A</span></span>)</span><span class="result"> extends <a href="Dispatched.html" class="extype" name="com.stripe.brushfire.Dispatched">Dispatched</a>[<span class="extype" name="com.stripe.brushfire.Ordinal.A">A</span>, <span class="extype" name="scala.Nothing">Nothing</span>, <span class="extype" name="scala.Nothing">Nothing</span>, <span class="extype" name="scala.Nothing">Nothing</span>] with <span class="extype" name="scala.Product">Product</span> with <span class="extype" name="scala.Serializable">Serializable</span></span>
+      </span>
+      </h4>
+      
+    </li><li name="com.stripe.brushfire.OutOfTimeSampler" visbl="pub" data-isabs="false" fullComment="no" group="Ungrouped">
+      <a id="OutOfTimeSampler[K]extendsSampler[K]withProductwithSerializable"></a>
+      <a id="OutOfTimeSampler[K]:OutOfTimeSampler[K]"></a>
+      <h4 class="signature">
+      <span class="modifier_kind">
+        <span class="modifier"></span>
+        <span class="kind">case class</span>
+      </span>
+      <span class="symbol">
+        <a href="OutOfTimeSampler.html"><span class="name">OutOfTimeSampler</span></a><span class="tparams">[<span name="K">K</span>]</span><span class="params">(<span name="base">base: <a href="Sampler.html" class="extype" name="com.stripe.brushfire.Sampler">Sampler</a>[<span class="extype" name="com.stripe.brushfire.OutOfTimeSampler.K">K</span>]</span>, <span name="threshold">threshold: <span class="extype" name="scala.Long">Long</span></span>)</span><span class="result"> extends <a href="Sampler.html" class="extype" name="com.stripe.brushfire.Sampler">Sampler</a>[<span class="extype" name="com.stripe.brushfire.OutOfTimeSampler.K">K</span>] with <span class="extype" name="scala.Product">Product</span> with <span class="extype" name="scala.Serializable">Serializable</span></span>
+      </span>
+      </h4>
+      
+    </li><li name="com.stripe.brushfire.Predicate" visbl="pub" data-isabs="true" fullComment="no" group="Ungrouped">
+      <a id="Predicate[V]extendsAnyRef"></a>
+      <a id="Predicate[V]:Predicate[V]"></a>
+      <h4 class="signature">
+      <span class="modifier_kind">
+        <span class="modifier">sealed </span>
+        <span class="kind">trait</span>
+      </span>
+      <span class="symbol">
+        <a href="Predicate.html"><span class="name">Predicate</span></a><span class="tparams">[<span name="V">V</span>]</span><span class="result"> extends <span class="extype" name="scala.AnyRef">AnyRef</span></span>
+      </span>
+      </h4>
+      
+    </li><li name="com.stripe.brushfire.QTreeSplitter" visbl="pub" data-isabs="false" fullComment="no" group="Ungrouped">
+      <a id="QTreeSplitter[T]extendsSplitter[Double,T]withProductwithSerializable"></a>
+      <a id="QTreeSplitter[T]:QTreeSplitter[T]"></a>
+      <h4 class="signature">
+      <span class="modifier_kind">
+        <span class="modifier"></span>
+        <span class="kind">case class</span>
+      </span>
+      <span class="symbol">
+        <a href="QTreeSplitter.html"><span class="name">QTreeSplitter</span></a><span class="tparams">[<span name="T">T</span>]</span><span class="params">(<span name="k">k: <span class="extype" name="scala.Int">Int</span></span>)</span><span class="params">(<span class="implicit">implicit </span><span name="evidence$2">evidence$2: <span class="extype" name="com.twitter.algebird.Monoid">Monoid</span>[<span class="extype" name="com.stripe.brushfire.QTreeSplitter.T">T</span>]</span>)</span><span class="result"> extends <a href="Splitter.html" class="extype" name="com.stripe.brushfire.Splitter">Splitter</a>[<span class="extype" name="scala.Double">Double</span>, <span class="extype" name="com.stripe.brushfire.QTreeSplitter.T">T</span>] with <span class="extype" name="scala.Product">Product</span> with <span class="extype" name="scala.Serializable">Serializable</span></span>
+      </span>
+      </h4>
+      
+    </li><li name="com.stripe.brushfire.RFSampler" visbl="pub" data-isabs="false" fullComment="no" group="Ungrouped">
+      <a id="RFSamplerextendsSampler[String]withProductwithSerializable"></a>
+      <a id="RFSampler:RFSampler"></a>
+      <h4 class="signature">
+      <span class="modifier_kind">
+        <span class="modifier"></span>
+        <span class="kind">case class</span>
+      </span>
+      <span class="symbol">
+        <a href="RFSampler.html"><span class="name">RFSampler</span></a><span class="params">(<span name="numTrees">numTrees: <span class="extype" name="scala.Int">Int</span></span>, <span name="featureRate">featureRate: <span class="extype" name="scala.Double">Double</span></span>, <span name="samplingRate">samplingRate: <span class="extype" name="scala.Double">Double</span> = <span class="symbol">1.0</span></span>)</span><span class="result"> extends <a href="Sampler.html" class="extype" name="com.stripe.brushfire.Sampler">Sampler</a>[<span class="extype" name="scala.Predef.String">String</span>] with <span class="extype" name="scala.Product">Product</span> with <span class="extype" name="scala.Serializable">Serializable</span></span>
+      </span>
+      </h4>
+      
+    </li><li name="com.stripe.brushfire.RandomSplitter" visbl="pub" data-isabs="false" fullComment="no" group="Ungrouped">
+      <a id="RandomSplitter[V,T]extendsSplitter[V,T]withProductwithSerializable"></a>
+      <a id="RandomSplitter[V,T]:RandomSplitter[V,T]"></a>
+      <h4 class="signature">
+      <span class="modifier_kind">
+        <span class="modifier"></span>
+        <span class="kind">case class</span>
+      </span>
+      <span class="symbol">
+        <a href="RandomSplitter.html"><span class="name">RandomSplitter</span></a><span class="tparams">[<span name="V">V</span>, <span name="T">T</span>]</span><span class="params">(<span name="original">original: <a href="Splitter.html" class="extype" name="com.stripe.brushfire.Splitter">Splitter</a>[<span class="extype" name="com.stripe.brushfire.RandomSplitter.V">V</span>, <span class="extype" name="com.stripe.brushfire.RandomSplitter.T">T</span>]</span>)</span><span class="result"> extends <a href="Splitter.html" class="extype" name="com.stripe.brushfire.Splitter">Splitter</a>[<span class="extype" name="com.stripe.brushfire.RandomSplitter.V">V</span>, <span class="extype" name="com.stripe.brushfire.RandomSplitter.T">T</span>] with <span class="extype" name="scala.Product">Product</span> with <span class="extype" name="scala.Serializable">Serializable</span></span>
+      </span>
+      </h4>
+      
+    </li><li name="com.stripe.brushfire.Sampler" visbl="pub" data-isabs="true" fullComment="no" group="Ungrouped">
+      <a id="Sampler[-K]extendsAnyRef"></a>
+      <a id="Sampler[-K]:Sampler[K]"></a>
+      <h4 class="signature">
+      <span class="modifier_kind">
+        <span class="modifier"></span>
+        <span class="kind">trait</span>
+      </span>
+      <span class="symbol">
+        <a href="Sampler.html"><span class="name">Sampler</span></a><span class="tparams">[<span name="K">-K</span>]</span><span class="result"> extends <span class="extype" name="scala.AnyRef">AnyRef</span></span>
+      </span>
+      </h4>
+      <p class="comment cmt">Allocates instances and features to trees and training or validation sets</p>
+    </li><li name="com.stripe.brushfire.SoftVoter" visbl="pub" data-isabs="false" fullComment="no" group="Ungrouped">
+      <a id="SoftVoter[L,M]extendsFrequencyVoter[L,M]withProductwithSerializable"></a>
+      <a id="SoftVoter[L,M]:SoftVoter[L,M]"></a>
+      <h4 class="signature">
+      <span class="modifier_kind">
+        <span class="modifier"></span>
+        <span class="kind">case class</span>
+      </span>
+      <span class="symbol">
+        <a href="SoftVoter.html"><span class="name">SoftVoter</span></a><span class="tparams">[<span name="L">L</span>, <span name="M">M</span>]</span><span class="params">()</span><span class="params">(<span class="implicit">implicit </span><span name="evidence$1">evidence$1: <span class="extype" name="scala.Numeric">Numeric</span>[<span class="extype" name="com.stripe.brushfire.SoftVoter.M">M</span>]</span>)</span><span class="result"> extends <a href="FrequencyVoter.html" class="extype" name="com.stripe.brushfire.FrequencyVoter">FrequencyVoter</a>[<span class="extype" name="com.stripe.brushfire.SoftVoter.L">L</span>, <span class="extype" name="com.stripe.brushfire.SoftVoter.M">M</span>] with <span class="extype" name="scala.Product">Product</span> with <span class="extype" name="scala.Serializable">Serializable</span></span>
+      </span>
+      </h4>
+      
+    </li><li name="com.stripe.brushfire.SpaceSaverSplitter" visbl="pub" data-isabs="false" fullComment="no" group="Ungrouped">
+      <a id="SpaceSaverSplitter[V,L]extendsSplitter[V,Map[L,Long]]withProductwithSerializable"></a>
+      <a id="SpaceSaverSplitter[V,L]:SpaceSaverSplitter[V,L]"></a>
+      <h4 class="signature">
+      <span class="modifier_kind">
+        <span class="modifier"></span>
+        <span class="kind">case class</span>
+      </span>
+      <span class="symbol">
+        <a href="SpaceSaverSplitter.html"><span class="name">SpaceSaverSplitter</span></a><span class="tparams">[<span name="V">V</span>, <span name="L">L</span>]</span><span class="params">(<span name="capacity">capacity: <span class="extype" name="scala.Int">Int</span> = <span class="symbol">1000</span></span>)</span><span class="result"> extends <a href="Splitter.html" class="extype" name="com.stripe.brushfire.Splitter">Splitter</a>[<span class="extype" name="com.stripe.brushfire.SpaceSaverSplitter.V">V</span>, <span class="extype" name="scala.Predef.Map">Map</span>[<span class="extype" name="com.stripe.brushfire.SpaceSaverSplitter.L">L</span>, <span class="extype" name="scala.Long">Long</span>]] with <span class="extype" name="scala.Product">Product</span> with <span class="extype" name="scala.Serializable">Serializable</span></span>
+      </span>
+      </h4>
+      
+    </li><li name="com.stripe.brushfire.Sparse" visbl="pub" data-isabs="false" fullComment="no" group="Ungrouped">
+      <a id="Sparse[D]extendsDispatched[Nothing,Nothing,Nothing,D]withProductwithSerializable"></a>
+      <a id="Sparse[D]:Sparse[D]"></a>
+      <h4 class="signature">
+      <span class="modifier_kind">
+        <span class="modifier"></span>
+        <span class="kind">case class</span>
+      </span>
+      <span class="symbol">
+        <a href="Sparse.html"><span class="name">Sparse</span></a><span class="tparams">[<span name="D">D</span>]</span><span class="params">(<span name="sparse">sparse: <span class="extype" name="com.stripe.brushfire.Sparse.D">D</span></span>)</span><span class="result"> extends <a href="Dispatched.html" class="extype" name="com.stripe.brushfire.Dispatched">Dispatched</a>[<span class="extype" name="scala.Nothing">Nothing</span>, <span class="extype" name="scala.Nothing">Nothing</span>, <span class="extype" name="scala.Nothing">Nothing</span>, <span class="extype" name="com.stripe.brushfire.Sparse.D">D</span>] with <span class="extype" name="scala.Product">Product</span> with <span class="extype" name="scala.Serializable">Serializable</span></span>
+      </span>
+      </h4>
+      
+    </li><li name="com.stripe.brushfire.SparseBooleanSplitter" visbl="pub" data-isabs="false" fullComment="no" group="Ungrouped">
+      <a id="SparseBooleanSplitter[T]extendsSplitter[Boolean,T]withProductwithSerializable"></a>
+      <a id="SparseBooleanSplitter[T]:SparseBooleanSplitter[T]"></a>
+      <h4 class="signature">
+      <span class="modifier_kind">
+        <span class="modifier"></span>
+        <span class="kind">case class</span>
+      </span>
+      <span class="symbol">
+        <a href="SparseBooleanSplitter.html"><span class="name">SparseBooleanSplitter</span></a><span class="tparams">[<span name="T">T</span>]</span><span class="params">()</span><span class="params">(<span class="implicit">implicit </span><span name="evidence$3">evidence$3: <span class="extype" name="com.twitter.algebird.Group">Group</span>[<span class="extype" name="com.stripe.brushfire.SparseBooleanSplitter.T">T</span>]</span>)</span><span class="result"> extends <a href="Splitter.html" class="extype" name="com.stripe.brushfire.Splitter">Splitter</a>[<span class="extype" name="scala.Boolean">Boolean</span>, <span class="extype" name="com.stripe.brushfire.SparseBooleanSplitter.T">T</span>] with <span class="extype" name="scala.Product">Product</span> with <span class="extype" name="scala.Serializable">Serializable</span></span>
+      </span>
+      </h4>
+      
+    </li><li name="com.stripe.brushfire.Split" visbl="pub" data-isabs="true" fullComment="no" group="Ungrouped">
+      <a id="Split[V,T]extendsAnyRef"></a>
+      <a id="Split[V,T]:Split[V,T]"></a>
+      <h4 class="signature">
+      <span class="modifier_kind">
+        <span class="modifier"></span>
+        <span class="kind">trait</span>
+      </span>
+      <span class="symbol">
+        <a href="Split.html"><span class="name">Split</span></a><span class="tparams">[<span name="V">V</span>, <span name="T">T</span>]</span><span class="result"> extends <span class="extype" name="scala.AnyRef">AnyRef</span></span>
+      </span>
+      </h4>
+      <p class="comment cmt">Candidate split for a tree node</p>
+    </li><li name="com.stripe.brushfire.SplitNode" visbl="pub" data-isabs="false" fullComment="no" group="Ungrouped">
+      <a id="SplitNode[K,V,T]extendsNode[K,V,T]withProductwithSerializable"></a>
+      <a id="SplitNode[K,V,T]:SplitNode[K,V,T]"></a>
+      <h4 class="signature">
+      <span class="modifier_kind">
+        <span class="modifier"></span>
+        <span class="kind">case class</span>
+      </span>
+      <span class="symbol">
+        <a href="SplitNode.html"><span class="name">SplitNode</span></a><span class="tparams">[<span name="K">K</span>, <span name="V">V</span>, <span name="T">T</span>]</span><span class="params">(<span name="children">children: <span class="extype" name="scala.Seq">Seq</span>[(<span class="extype" name="com.stripe.brushfire.SplitNode.K">K</span>, <a href="Predicate.html" class="extype" name="com.stripe.brushfire.Predicate">Predicate</a>[<span class="extype" name="com.stripe.brushfire.SplitNode.V">V</span>], <a href="Node.html" class="extype" name="com.stripe.brushfire.Node">Node</a>[<span class="extype" name="com.stripe.brushfire.SplitNode.K">K</span>, <span class="extype" name="com.stripe.brushfire.SplitNode.V">V</span>, <span class="extype" name="com.stripe.brushfire.SplitNode.T">T</span>])]</span>)</span><span class="result"> extends <a href="Node.html" class="extype" name="com.stripe.brushfire.Node">Node</a>[<span class="extype" name="com.stripe.brushfire.SplitNode.K">K</span>, <span class="extype" name="com.stripe.brushfire.SplitNode.V">V</span>, <span class="extype" name="com.stripe.brushfire.SplitNode.T">T</span>] with <span class="extype" name="scala.Product">Product</span> with <span class="extype" name="scala.Serializable">Serializable</span></span>
+      </span>
+      </h4>
+      
+    </li><li name="com.stripe.brushfire.Splitter" visbl="pub" data-isabs="true" fullComment="no" group="Ungrouped">
+      <a id="Splitter[V,T]extendsAnyRef"></a>
+      <a id="Splitter[V,T]:Splitter[V,T]"></a>
+      <h4 class="signature">
+      <span class="modifier_kind">
+        <span class="modifier"></span>
+        <span class="kind">trait</span>
+      </span>
+      <span class="symbol">
+        <a href="Splitter.html"><span class="name">Splitter</span></a><span class="tparams">[<span name="V">V</span>, <span name="T">T</span>]</span><span class="result"> extends <span class="extype" name="scala.AnyRef">AnyRef</span></span>
+      </span>
+      </h4>
+      <p class="comment cmt">Produces candidate splits from the instances at a leaf node.</p>
+    </li><li name="com.stripe.brushfire.Stopper" visbl="pub" data-isabs="true" fullComment="no" group="Ungrouped">
+      <a id="Stopper[T]extendsAnyRef"></a>
+      <a id="Stopper[T]:Stopper[T]"></a>
+      <h4 class="signature">
+      <span class="modifier_kind">
+        <span class="modifier"></span>
+        <span class="kind">trait</span>
+      </span>
+      <span class="symbol">
+        <a href="Stopper.html"><span class="name">Stopper</span></a><span class="tparams">[<span name="T">T</span>]</span><span class="result"> extends <span class="extype" name="scala.AnyRef">AnyRef</span></span>
+      </span>
+      </h4>
+      <p class="comment cmt">Provides stopping conditions which guide when splits will be attempted</p>
+    </li><li name="com.stripe.brushfire.ThresholdVoter" visbl="pub" data-isabs="false" fullComment="no" group="Ungrouped">
+      <a id="ThresholdVoter[M]extendsVoter[Map[Boolean,M],Boolean]withProductwithSerializable"></a>
+      <a id="ThresholdVoter[M]:ThresholdVoter[M]"></a>
+      <h4 class="signature">
+      <span class="modifier_kind">
+        <span class="modifier"></span>
+        <span class="kind">case class</span>
+      </span>
+      <span class="symbol">
+        <a href="ThresholdVoter.html"><span class="name">ThresholdVoter</span></a><span class="tparams">[<span name="M">M</span>]</span><span class="params">(<span name="threshold">threshold: <span class="extype" name="scala.Double">Double</span></span>, <span name="freqVoter">freqVoter: <a href="FrequencyVoter.html" class="extype" name="com.stripe.brushfire.FrequencyVoter">FrequencyVoter</a>[<span class="extype" name="scala.Boolean">Boolean</span>, <span class="extype" name="com.stripe.brushfire.ThresholdVoter.M">M</span>]</span>)</span><span class="result"> extends <a href="Voter.html" class="extype" name="com.stripe.brushfire.Voter">Voter</a>[<span class="extype" name="scala.Predef.Map">Map</span>[<span class="extype" name="scala.Boolean">Boolean</span>, <span class="extype" name="com.stripe.brushfire.ThresholdVoter.M">M</span>], <span class="extype" name="scala.Boolean">Boolean</span>] with <span class="extype" name="scala.Product">Product</span> with <span class="extype" name="scala.Serializable">Serializable</span></span>
+      </span>
+      </h4>
+      
+    </li><li name="com.stripe.brushfire.TimeGroupedSampler" visbl="pub" data-isabs="false" fullComment="no" group="Ungrouped">
+      <a id="TimeGroupedSampler[K]extendsSampler[K]withProductwithSerializable"></a>
+      <a id="TimeGroupedSampler[K]:TimeGroupedSampler[K]"></a>
+      <h4 class="signature">
+      <span class="modifier_kind">
+        <span class="modifier"></span>
+        <span class="kind">case class</span>
+      </span>
+      <span class="symbol">
+        <a href="TimeGroupedSampler.html"><span class="name">TimeGroupedSampler</span></a><span class="tparams">[<span name="K">K</span>]</span><span class="params">(<span name="base">base: <a href="Sampler.html" class="extype" name="com.stripe.brushfire.Sampler">Sampler</a>[<span class="extype" name="com.stripe.brushfire.TimeGroupedSampler.K">K</span>]</span>, <span name="period">period: <span class="extype" name="scala.Long">Long</span></span>, <span name="groups">groups: <span class="extype" name="scala.Int">Int</span></span>)</span><span class="result"> extends <a href="Sampler.html" class="extype" name="com.stripe.brushfire.Sampler">Sampler</a>[<span class="extype" name="com.stripe.brushfire.TimeGroupedSampler.K">K</span>] with <span class="extype" name="scala.Product">Product</span> with <span class="extype" name="scala.Serializable">Serializable</span></span>
+      </span>
+      </h4>
+      
+    </li><li name="com.stripe.brushfire.Tree" visbl="pub" data-isabs="false" fullComment="no" group="Ungrouped">
+      <a id="Tree[K,V,T]extendsProductwithSerializable"></a>
+      <a id="Tree[K,V,T]:Tree[K,V,T]"></a>
+      <h4 class="signature">
+      <span class="modifier_kind">
+        <span class="modifier"></span>
+        <span class="kind">case class</span>
+      </span>
+      <span class="symbol">
+        <a href="Tree.html"><span class="name">Tree</span></a><span class="tparams">[<span name="K">K</span>, <span name="V">V</span>, <span name="T">T</span>]</span><span class="params">(<span name="root">root: <a href="Node.html" class="extype" name="com.stripe.brushfire.Node">Node</a>[<span class="extype" name="com.stripe.brushfire.Tree.K">K</span>, <span class="extype" name="com.stripe.brushfire.Tree.V">V</span>, <span class="extype" name="com.stripe.brushfire.Tree.T">T</span>]</span>)</span><span class="result"> extends <span class="extype" name="scala.Product">Product</span> with <span class="extype" name="scala.Serializable">Serializable</span></span>
+      </span>
+      </h4>
+      
+    </li><li name="com.stripe.brushfire.Voter" visbl="pub" data-isabs="true" fullComment="no" group="Ungrouped">
+      <a id="Voter[T,P]extendsAnyRef"></a>
+      <a id="Voter[T,P]:Voter[T,P]"></a>
+      <h4 class="signature">
+      <span class="modifier_kind">
+        <span class="modifier"></span>
+        <span class="kind">trait</span>
+      </span>
+      <span class="symbol">
+        <a href="Voter.html"><span class="name">Voter</span></a><span class="tparams">[<span name="T">T</span>, <span name="P">P</span>]</span><span class="result"> extends <span class="extype" name="scala.AnyRef">AnyRef</span></span>
+      </span>
+      </h4>
+      <p class="comment cmt">Combines multiple targets into a single prediction *</p>
+    </li></ol>
+            </div>
+
+        
+
+        <div id="values" class="values members">
+              <h3>Value Members</h3>
+              <ol><li name="com.stripe.brushfire.Dispatched" visbl="pub" data-isabs="false" fullComment="no" group="Ungrouped">
+      <a id="Dispatched"></a>
+      <a id="Dispatched:Dispatched"></a>
+      <h4 class="signature">
+      <span class="modifier_kind">
+        <span class="modifier"></span>
+        <span class="kind">object</span>
+      </span>
+      <span class="symbol">
+        <a href="Dispatched$.html"><span class="name">Dispatched</span></a>
+      </span>
+      </h4>
+      
+    </li><li name="com.stripe.brushfire.Instance" visbl="pub" data-isabs="false" fullComment="no" group="Ungrouped">
+      <a id="Instance"></a>
+      <a id="Instance:Instance"></a>
+      <h4 class="signature">
+      <span class="modifier_kind">
+        <span class="modifier"></span>
+        <span class="kind">object</span>
+      </span>
+      <span class="symbol">
+        <a href="Instance$.html"><span class="name">Instance</span></a><span class="result"> extends <span class="extype" name="scala.Serializable">Serializable</span></span>
+      </span>
+      </h4>
+      
+    </li><li name="com.stripe.brushfire.JsonInjections" visbl="pub" data-isabs="false" fullComment="no" group="Ungrouped">
+      <a id="JsonInjections"></a>
+      <a id="JsonInjections:JsonInjections"></a>
+      <h4 class="signature">
+      <span class="modifier_kind">
+        <span class="modifier"></span>
+        <span class="kind">object</span>
+      </span>
+      <span class="symbol">
+        <a href="JsonInjections$.html"><span class="name">JsonInjections</span></a>
+      </span>
+      </h4>
+      
+    </li><li name="com.stripe.brushfire.KryoInjections" visbl="pub" data-isabs="false" fullComment="no" group="Ungrouped">
+      <a id="KryoInjections"></a>
+      <a id="KryoInjections:KryoInjections"></a>
+      <h4 class="signature">
+      <span class="modifier_kind">
+        <span class="modifier"></span>
+        <span class="kind">object</span>
+      </span>
+      <span class="symbol">
+        <a href="KryoInjections$.html"><span class="name">KryoInjections</span></a>
+      </span>
+      </h4>
+      
+    </li><li name="com.stripe.brushfire.Predicate" visbl="pub" data-isabs="false" fullComment="no" group="Ungrouped">
+      <a id="Predicate"></a>
+      <a id="Predicate:Predicate"></a>
+      <h4 class="signature">
+      <span class="modifier_kind">
+        <span class="modifier"></span>
+        <span class="kind">object</span>
+      </span>
+      <span class="symbol">
+        <a href="Predicate$.html"><span class="name">Predicate</span></a>
+      </span>
+      </h4>
+      
+    </li><li name="com.stripe.brushfire.SingleTreeSampler" visbl="pub" data-isabs="false" fullComment="no" group="Ungrouped">
+      <a id="SingleTreeSampler"></a>
+      <a id="SingleTreeSampler:SingleTreeSampler"></a>
+      <h4 class="signature">
+      <span class="modifier_kind">
+        <span class="modifier"></span>
+        <span class="kind">object</span>
+      </span>
+      <span class="symbol">
+        <a href="SingleTreeSampler$.html"><span class="name">SingleTreeSampler</span></a><span class="result"> extends <a href="Sampler.html" class="extype" name="com.stripe.brushfire.Sampler">Sampler</a>[<span class="extype" name="scala.Any">Any</span>]</span>
+      </span>
+      </h4>
+      
+    </li><li name="com.stripe.brushfire.Tree" visbl="pub" data-isabs="false" fullComment="no" group="Ungrouped">
+      <a id="Tree"></a>
+      <a id="Tree:Tree"></a>
+      <h4 class="signature">
+      <span class="modifier_kind">
+        <span class="modifier"></span>
+        <span class="kind">object</span>
+      </span>
+      <span class="symbol">
+        <a href="Tree$.html"><span class="name">Tree</span></a><span class="result"> extends <span class="extype" name="scala.Serializable">Serializable</span></span>
+      </span>
+      </h4>
+      
+    </li><li name="com.stripe.brushfire.scalding" visbl="pub" data-isabs="false" fullComment="no" group="Ungrouped">
+      <a id="scalding"></a>
+      <a id="scalding:scalding"></a>
+      <h4 class="signature">
+      <span class="modifier_kind">
+        <span class="modifier"></span>
+        <span class="kind">package</span>
+      </span>
+      <span class="symbol">
+        <a href="scalding/package.html"><span class="name">scalding</span></a>
+      </span>
+      </h4>
+      
+    </li></ol>
+            </div>
+
+        
+
+        
+        </div>
+
+        <div id="inheritedMembers">
+        
+        
+        </div>
+
+        <div id="groupedMembers">
+        <div class="group" name="Ungrouped">
+              <h3>Ungrouped</h3>
+              
+            </div>
+        </div>
+
+      </div>
+
+      <div id="tooltip"></div>
+
+      <div id="footer">  </div>
+      <script defer="defer" type="text/javascript" id="jquery-js" src="../../../lib/jquery.js"></script><script defer="defer" type="text/javascript" id="jquery-ui-js" src="../../../lib/jquery-ui.js"></script><script defer="defer" type="text/javascript" id="tools-tooltip-js" src="../../../lib/tools.tooltip.js"></script><script defer="defer" type="text/javascript" id="template-js" src="../../../lib/template.js"></script>
+    </body>
+      </html>
