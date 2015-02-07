@@ -74,8 +74,16 @@ trait Sampler[-K] {
   def includeFeature(key: K, treeIndex: Int, leafIndex: Int): Boolean
 }
 
+/** Combines multiple targets into a single prediction **/
+trait Voter[T, P] {
+  def predict[K, V](trees: Iterable[Tree[K, V, T]], row: Map[K, V]): P =
+    combine(trees.flatMap { _.targetFor(row) })
+
+  def combine(targets: Iterable[T]): P
+}
+
 /** Computes some kind of error by comparing the trees' predictions to the validation set */
-trait Error[T, E] {
+trait Error[T, P, E] {
   /** semigroup to sum up error values */
   def semigroup: Semigroup[E]
 
@@ -85,5 +93,5 @@ trait Error[T, E] {
    * @param actual the actual target distribution from the validation set
    * @param predicted the set of predicted distributions from the trees
    */
-  def create(actual: T, predicted: Iterable[T]): E
+  def create(actual: T, predicted: P): E
 }

@@ -19,11 +19,15 @@ class IrisJob(args: Args) extends TrainerJob(args) {
       }
 
   implicit val stopper = FrequencyStopper[String](10, 3)
+  val error = BrierScoreError[String, Long]
   val trainer =
     Trainer(trainingData, KFoldSampler(4))
       .expandTimes(args("output"), 3)
       .expandInMemory(args("output") + "/mem", 10)
-      .validate(BrierDecompositionError[String]) { results =>
-        results.map { v => (v.reliability, v.resolution, v.uncertainty, v.score) }.writeExecution(TypedTsv(args("output") + "/bs"))
+      .validate(error) { results =>
+        results.map { _.toString }.writeExecution(TypedTsv(args("output") + "/bs"))
+      }
+      .featureImportance(error) { results =>
+        results.map { _.toString }.writeExecution(TypedTsv(args("output") + "/fi"))
       }
 }

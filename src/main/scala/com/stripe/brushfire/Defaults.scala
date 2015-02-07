@@ -26,6 +26,8 @@ trait Defaults extends LowPriorityDefaults {
     continuous: Splitter[C, Map[L, Long]]): Splitter[Dispatched[A, B, C, D], Map[L, Long]] =
     new DispatchedSplitter(ordinal, nominal, continuous, SpaceSaverSplitter[D, L]())
 
+  implicit def softVoter[L, M: Numeric]: Voter[Map[L, M], Map[L, Double]] = SoftVoter[L, M]
+
   def downRez(v: Double, base: Int, precision: Int): Double = {
     if (v == 0.0)
       0.0
