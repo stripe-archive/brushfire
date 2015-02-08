@@ -1,21 +1,14 @@
 package com.stripe.brushfire.finatra
 
-import com.twitter.finatra._
-
-class Example extends Controller {
-  get("/") { request =>
-    render.plain("hi").toFuture
-  }
-}
-
-class ExampleServer extends FinatraServer {
-  val controller = new Example()
-  register(controller)
-}
+import com.stripe.brushfire._
 
 object Main {
+  import JsonInjections._
+
   def main(args: Array[String]) {
-    val srv = new ExampleServer
+    val treePath = args(0)
+    val srv = new BrushfireServer
+    srv.loadAndScore("/iris", treePath, SoftVoter[String, Long]) { _.mapValues { _.toDouble } }
     srv.main
   }
 }

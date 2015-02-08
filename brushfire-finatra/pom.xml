@@ -21,6 +21,11 @@
       <groupId>com.twitter</groupId>
       <artifactId>finatra_2.10</artifactId>
     </dependency>
+    <dependency>
+      <groupId>com.stripe</groupId>
+      <artifactId>brushfire-core</artifactId>
+      <version>${project.version}</version>
+    </dependency>
   </dependencies>
 
   <build>
