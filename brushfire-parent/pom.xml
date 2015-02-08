@@ -73,9 +73,9 @@
 
   <distributionManagement>
     <snapshotRepository>
-      <id>sonatype-nexus-snapshots</id>
-      <name>Sonatype Nexus snapshot repository</name>
-      <url>https://oss.sonatype.org/content/repositories/snapshots</url>
+      <id>stripe-nexus</id>
+      <name>Stripe Snapshots</name>
+      <url>${stripe.snapshots.url}</url>
     </snapshotRepository>
     <repository>
       <id>sonatype-nexus-staging</id>
@@ -143,6 +143,10 @@
         <configuration>
           <recompileMode>incremental</recompileMode>
           <useZincServer>true</useZincServer>
+           <jvmArgs>
+            <jvmArg>-Xms64m</jvmArg>
+            <jvmArg>-Xmx1024m</jvmArg>
+          </jvmArgs>
         </configuration>
         <executions>
           <execution>
