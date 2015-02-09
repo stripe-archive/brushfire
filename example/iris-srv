@@ -1,0 +1,4 @@
+#!/bin/sh
+java -Xmx2G -cp ../brushfire-finatra/target/brushfire-finatra-0.5.0-SNAPSHOT-jar-with-dependencies.jar \
+com.stripe.brushfire.finatra.Main \
+iris.output/mem
