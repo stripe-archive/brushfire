@@ -11,6 +11,8 @@
 
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    <scala.version>2.10.4</scala.version>
+    <scala.binary.version>2.10</scala.binary.version>
   </properties>
 
   <dependencyManagement>
@@ -18,16 +20,16 @@
       <dependency>
         <groupId>org.scala-lang</groupId>
         <artifactId>scala-library</artifactId>
-        <version>2.10.4</version>
+        <version>${scala.version}</version>
       </dependency>
       <dependency>
         <groupId>com.twitter</groupId>
-        <artifactId>scalding-core_2.10</artifactId>
-        <version>0.12.0</version>
+        <artifactId>scalding-core_${scala.binary.version}</artifactId>
+        <version>0.13.1</version>
       </dependency>
       <dependency>
         <groupId>com.twitter</groupId>
-        <artifactId>algebird-core_2.10</artifactId>
+        <artifactId>algebird-core_${scala.binary.version}</artifactId>
         <version>0.9.0</version>
       </dependency>
       <dependency>
@@ -37,12 +39,12 @@
       </dependency>
       <dependency>
         <groupId>com.twitter</groupId>
-        <artifactId>chill-bijection_2.10</artifactId>
-        <version>0.4.0</version>
+        <artifactId>chill-bijection_${scala.binary.version}</artifactId>
+        <version>0.5.2</version>
       </dependency>
       <dependency>
         <groupId>com.twitter</groupId>
-        <artifactId>bijection-json_2.10</artifactId>
+        <artifactId>bijection-json_${scala.binary.version}</artifactId>
         <version>0.7.0</version>
       </dependency>
       <dependency>
@@ -62,7 +64,7 @@
       </dependency>
       <dependency>
         <groupId>com.twitter</groupId>
-        <artifactId>finatra_2.10</artifactId>
+        <artifactId>finatra_${scala.binary.version}</artifactId>
         <version>1.6.0</version>
       </dependency>
     </dependencies>
@@ -144,7 +146,7 @@
       <plugin>
         <groupId>net.alchim31.maven</groupId>
         <artifactId>scala-maven-plugin</artifactId>
-        <version>3.1.5</version>
+        <version>3.2.0</version>
         <configuration>
           <recompileMode>incremental</recompileMode>
           <useZincServer>true</useZincServer>

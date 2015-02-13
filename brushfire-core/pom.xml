@@ -2,7 +2,7 @@
   <modelVersion>4.0.0</modelVersion>
 
   <groupId>com.stripe</groupId>
-  <artifactId>brushfire-core</artifactId>
+  <artifactId>brushfire-core_${scala.binary.version}</artifactId>
   <packaging>jar</packaging>
 
   <parent>
@@ -19,15 +19,15 @@
     </dependency>
     <dependency>
       <groupId>com.twitter</groupId>
-      <artifactId>algebird-core_2.10</artifactId>
+      <artifactId>algebird-core_${scala.binary.version}</artifactId>
     </dependency>
     <dependency>
       <groupId>com.twitter</groupId>
-      <artifactId>chill-bijection_2.10</artifactId>
+      <artifactId>chill-bijection_${scala.binary.version}</artifactId>
     </dependency>
     <dependency>
       <groupId>com.twitter</groupId>
-      <artifactId>bijection-json_2.10</artifactId>
+      <artifactId>bijection-json_${scala.binary.version}</artifactId>
     </dependency>
     <dependency>
       <groupId>org.codehaus.jackson</groupId>
@@ -42,5 +42,4 @@
       <artifactId>jackson-jaxrs</artifactId>
     </dependency>
   </dependencies>
-
 </project>

@@ -2,7 +2,7 @@
   <modelVersion>4.0.0</modelVersion>
 
   <groupId>com.stripe</groupId>
-  <artifactId>brushfire-finatra</artifactId>
+  <artifactId>brushfire-finatra_${scala.binary.version}</artifactId>
   <packaging>jar</packaging>
 
   <parent>
@@ -19,11 +19,11 @@
     </dependency>
     <dependency>
       <groupId>com.twitter</groupId>
-      <artifactId>finatra_2.10</artifactId>
+      <artifactId>finatra_${scala.binary.version}</artifactId>
     </dependency>
     <dependency>
       <groupId>com.stripe</groupId>
-      <artifactId>brushfire-core</artifactId>
+      <artifactId>brushfire-core_${scala.binary.version}</artifactId>
       <version>${project.version}</version>
     </dependency>
   </dependencies>
