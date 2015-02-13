@@ -10,7 +10,7 @@ trait FrequencyVoter[L, M] extends Voter[Map[L, M], Map[L, Double]] {
   }
 }
 
-case class SoftVoter[L, M: Numeric] extends FrequencyVoter[L, M] {
+case class SoftVoter[L, M: Numeric]() extends FrequencyVoter[L, M] {
   def combine(targets: Iterable[Map[L, M]]) =
     if (targets.isEmpty)
       Map.empty[L, Double]
@@ -18,7 +18,7 @@ case class SoftVoter[L, M: Numeric] extends FrequencyVoter[L, M] {
       Monoid.sum(targets.map { m => normalize(m) }).mapValues { _ / targets.size }
 }
 
-case class ModeVoter[L, M: Ordering] extends FrequencyVoter[L, M] {
+case class ModeVoter[L, M: Ordering]() extends FrequencyVoter[L, M] {
   def mode(m: Map[L, M]): L = m.maxBy { _._2 }._1
 
   def combine(targets: Iterable[Map[L, M]]) =

@@ -65,7 +65,7 @@ case class QTreeSplitter[T: Monoid](k: Int)
   }
 }
 
-case class SparseBooleanSplitter[T: Group]
+case class SparseBooleanSplitter[T: Group]()
     extends Splitter[Boolean, T] {
 
   type S = T
