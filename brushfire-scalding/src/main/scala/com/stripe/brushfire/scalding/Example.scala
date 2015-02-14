@@ -24,7 +24,7 @@ class IrisJob(args: Args) extends TrainerJob(args) {
     Trainer(trainingData, KFoldSampler(4))
       .expandTimes(args("output"), 3)
       .expandInMemory(args("output") + "/mem", 10)
-      .validate(error) { results =>
+      .validate(error, _.target.keys.head) { results =>
         results.map { _.toString }.writeExecution(TypedTsv(args("output") + "/bs"))
       }
       .featureImportance(error) { results =>

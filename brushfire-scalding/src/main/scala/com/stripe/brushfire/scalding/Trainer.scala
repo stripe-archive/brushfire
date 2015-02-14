@@ -163,12 +163,12 @@ case class Trainer[K: Ordering, V, T: Monoid](
   }
 
   /** produce an error object from the current trees and the validation set */
-  def validate[P, E](error: Error[T, P, E])(fn: ValuePipe[E] => Execution[_])(implicit voter: Voter[T, P]) = {
+  def validate[P, E, U](error: Error[T, P, E], groupBy: (Instance[K, V, T] => U) = (_: Instance[K, V, T]) => ())(fn: TypedPipe[(U, E)] => Execution[_])(implicit voter: Voter[T, P], ord: Ordering[U]) = {
     tee {
       case (trainingData, sampler, trees) =>
         lazy val treeMap = trees.toMap
 
-        val err =
+        val errs =
           trainingData
             .map { instance =>
               val predictions =
@@ -177,10 +177,12 @@ case class Trainer[K: Ordering, V, T: Monoid](
                   target <- tree.targetFor(instance.features).toList
                 ) yield target
 
-              error.create(instance.target, voter.combine(predictions))
+              groupBy(instance) -> error.create(instance.target, voter.combine(predictions))
             }
+            .group
             .sum(error.semigroup)
-        fn(err)
+
+        fn(errs)
     }
   }
 
@@ -192,7 +194,7 @@ case class Trainer[K: Ordering, V, T: Monoid](
    * @tparam E
    * @return
    */
-  def featureImportance[P, E](error: Error[T, P, E])(fn: TypedPipe[(K, E)] => Execution[_])(implicit voter: Voter[T, P]) = {
+  def featureImportance[P, E, U](error: Error[T, P, E], groupBy: (Instance[K, V, T] => U) = (_: Instance[K, V, T]) => ())(fn: TypedPipe[(U, K, E)] => Execution[_])(implicit voter: Voter[T, P], ord: Ordering[U]) = {
     lazy val r = new Random(123)
     tee {
       case (trainingData, sampler, trees) =>
@@ -203,6 +205,7 @@ case class Trainer[K: Ordering, V, T: Monoid](
             instanceIterator.sliding(2)
               .flatMap {
                 case List(prevInst, instance) => {
+                  val groupKey = groupBy(instance)
                   val treesForInstance = treeMap.filter {
                     case (treeIndex, tree) => sampler.includeInValidationSet(instance.id, instance.timestamp, treeIndex)
                   }.values
@@ -212,15 +215,20 @@ case class Trainer[K: Ordering, V, T: Monoid](
 
                   val predictions = treesForInstance.flatMap { _.targetFor(permuted) }
                   val instanceErr = error.create(instance.target, voter.combine(predictions))
-                  Some((featureToPermute._1, instanceErr))
+                  Some((groupKey, featureToPermute._1) -> instanceErr)
                 }
                 case _ =>
                   None
               }
         }.values
 
-        implicit val errorSg = error.semigroup
-        fn(permutedFeatsPipe.sumByKey.toTypedPipe)
+        val sums =
+          permutedFeatsPipe
+            .group
+            .sum(error.semigroup)
+            .map { case ((u, k), e) => (u, k, e) }
+
+        fn(sums)
     }
   }
 
