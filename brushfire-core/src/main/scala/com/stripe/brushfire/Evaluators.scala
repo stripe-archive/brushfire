@@ -41,7 +41,7 @@ case class MinWeightEvaluator[V, L, W: Monoid](minWeight: W => Boolean, wrapped:
   }
 }
 
-case class EmptySplit[V, P] extends Split[V, P] {
+case class EmptySplit[V, P]() extends Split[V, P] {
   val predicates = Nil
 }
 

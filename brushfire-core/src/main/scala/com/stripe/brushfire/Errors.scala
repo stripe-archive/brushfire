@@ -36,7 +36,7 @@ case class BrierScoreError[L, M](implicit num: Numeric[M])
   }
 }
 
-case class BinnedBinaryError[M: Monoid]
+case class BinnedBinaryError[M: Monoid]()
     extends FrequencyError[Boolean, M, Map[Int, (M, M)]] {
   lazy val monoid = implicitly[Monoid[Map[Int, (M, M)]]]
 
