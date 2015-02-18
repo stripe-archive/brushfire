@@ -1,0 +1,3 @@
+#/bin/bash
+
+diff <(./prettyprint $1) <(./prettyprint $2)

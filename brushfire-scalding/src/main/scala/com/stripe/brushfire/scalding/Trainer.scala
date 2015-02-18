@@ -185,6 +185,40 @@ case class Trainer[K: Ordering, V, T: Monoid](
   }
 
   /**
+   * prune a tree to minimize validation error
+   *
+   * Construct a Map[Int,T] from the trainingData for each tree, and then transform the trees using the prune method.
+   *
+   * writeThrough(TreeSource(path))
+   */
+  def prune[P, E](path: String, error: Error[T, P, E])(implicit voter: Voter[T, P], inj: Injection[Tree[K, V, T], String], ord: Ordering[E]): Trainer[K, V, T] = {
+    flatMapTrees {
+      case (trainingData, sampler, trees) =>
+        lazy val treeMap = trees.toMap
+
+        val newEx: Execution[TypedPipe[(Int, Tree[K, V, T])]] = trainingData
+          .flatMap { instance =>
+            for { // Iterate over any trees for which this instance is a validation instance.
+              (treeIndex, tree) <- treeMap if sampler.includeInValidationSet(instance.id, instance.timestamp, treeIndex);
+              leafIndex <- tree.leafIndexFor(instance.features).toList // Find the leaf that this instance falls into.
+            } yield (treeIndex, leafIndex) -> instance.target
+          } // Associate the tree and leaf indices with the instance target.
+          .sumByKey // Combine validation data for each leaf in each tree. Q: Why is this necessary?
+          .map { case ((treeIndex, leafIndex), target) => treeIndex -> Map(leafIndex -> target) } // Transform to make treeIndex the key.
+          .group // Group by tree index.
+          .withReducers(reducers)
+          .sum // Combine data for each tree into a single map.
+          .map {
+            case (treeIndex, map) => { // Iterate over each tree. The `map` is keyed by leafIndex with values being the validation data for the leaf.
+              val newTree = treeMap(treeIndex).prune(map, voter = voter, error = error) // Run the prune method on each tree, passing the validation data.
+              treeIndex -> newTree
+            }
+          }.writeThrough(TreeSource(path)) // Write new tree to the given path, and read from this path in the future.
+        newEx
+    }
+  }
+
+  /**
    *  featureImportance should: shuffle data randomly (group on something random then sort on something random?),
    * then stream through and have each instance pick one feature value at random to pass on to the following instance.
    * then group by permuted feature and compare error.
