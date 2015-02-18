@@ -1,6 +1,7 @@
 package com.stripe.brushfire
 
 import com.twitter.algebird._
+import scala.collection.mutable
 
 sealed trait Node[K, V, T]
 case class SplitNode[K, V, T](val children: Seq[(K, Predicate[V], Node[K, V, T])]) extends Node[K, V, T]
@@ -31,42 +32,44 @@ case class Tree[K, V, T](root: Node[K, V, T]) {
     }
   }
 
-
-  /** Prune a tree to minimize validation error.
-    * Replaces a split with a leaf when it would have a lower error than the child leaves.
-    *
-    * @param validationData
-    * @param start
-    * @param voter
-    * @param error
-    * @param weightMonoid
-    * @param errorOrdering
-    * @tparam P
-    * @tparam E
-    * @return
-    */
+  /**
+   * Prune a tree to minimize validation error.
+   * Replaces a split with a leaf when it would have a lower error than the child leaves.
+   *
+   * @param validationData
+   * @param start
+   * @param voter
+   * @param error
+   * @param weightMonoid
+   * @param errorOrdering
+   * @tparam P
+   * @tparam E
+   * @return
+   */
   def prune[P, E](validationData: Map[Int, T], start: Option[Node[K, V, T]] = None, voter: Voter[T, P], error: Error[T, P, E])(implicit weightMonoid: Monoid[T], errorOrdering: Ordering[E]): Tree[K, V, T] = {
     val begin: Node[K, V, T] = start.getOrElse(this.root) // Use root node as default root.
     Tree(pruneNode(validationData, begin, voter, error))
       .growByLeafIndex { i => Nil } //this will renumber all the leaves
   }
 
-  /** Prune a tree to minimize validation error, starting from given root node.
-    *
-    * This method recursively traverses up the tree from the root, branching on splits, until it finds leaves, then
-    * goes back down the tree combining leaves when such a combination would reduce validation error.
-    *
-    * @param validationData
-    * @param start
-    * @param voter
-    * @param error
-    * @param weightMonoid
-    * @param errorOrdering
-    * @tparam P
-    * @tparam E
-    * @return
-    */
+  /**
+   * Prune a tree to minimize validation error, starting from given root node.
+   *
+   * This method recursively traverses up the tree from the root, branching on splits, until it finds leaves, then
+   * goes back down the tree combining leaves when such a combination would reduce validation error.
+   *
+   * @param validationData
+   * @param start
+   * @param voter
+   * @param error
+   * @param weightMonoid
+   * @param errorOrdering
+   * @tparam P
+   * @tparam E
+   * @return
+   */
   def pruneNode[P, E](validationData: Map[Int, T], start: Node[K, V, T], voter: Voter[T, P], error: Error[T, P, E])(implicit weightMonoid: Monoid[T], errorOrdering: Ordering[E]): Node[K, V, T] = {
+    val vData = mutable.Map() ++ validationData // Create a mutable Map to allow merging of validation data as a side effect of the pruneLevel method.
     start match {
       case leaf: LeafNode[K, V, T] => leaf // Bounce at the bottom and start back up the tree.
       case split: SplitNode[K, V, T] => {
@@ -76,7 +79,7 @@ case class Tree[K, V, T](root: Node[K, V, T]) {
           case _ => false // If all children are leaves, we can prune.
         } match {
           case true => newNode
-          case false => pruneLevel(newNode, newNode.children.asInstanceOf[Seq[(K, Predicate[V], LeafNode[K, V, T])]], validationData, voter, error)
+          case false => pruneLevel(newNode, newNode.children.asInstanceOf[Seq[(K, Predicate[V], LeafNode[K, V, T])]], vData, voter, error)
         }
       }
     }
@@ -85,29 +88,33 @@ case class Tree[K, V, T](root: Node[K, V, T]) {
   /**
    * Test conditions and optionally replace parent with a new leaf that combines children.
    *
-   * To do: Also merges validation data for any combined leaves.
+   * Also merges validation data for any combined leaves. This relies on a hack that assumes no leaves have negative
+   * indicies to start out.
    *
    * @param parent
    * @param children
    * @return
    */
-  def pruneLevel[P, E](parent: SplitNode[K, V, T], children: Seq[(K, Predicate[V], LeafNode[K, V, T])], validationData: Map[Int, T], voter: Voter[T, P], error: Error[T, P, E])(implicit weightMonoid: Monoid[T], errorOrdering: Ordering[E]): Node[K, V, T] = {
+  def pruneLevel[P, E](parent: SplitNode[K, V, T], children: Seq[(K, Predicate[V], LeafNode[K, V, T])], validationData: mutable.Map[Int, T], voter: Voter[T, P], error: Error[T, P, E])(implicit weightMonoid: Monoid[T], errorOrdering: Ordering[E]): Node[K, V, T] = {
     // Get training and validation data and validation error for each leaf.
-    val leafData: Seq[(T, Option[T], E)] = children.map {
+    val leafData: Seq[(T, T, E)] = children.map {
       case (k, p, leaf) =>
-        val validationTarget: Option[T] = validationData.get(leaf.index)
+        val validationTarget: T = validationData.getOrElse(leaf.index, weightMonoid.zero)
         val trainingTarget = leaf.target
-        val leafError = error.create(trainingTarget, voter.combine(validationTarget))
+        val leafError = error.create(validationTarget, voter.combine(Some(trainingTarget)))
         (trainingTarget, validationTarget, leafError)
     }
-    val (targets: Seq[T], validations: Seq[Option[T]], errors: Seq[E]) = leafData.unzip3
+    val (targets: Seq[T], validations: Seq[T], errors: Seq[E]) = leafData.unzip3
     println("targets:", targets)
     println("validations:", validations)
-    val targetSum: P = voter.combine(targets) // Combine training targets to create a new prediction.
-    val validationSum: T = weightMonoid.sum(validations.flatten) // Combine validation targets. Flatten eliminates missing (None) values from validations.
+    println("errors:", errors)
+    val targetSum: T = weightMonoid.sum(targets) // Combined training targets to create the training data of the potential combined node.
+    val targetPrediction: P = voter.combine(Some(targetSum))
+    val validationSum: T = weightMonoid.sum(validations) // Combined validation target for combined node.
     println("target sum:", targetSum)
+    println("target prediction:", targetPrediction)
     println("validation sum:", validationSum)
-    val errorOfSums: E = error.create(validationSum, targetSum) // Error of potential combined node. Is this the right order, or should we reverse it?
+    val errorOfSums: E = error.create(validationSum, targetPrediction) // Error of potential combined node.
     val sumOfErrors: Option[E] = error.semigroup.sumOption(errors) // Sum of errors of leaves.
     val doCombine: Boolean = sumOfErrors match {
       case Some(soe) => errorOrdering.gt(soe, errorOfSums)
@@ -118,8 +125,11 @@ case class Tree[K, V, T](root: Node[K, V, T]) {
     println()
     doCombine match {
       case false => parent
-      case true => LeafNode(-1, weightMonoid.sum(targets)) // Create a new leaf from the combination of the children.
-      // Q: How will we find validation data for this leaf in the future?
+      case true => {
+        val newIndex = -1 * children.map { case (k, p, leaf) => leaf.index }.max // Find a unique (negative) index for the new leaf.
+        validationData += (newIndex -> validationSum)
+        LeafNode(newIndex, weightMonoid.sum(targets)) // Create a new leaf from the combination of the children.
+      }
     }
   }
 
