@@ -25,7 +25,7 @@ object Instance {
 /**
  * Produces candidate splits from the instances at a leaf node.
  * @tparam V feature values
- * @tparam T target distrubutions
+ * @tparam T target distributions
  */
 trait Splitter[V, T] {
   /** the type of a representation of a joint distribution of feature values and predictions */

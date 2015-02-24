@@ -23,7 +23,9 @@ abstract class CSVJob(args: Args) extends TrainerJob(args) {
   }
 
   def writeTsvExecution[V](path: String): TypedPipe[V] => Execution[Unit] = {
-    def fn(results: TypedPipe[V]) = { results.map { _.toString }.writeExecution(TypedTsv(path)) }
+    def fn(results: TypedPipe[V]) = {
+      results.map { _.toString }.writeExecution(TypedTsv(path))
+    }
     fn
   }
 
