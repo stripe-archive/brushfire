@@ -1,8 +1,0 @@
-#!/bin/sh
-java -Xmx2G -cp ../brushfire-scalding/target/brushfire-scalding-0.5.0-SNAPSHOT-jar-with-dependencies.jar \
-com.twitter.scalding.Tool \
-com.stripe.brushfire.scalding.DigitsJob \
---local \
---input digits.data \
---load digits.output/mem \
---output digits.output
