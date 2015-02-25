@@ -204,14 +204,11 @@ case class Trainer[K: Ordering, V, T: Monoid](
           }
           .sumByKey // Make a single Map for each treeIndex. The Map is from leafIndex to validation target.
           .withReducers(reducers)
-          .mapGroup {
-            case (treeIndex, mapIter) =>
-              for {
-                map <- mapIter // There should actually be only one Map in the Iterator.
-                // Run the prune method on each tree, passing the validation data:
-                newTree = treeMap(treeIndex).prune(map, voter, error)
-              } yield newTree
-          }.toTypedPipe // Drop the extra level to go from UnsortedGrouped[Int, [Int, Tree]] to TypedPipe[Int, Tree].
+          .toTypedPipe.map {
+            case (treeIndex, map) =>
+              // Run the prune method on each tree, passing the validation data:
+              (treeIndex, treeMap(treeIndex).prune(map, voter, error))
+          }
           .writeThrough(TreeSource(path)) // Write new tree to the given path, and read from this path in the future.
         newEx
     }
