@@ -43,7 +43,7 @@ case class Tree[K, V, T](root: Node[K, V, T]) {
    * @return The new, pruned tree.
    */
   def prune[P, E](validationData: Map[Int, T], voter: Voter[T, P], error: Error[T, P, E])(implicit targetMonoid: Monoid[T], errorOrdering: Ordering[E]): Tree[K, V, T] = {
-    Tree(pruneNode(validationData, this.root, voter, error)).renumberLeaves
+    Tree(pruneNode(validationData, this.root, voter, error)._2).renumberLeaves
   }
 
   /**
@@ -56,17 +56,24 @@ case class Tree[K, V, T](root: Node[K, V, T]) {
    * @param start The root node of the tree.
    * @return A node at the root of the new, pruned tree.
    */
-  def pruneNode[P, E](validationData: Map[Int, T], start: Node[K, V, T], voter: Voter[T, P], error: Error[T, P, E])(implicit targetMonoid: Monoid[T], errorOrdering: Ordering[E]): Node[K, V, T] = {
-    var vData = validationData
+  def pruneNode[P, E](validationData: Map[Int, T], start: Node[K, V, T], voter: Voter[T, P], error: Error[T, P, E])(implicit targetMonoid: Monoid[T], errorOrdering: Ordering[E]): (Map[Int, T], Node[K, V, T]) = {
+    type childSeqType = (K, Predicate[V], Node[K, V, T])
     start match {
-      case leaf: LeafNode[K, V, T] => leaf // Bounce at the bottom and start back up the tree.
+      case leaf: LeafNode[K, V, T] => (validationData, leaf) // Bounce at the bottom and start back up the tree.
       case SplitNode(children) => {
-        val newNode = SplitNode(children.map { case (k, p, n) => (k, p, pruneNode(vData, n, voter, error)) })
-        val childLeaves = newNode.children.collect { case (k, v, s: LeafNode[K, V, T]) => (k, v, s) }
-        if (childLeaves.size == newNode.children.size)
-          pruneLevel(newNode, childLeaves, vData, voter, error) match { case (v, n) => vData = v; n }
-        else
-          newNode
+        // Call pruneNode on each child, accumulating modified children and additions to the validation data along
+        // the way.
+        val (newData, newChildren) = children.foldLeft(validationData, Seq[childSeqType]()) {
+          case ((vData, childSeq), (k, p, child)) => pruneNode(vData, child, voter, error) match {
+            case (v, c) => (v, childSeq :+ (k, p, c))
+          }
+        }
+        // Now that we've taken care of the children, prune the current level.
+        val childLeaves = newChildren.collect { case (k, v, s: LeafNode[K, V, T]) => (k, v, s) }
+        if (childLeaves.size == newChildren.size) // If all children are leaves, we can potentially prune.
+          pruneLevel(SplitNode(newChildren), childLeaves, newData, voter, error)
+        else // If any children are SplitNodes, we can't prune.
+          (newData, SplitNode(newChildren))
       }
     }
   }
@@ -83,16 +90,16 @@ case class Tree[K, V, T](root: Node[K, V, T]) {
    */
   def pruneLevel[P, E](parent: SplitNode[K, V, T], children: Seq[(K, Predicate[V], LeafNode[K, V, T])], validationData: Map[Int, T], voter: Voter[T, P], error: Error[T, P, E])(implicit targetMonoid: Monoid[T], errorOrdering: Ordering[E]): (Map[Int, T], Node[K, V, T]) = {
     // Get training and validation data and validation error for each leaf.
-    val leafData = children.map {
+    val (targets, validations, errors) = children.map {
       case (k, p, leaf) =>
         val trainingTarget = leaf.target
         val validationTarget = validationData.getOrElse(leaf.index, targetMonoid.zero)
         val leafError = error.create(validationTarget, voter.combine(Some(trainingTarget)))
         (trainingTarget, validationTarget, leafError)
-    }
-    val (targets, validations, errors) = leafData.unzip3
+    }.unzip3
+
     val targetSum = targetMonoid.sum(targets) // Combined training targets to create the training data of the potential combined node.
-    val targetPrediction = voter.combine(Some(targetSum))
+    val targetPrediction = voter.combine(Some(targetSum)) // Generate prediction from combined target.
     val validationSum = targetMonoid.sum(validations) // Combined validation target for combined node.
     val errorOfSums = error.create(validationSum, targetPrediction) // Error of potential combined node.
     val sumOfErrors = error.semigroup.sumOption(errors) // Sum of errors of leaves.
