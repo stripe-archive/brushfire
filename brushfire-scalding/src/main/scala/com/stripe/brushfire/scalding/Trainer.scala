@@ -223,18 +223,18 @@ case class Trainer[K: Ordering, V, T: Monoid](
    * @return
    */
   def featureImportance[P, E](error: Error[T, P, E])(fn: TypedPipe[(K, E)] => Execution[_])(implicit voter: Voter[T, P]) = {
-    lazy val r = new Random(123)
+    val murmur = MurmurHash128(3886428)
+    lazy val r = new Random(3886429)
     tee {
       case (trainingData, sampler, trees) =>
         lazy val treeMap = trees.toMap
 
         val permutedFeatsPipe = trainingData
-          .map { instance: Instance[K, V, T] => r.nextDouble() -> instance } // Create a random value to sort by later.
-          .groupRandomly(10).sortBy { case (randInd, _) => randInd }.mapValueStream {
+          .groupRandomly(10).sortBy { instance => murmur(instance.id)._1 }.mapValueStream {
             instanceIterator =>
               instanceIterator.sliding(2)
                 .flatMap {
-                  case List((r0, prevInst), (r1, instance)) => {
+                  case List(prevInst, instance) => {
                     val treesForInstance = treeMap.filter {
                       case (treeIndex, tree) => sampler.includeInValidationSet(instance.id, instance.timestamp, treeIndex)
                     }.values
