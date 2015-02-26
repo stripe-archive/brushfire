@@ -185,6 +185,36 @@ case class Trainer[K: Ordering, V, T: Monoid](
   }
 
   /**
+   * prune a tree to minimize validation error
+   *
+   * Construct a Map[Int,T] from the trainingData for each tree, and then transform the trees using the prune method.
+   *
+   */
+  def prune[P, E](path: String, error: Error[T, P, E])(implicit voter: Voter[T, P], inj: Injection[Tree[K, V, T], String], ord: Ordering[E]): Trainer[K, V, T] = {
+    flatMapTrees {
+      case (trainingData, sampler, trees) =>
+        lazy val treeMap = trees.toMap
+
+        val newEx = trainingData
+          .flatMap { instance =>
+            for { // Iterate over any trees for which this instance is a validation instance.
+              (treeIndex, tree) <- treeMap if sampler.includeInValidationSet(instance.id, instance.timestamp, treeIndex);
+              leafIndex <- tree.leafIndexFor(instance.features).toList // Find the leaf that this instance falls into.
+            } yield treeIndex -> Map(leafIndex -> instance.target) // Yield validation instances for each tree, leaf.
+          }
+          .sumByKey // Make a single Map for each treeIndex. The Map is from leafIndex to validation target.
+          .withReducers(reducers)
+          .toTypedPipe.map {
+            case (treeIndex, map) =>
+              // Run the prune method on each tree, passing the validation data:
+              (treeIndex, treeMap(treeIndex).prune(map, voter, error))
+          }
+          .writeThrough(TreeSource(path)) // Write new tree to the given path, and read from this path in the future.
+        newEx
+    }
+  }
+
+  /**
    *  featureImportance should: shuffle data randomly (group on something random then sort on something random?),
    * then stream through and have each instance pick one feature value at random to pass on to the following instance.
    * then group by permuted feature and compare error.
@@ -193,31 +223,33 @@ case class Trainer[K: Ordering, V, T: Monoid](
    * @return
    */
   def featureImportance[P, E](error: Error[T, P, E])(fn: TypedPipe[(K, E)] => Execution[_])(implicit voter: Voter[T, P]) = {
-    lazy val r = new Random(123)
+    lazy val murmur = MurmurHash128(3886428)
+    lazy val r = new Random(3886429)
     tee {
       case (trainingData, sampler, trees) =>
         lazy val treeMap = trees.toMap
 
-        val permutedFeatsPipe = trainingData.groupRandomly(10).sortBy { _ => r.nextDouble() }.mapValueStream {
-          instanceIterator =>
-            instanceIterator.sliding(2)
-              .flatMap {
-                case List(prevInst, instance) => {
-                  val treesForInstance = treeMap.filter {
-                    case (treeIndex, tree) => sampler.includeInValidationSet(instance.id, instance.timestamp, treeIndex)
-                  }.values
+        val permutedFeatsPipe = trainingData
+          .groupRandomly(10).sortBy { instance => murmur(instance.id)._1 }.mapValueStream {
+            instanceIterator =>
+              instanceIterator.sliding(2)
+                .flatMap {
+                  case List(prevInst, instance) => {
+                    val treesForInstance = treeMap.filter {
+                      case (treeIndex, tree) => sampler.includeInValidationSet(instance.id, instance.timestamp, treeIndex)
+                    }.values
 
-                  val featureToPermute = r.shuffle(prevInst.features).head
-                  val permuted = instance.features + featureToPermute
+                    val featureToPermute = r.shuffle(prevInst.features).head
+                    val permuted = instance.features + featureToPermute
 
-                  val predictions = treesForInstance.flatMap { _.targetFor(permuted) }
-                  val instanceErr = error.create(instance.target, voter.combine(predictions))
-                  Some((featureToPermute._1, instanceErr))
+                    val predictions = treesForInstance.flatMap { _.targetFor(permuted) }
+                    val instanceErr = error.create(instance.target, voter.combine(predictions))
+                    Some((featureToPermute._1, instanceErr))
+                  }
+                  case _ =>
+                    None
                 }
-                case _ =>
-                  None
-              }
-        }.values
+          }.values
 
         implicit val errorSg = error.semigroup
         fn(permutedFeatsPipe.sumByKey.toTypedPipe)
