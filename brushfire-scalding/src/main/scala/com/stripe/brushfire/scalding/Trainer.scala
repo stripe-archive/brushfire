@@ -223,7 +223,7 @@ case class Trainer[K: Ordering, V, T: Monoid](
    * @return
    */
   def featureImportance[P, E](error: Error[T, P, E])(fn: TypedPipe[(K, E)] => Execution[_])(implicit voter: Voter[T, P]) = {
-    val murmur = MurmurHash128(3886428)
+    lazy val murmur = MurmurHash128(3886428)
     lazy val r = new Random(3886429)
     tee {
       case (trainingData, sampler, trees) =>
