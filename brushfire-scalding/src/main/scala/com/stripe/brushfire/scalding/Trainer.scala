@@ -1,6 +1,6 @@
-package com.stripe.brushfire.scalding
+package com.stripe.brushfire
+package scalding
 
-import com.stripe.brushfire._
 import com.twitter.scalding._
 import com.twitter.algebird._
 import com.twitter.bijection._
