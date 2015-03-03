@@ -10,11 +10,57 @@ import org.apache.spark.SparkContext._
 
 import scala.reflect.{ classTag, ClassTag }
 
-case class Trainer[K: Ordering, V, T: Monoid](
+case class Trainer[K: Ordering, V, T: Monoid: ClassTag](
     trainingData: RDD[Instance[K, V, T]],
     sampler: Sampler[K],
     trees: RDD[(Int, Tree[K, V, T])]) {
+  import Trainer.ExtraRDDOps
+
   private val context: SparkContext = trainingData.context
+
+  /**
+   * Update the leaves of the current trees from the training set.
+   *
+   * The leaves target distributions will be set to the summed distributions of the instances
+   * in the training set that would get classified to them. Often used to initialize an empty tree.
+   */
+  def updateTargets: Trainer[K, V, T] = {
+    type LeafId = (Int, Int)
+
+    val treeMap: scala.collection.Map[Int, Tree[K, V, T]] = trees.collectAsMap()
+
+    val collectLeaves: Instance[K, V, T] => Iterable[(LeafId, T)] = { instance =>
+      for {
+        (treeIndex, tree) <- treeMap
+        repetition = sampler.timesInTrainingSet(instance.id, instance.timestamp, treeIndex)
+        i <- 1 to repetition
+        leafIndex <- tree.leafIndexFor(instance.features).toList
+      } yield {
+        (treeIndex, leafIndex) -> instance.target
+      }
+    }
+
+    val newTrees = trainingData
+      .flatMap(collectLeaves)
+      .sumByKey
+      .map {
+        case ((treeIndex, leafIndex), target) =>
+          treeIndex -> Map(leafIndex -> target)
+      }
+      .sumByKey
+      .map {
+        case (treeIndex, leafTargets) =>
+          val newTree =
+            treeMap(treeIndex).updateByLeafIndex { index =>
+              leafTargets.get(index).map(LeafNode(index, _))
+            }
+
+          treeIndex -> newTree
+      }
+      .cache()
+
+    copy(trees = newTrees)
+  }
 
   /**
    * Grow the trees by splitting all the leaf nodes as the stopper allows.
@@ -96,7 +142,7 @@ case class Trainer[K: Ordering, V, T: Monoid](
 object Trainer {
   val MaxParallelism = 20
 
-  def apply[K: Ordering, V, T: Monoid](trainingData: RDD[Instance[K, V, T]], sampler: Sampler[K]): Trainer[K, V, T] = {
+  def apply[K: Ordering, V, T: Monoid: ClassTag](trainingData: RDD[Instance[K, V, T]], sampler: Sampler[K]): Trainer[K, V, T] = {
     val sc = trainingData.context
     val initialTrees = Vector.tabulate(sampler.numTrees) { _ -> Tree.empty[K, V, T](Monoid.zero) }
     val parallelism = scala.math.min(MaxParallelism, sampler.numTrees)
@@ -104,5 +150,10 @@ object Trainer {
       trainingData,
       sampler,
       sc.parallelize(initialTrees, parallelism))
+  }
+
+  implicit class ExtraRDDOps[A](val rdd: RDD[A]) extends AnyVal {
+    def sumByKey[K, V](implicit ev: A <:< (K, V), ctK: ClassTag[K], ctV: ClassTag[V], V: Monoid[V]): RDD[(K, V)] =
+      rdd.asInstanceOf[RDD[(K, V)]].foldByKey(V.zero)(V.plus)
   }
 }
