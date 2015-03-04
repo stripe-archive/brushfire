@@ -9,6 +9,7 @@ import org.apache.spark.SparkContext
 import org.apache.spark.SparkContext._
 
 import scala.reflect.{ classTag, ClassTag }
+import scala.util.Random
 
 case class Trainer[K: Ordering, V, T: Monoid: ClassTag](
     trainingData: RDD[Instance[K, V, T]],
@@ -62,10 +63,64 @@ case class Trainer[K: Ordering, V, T: Monoid: ClassTag](
     copy(trees = newTrees)
   }
 
+  def expandInMemory(times: Int)(implicit evaluator: Evaluator[V, T], splitter: Splitter[V, T], stopper: Stopper[T]): Trainer[K, V, T] = {
+    type LeafId = (Int, Int)
+
+    val treeMap: scala.collection.Map[Int, Tree[K, V, T]] = trees.collectAsMap()
+    val rng: Random = new Random(1234)
+
+    val sampleInstances: Instance[K, V, T] => Iterable[(LeafId, Instance[K, V, T])] = { instance =>
+      for {
+        (treeIndex, tree) <- treeMap
+        repetition = sampler.timesInTrainingSet(instance.id, instance.timestamp, treeIndex)
+        i <- 1 to repetition
+        leaf <- tree.leafFor(instance.features).toList
+        if stopper.shouldSplit(leaf.target) && rng.nextDouble < stopper.samplingRateToSplitLocally(leaf.target)
+      } yield {
+        (treeIndex, leaf.index) -> instance
+      }
+    }
+
+    val emptyExpansions = context
+      .parallelize(0 until sampler.numTrees)
+      .map { _ -> List[(Int, Node[K, V, T])]() }
+
+    val newTrees = trainingData
+      .flatMap(sampleInstances)
+      .groupByKey()
+      .map {
+        case ((treeIndex, leafIndex), instances) =>
+          val target = Monoid.sum(instances.map { _.target })
+          val leaf = LeafNode[K, V, T](0, target)
+          val expanded = Tree.expand(times, leaf, splitter, evaluator, stopper, instances)
+          treeIndex -> List(leafIndex -> expanded)
+      }
+      .union(emptyExpansions)
+      .sumByKey
+      .map {
+        case (treeIndex, leafExpansions) =>
+          val expansions = leafExpansions.toMap
+          val newTree = treeMap(treeIndex)
+            .updateByLeafIndex(expansions.get(_))
+          treeIndex -> newTree
+      }
+      .cache()
+
+    copy(trees = newTrees)
+  }
+
+  def expandTimes(times: Int)(implicit splitter: Splitter[V, T], evaluator: Evaluator[V, T], stopper: Stopper[T]): Trainer[K, V, T] = {
+    def loop(trainer: Trainer[K, V, T], i: Int): Trainer[K, V, T] =
+      if (i > 0) loop(trainer.expand, i - 1)
+      else trainer
+
+    loop(updateTargets, times)
+  }
+
   /**
    * Grow the trees by splitting all the leaf nodes as the stopper allows.
    */
-  private def grow(implicit splitter: Splitter[V, T], evaluator: Evaluator[V, T], stopper: Stopper[T]): Trainer[K, V, T] = {
+  private def expand(implicit splitter: Splitter[V, T], evaluator: Evaluator[V, T], stopper: Stopper[T]): Trainer[K, V, T] = {
     // Our bucket has a tree index, leaf index, and feature.
     type Bucket = (Int, Int, K)
 
