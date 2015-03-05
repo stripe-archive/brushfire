@@ -1,0 +1,8 @@
+#!/bin/sh
+
+$SPARK_HOME/bin/spark-submit \
+--class "com.stripe.brushfire.spark.Iris" \
+--master local[4] \
+../brushfire-spark/target/brushfire-spark-0.5.0-SNAPSHOT-jar-with-dependencies.jar \
+--input iris.data \
+--output iris-spark.output

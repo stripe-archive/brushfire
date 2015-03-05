@@ -3,13 +3,15 @@ package spark
 
 import com.twitter.algebird._
 import com.twitter.algebird.Operators._
+import com.twitter.bijection.Injection
 
 import org.apache.spark.rdd.RDD
 import org.apache.spark.SparkContext
 import org.apache.spark.SparkContext._
 
+import java.util.Random
+
 import scala.reflect.{ classTag, ClassTag }
-import scala.util.Random
 
 case class Trainer[K: Ordering, V, T: Monoid: ClassTag](
     trainingData: RDD[Instance[K, V, T]],
@@ -17,7 +19,17 @@ case class Trainer[K: Ordering, V, T: Monoid: ClassTag](
     trees: RDD[(Int, Tree[K, V, T])]) {
   import Trainer.ExtraRDDOps
 
-  private val context: SparkContext = trainingData.context
+  private def context: SparkContext = trainingData.context
+
+  def saveAsTextFile(path: String)(implicit inj: Injection[Tree[K, V, T], String]): Trainer[K, V, T] = {
+    trees
+      .map {
+        case (i, tree) =>
+          s"$i\t${inj(tree)}"
+      }
+      .saveAsTextFile(path)
+    this
+  }
 
   /**
    * Update the leaves of the current trees from the training set.
@@ -32,7 +44,7 @@ case class Trainer[K: Ordering, V, T: Monoid: ClassTag](
 
     val collectLeaves: Instance[K, V, T] => Iterable[(LeafId, T)] = { instance =>
       for {
-        (treeIndex, tree) <- treeMap
+        (treeIndex, tree) <- treeMap.toList
         repetition = sampler.timesInTrainingSet(instance.id, instance.timestamp, treeIndex)
         i <- 1 to repetition
         leafIndex <- tree.leafIndexFor(instance.features).toList
@@ -67,11 +79,11 @@ case class Trainer[K: Ordering, V, T: Monoid: ClassTag](
     type LeafId = (Int, Int)
 
     val treeMap: scala.collection.Map[Int, Tree[K, V, T]] = trees.collectAsMap()
-    val rng: Random = new Random(1234)
+    val rng: Random = new Random(1234L)
 
     val sampleInstances: Instance[K, V, T] => Iterable[(LeafId, Instance[K, V, T])] = { instance =>
       for {
-        (treeIndex, tree) <- treeMap
+        (treeIndex, tree) <- treeMap.toList
         repetition = sampler.timesInTrainingSet(instance.id, instance.timestamp, treeIndex)
         i <- 1 to repetition
         leaf <- tree.leafFor(instance.features).toList
@@ -137,7 +149,7 @@ case class Trainer[K: Ordering, V, T: Monoid: ClassTag](
     val collectFeatures: Instance[K, V, T] => Iterable[(Bucket, splitter.S)] = { instance =>
       val features = instance.features.mapValues(splitter.create(_, instance.target))
       for {
-        (treeIndex, tree) <- treeMap
+        (treeIndex, tree) <- treeMap.toList
         repetition = sampler.timesInTrainingSet(instance.id, instance.timestamp, treeIndex)
         i <- 1 to repetition
         leaf <- tree.leafFor(instance.features).toList
@@ -186,7 +198,7 @@ case class Trainer[K: Ordering, V, T: Monoid: ClassTag](
       .reduceByKey(splitter.semigroup.plus(_, _))
       .flatMap(split.tupled)
       .union(emptySplits)
-      .reduceByKey(_ + _)
+      .sumByKey
       .map(growTree.tupled)
       .cache()
 

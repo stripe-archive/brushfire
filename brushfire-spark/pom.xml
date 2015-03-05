@@ -20,7 +20,8 @@
     <dependency>
       <groupId>org.apache.spark</groupId>
       <artifactId>spark-core_${scala.binary.version}</artifactId>
-      <version>1.2.0</version>
+      <version>1.2.1</version>
+      <scope>provided</scope>
     </dependency>
     <dependency>
       <groupId>com.stripe</groupId>
@@ -37,7 +38,7 @@
         <version>2.3</version>
         <configuration>
           <shadedArtifactAttached>false</shadedArtifactAttached>
-          <outputFile>target/brushfire-scalding-${project.version}-jar-with-dependencies.jar</outputFile>
+          <outputFile>target/brushfire-spark-${project.version}-jar-with-dependencies.jar</outputFile>
           <artifactSet>
           <includes>
             <include>*:*</include>
