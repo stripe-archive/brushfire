@@ -36,7 +36,7 @@ Thanks for assistance and contributions:
 # Quick start
 
 ````
-mvn package
+sbt brushfireScalding/assembly
 cd example
 ./iris
 cat iris.output/step_03
@@ -44,12 +44,18 @@ cat iris.output/step_03
 
 If it worked, you should see a JSON representation of 4 versions of a decision tree for classifying irises.
 
-To use brushfire as a jar in your own project, add the following to your POM file:
+To use brushfire in your own SBT project, add the following to your `build.sbt`:
+
+```scala
+libraryDependencies += "com.stripe" %% "brushfire" % "0.4.0"
+```
+
+To use brushfire as a jar in your own Maven project, add the following to your POM file:
 
 ```
 <dependency>
   <groupId>com.stripe</groupId>
-  <artifactId>brushfire</artifactId>
+  <artifactId>brushfire_${scala.binary.version}</artifactId>
   <version>0.4.0</version>
 </dependency>
 ```

@@ -10,9 +10,9 @@ set -e
 
 echo "Generating docs..."
 cd $(dirname $0)
-mvn clean scala:doc
+sbt unidoc
 
-cd ./target/site/scaladocs
+cd ./target/scala-2.10/unidoc
 git init
 
 git config user.name "Travis-CI"

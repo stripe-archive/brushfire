@@ -44,7 +44,7 @@ object JsonInjections {
       case Some("nominal") => fromJsonNode[B](n.get("nominal")).map { Nominal(_) }
       case Some("continuous") => fromJsonNode[C](n.get("continuous")).map { Continuous(_) }
       case Some("sparse") => fromJsonNode[D](n.get("sparse")).map { Sparse(_) }
-      case _ => error("Not a dispatched node: " + n)
+      case _ => sys.error("Not a dispatched node: " + n)
     }
   }
 
@@ -100,13 +100,13 @@ object JsonInjections {
             case Some("eq") => fromJsonNode[V](n.get("eq")).map { EqualTo(_) }
             case Some("lt") => {
               if (ord == null)
-                error("No Ordering[V] supplied but less than used")
+                sys.error("No Ordering[V] supplied but less than used")
               else
                 fromJsonNode[V](n.get("lt")).map { LessThan(_) }
             }
             case Some("not") => fromJsonNode[Predicate[V]](n.get("not")).map { Not(_) }
             case Some("or") => fromJsonNode[List[Predicate[V]]](n.get("or")).map { AnyOf(_) }
-            case _ => error("Not a predicate node")
+            case _ => sys.error("Not a predicate node")
           }
         }
       }
