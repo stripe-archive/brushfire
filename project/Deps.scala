@@ -29,16 +29,4 @@ object Deps {
   val scaldingCore   = "com.twitter"         %% "scalding-core"      % V.scalding
 
   val finatra        = "com.twitter"         %% "finatra"            % V.finatra
-
-  val common = Seq(
-    Deps.scaldingCore,
-    Deps.algebirdCore,
-    Deps.bijectionJson,
-    Deps.chillBijection,
-    Deps.finatra,
-    Deps.hadoopClient,
-    Deps.jacksonMapper,
-    Deps.jacksonXC,
-    Deps.jacksonJAXRS
-  )
 }
