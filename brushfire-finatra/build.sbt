@@ -1,7 +1,5 @@
 name := "brushfire-finatra"
 
-resolvers += Resolvers.twttr
-
 libraryDependencies += Deps.finatra
 
 Publish.settings

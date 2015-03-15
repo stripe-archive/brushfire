@@ -1,4 +1,4 @@
-organization in ThisBuild := "com.pellucid"
+organization in ThisBuild := "com.stripe"
 
 scalaVersion in ThisBuild := "2.10.4"
 

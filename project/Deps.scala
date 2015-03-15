@@ -2,7 +2,6 @@ import sbt._
 
 object Resolvers {
   val conjars = "Conjars Repo" at "http://conjars.org/repo"
-  val twttr =   "Twitter" at "http://maven.twttr.com"
 }
 
 object Deps {
