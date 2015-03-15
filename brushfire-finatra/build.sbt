@@ -1,5 +1,8 @@
 name := "brushfire-finatra"
 
+// Required for org.apache.thrift#libthrift;0.5.0, used by Finagle.
+resolvers += "Twitter" at "http://maven.twttr.com"
+
 libraryDependencies += Deps.finatra
 
 Publish.settings
