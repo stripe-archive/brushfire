@@ -1,5 +1,9 @@
 name := "brushfire-finatra"
 
+scalaVersion in ThisBuild := "2.10.4"
+
+crossScalaVersions in ThisBuild := Seq("2.10.4", "2.11.5")
+
 // Required for org.apache.thrift#libthrift;0.5.0, used by Finagle.
 resolvers += "Twitter" at "http://maven.twttr.com"
 

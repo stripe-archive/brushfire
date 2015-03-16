@@ -1,6 +1,8 @@
 organization in ThisBuild := "com.stripe"
 
-scalaVersion in ThisBuild := "2.10.4"
+scalaVersion in ThisBuild := "2.11.5"
+
+crossScalaVersions := Seq("2.10.4")
 
 version in ThisBuild := "0.5.0-SNAPSHOT"
 
@@ -17,7 +19,7 @@ maxErrors in ThisBuild := 8
 
 lazy val root = project.
   in(file(".")).
-  aggregate(brushfireCore, brushfireScalding, brushfireFinatra).
+  aggregate(brushfireCore, brushfireScalding).
   settings(unidocSettings: _*)
 
 lazy val brushfireCore = project.
