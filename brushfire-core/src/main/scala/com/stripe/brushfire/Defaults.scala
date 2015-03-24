@@ -18,7 +18,7 @@ trait Defaults extends LowPriorityDefaults {
   implicit def intSplitter[T: Monoid]: Splitter[Int, T] = BinarySplitter[Int, T](LessThan(_))
   implicit def stringSplitter[T: Monoid]: Splitter[String, T] = BinarySplitter[String, T](EqualTo(_))
   implicit def doubleSplitter[T: Monoid]: Splitter[Double, T] = BinnedSplitter(BinarySplitter[Double, T](LessThan(_))) { d => downRez(d, 2, 100) }
-  implicit def booleanSplitter[T: Group]: Splitter[Boolean, T] = SparseBooleanSplitter[T]
+  implicit def booleanSplitter[T: Group]: Splitter[Boolean, T] = SparseSplitter[Boolean, T]
 
   implicit def dispatchedSplitterWithSpaceSaver[A: Ordering, B, C: Ordering, D, L](
     implicit ordinal: Splitter[A, Map[L, Long]],

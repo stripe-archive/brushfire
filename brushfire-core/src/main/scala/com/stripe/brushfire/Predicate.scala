@@ -4,8 +4,12 @@ sealed trait Predicate[V] {
   def apply(v: Option[V]): Boolean
 }
 
+case class IsPresent[V]() extends Predicate[V] {
+  def apply(v: Option[V]) = v.isDefined
+}
+
 case class EqualTo[V](value: V) extends Predicate[V] {
-  def apply(v: Option[V]) = v.isDefined && (v.get == value)
+  def apply(v: Option[V]) = !v.isDefined || (v.get == value)
 }
 
 case class LessThan[V](value: V)(implicit ord: Ordering[V]) extends Predicate[V] {
@@ -13,7 +17,7 @@ case class LessThan[V](value: V)(implicit ord: Ordering[V]) extends Predicate[V]
 }
 
 case class Not[V](pred: Predicate[V]) extends Predicate[V] {
-  def apply(v: Option[V]) = !pred(v)
+  def apply(v: Option[V]) = !v.isDefined || !pred(v)
 }
 
 case class AnyOf[V](preds: Seq[Predicate[V]]) extends Predicate[V] {
@@ -23,6 +27,7 @@ case class AnyOf[V](preds: Seq[Predicate[V]]) extends Predicate[V] {
 object Predicate {
   def display[V](predicate: Predicate[V]): String = {
     predicate match {
+      case IsPresent() => "exists"
       case EqualTo(v) => "= " + v.toString
       case LessThan(v) => "< " + v.toString
       case Not(EqualTo(v)) => "!= " + v.toString

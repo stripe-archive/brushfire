@@ -114,6 +114,46 @@ case class Tree[K, V, T](root: Node[K, V, T]) {
     }
   }
 
+  def leafForSparseRow(id: String, row: Map[K, V])(implicit getWeight: T => Double): Option[LeafNode[K, V, T]] = {
+    val rng: scala.util.Random = new scala.util.Random(id.hashCode)
+
+    def count(node: Node[K, V, T]): Double = node match {
+      case LeafNode(_, target) => getWeight(target)
+      case SplitNode(children) =>
+        children
+          .map { case (_, _, child) => count(child) }
+          .sum
+    }
+
+    def findRandomNode(weightedNodes: List[(Double, Node[K, V, T])], k: Double): Node[K, V, T] =
+      weightedNodes match {
+        case (_, node) :: Nil => node
+        case (weight, node) :: rest =>
+          val weight0 = k - weight
+          if (weight0 <= 0) node
+          else findRandomNode(rest, weight0)
+      }
+
+    def recur(node: Node[K, V, T]): Option[LeafNode[K, V, T]] = node match {
+      case leaf: LeafNode[K, V, T] => Some(leaf)
+      case SplitNode(children) =>
+        val candidates: List[(Double, Node[K, V, T])] = children
+          .collect {
+            case (feature, predicate, child) if predicate(row.get(feature)) =>
+              count(child) -> child
+          }(collection.breakOut)
+        if (candidates.isEmpty) {
+          None
+        } else {
+          val totalWeight = candidates.map(_._1).sum
+          val chosenOne = findRandomNode(candidates, rng.nextDouble * totalWeight)
+          recur(chosenOne)
+        }
+    }
+
+    recur(root)
+  }
+
   def leafFor(row: Map[K, V]) = findLeaf(row, root)
 
   def leafIndexFor(row: Map[K, V]) = findLeaf(row, root).map { _.index }
