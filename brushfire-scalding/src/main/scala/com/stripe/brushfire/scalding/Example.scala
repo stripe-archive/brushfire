@@ -33,7 +33,7 @@ abstract class CSVJob(args: Args) extends TrainerJob(args) {
   }
 
   def train(trainingData: TypedPipe[Instance[String, Double, Map[String, Long]]]): Trainer[String, Double, Map[String, Long]] = {
-    Trainer(trainingData, KFoldSampler(4))
+    Trainer(trainingData, KFoldSampler(10))
       .expandTimes(args("output"), 3)
       .expandInMemory(args("output") + "/mem", 10)
       .validate(error) { writeValueTsvExecution(args("output") + "/bs") }

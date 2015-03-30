@@ -11,12 +11,13 @@ class BrushfireServer extends FinatraServer {
       get(root) { request =>
         val id = request.params.get("id")
         val row = fn(request.params)
-        val score = voter.combine(trees.flatMap { tree =>
-          id.map { rowId =>
-            tree.leafForSparseRow(rowId, row).map(_.target)
-          }.getOrElse {
-            tree.targetFor(row)
-          }
+        val score = voter.combine(trees.zipWithIndex.flatMap {
+          case (tree, i) =>
+            id.map { rowId =>
+              tree.leafForSparseRow(rowId + i, row).map(_.target)
+            }.getOrElse {
+              tree.targetFor(row)
+            }
         })
         render.json(score).toFuture
       }

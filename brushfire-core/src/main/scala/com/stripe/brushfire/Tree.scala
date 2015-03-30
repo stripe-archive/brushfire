@@ -8,6 +8,16 @@ case class LeafNode[K, V, T](
   val index: Int,
   target: T) extends Node[K, V, T]
 
+// 1. Annotate tree, add "WeightedTree" enrichment for using weights (A: Numeric).
+//     - Pro: general enough to be useful elsewhere
+//     - Con: duplication of search logic for non-weighted trees
+// 2. Abstract out tree traversal entirely. Tree[K, V, T] => TreeSearch[K, V, T]
+//     - Pro: allows encapsulated preprocessing of tree
+//     - Con: not very general - moving logic around
+// 3. Abstract out just the successful child node choice.
+//     - Pro: shared code with only minimal amount abstracted
+//     - Con: not very general and minimal preprocessing without gymnastics
+
 case class Tree[K, V, T](root: Node[K, V, T]) {
   private def findLeaf(row: Map[K, V], start: Node[K, V, T]): Option[LeafNode[K, V, T]] = {
     start match {
@@ -115,7 +125,13 @@ case class Tree[K, V, T](root: Node[K, V, T]) {
   }
 
   def leafForSparseRow(id: String, row: Map[K, V])(implicit getWeight: T => Double): Option[LeafNode[K, V, T]] = {
-    val rng: scala.util.Random = new scala.util.Random(id.hashCode)
+    def random(key: String, seed: Int) = {
+      val murmur = MurmurHash128(seed)
+      val (hash1, hash2) = murmur(key)
+      new scala.util.Random(hash1)
+    }
+
+    val rng: scala.util.Random = random(id, 4312)
 
     def count(node: Node[K, V, T]): Double = node match {
       case LeafNode(_, target) => getWeight(target)
@@ -146,7 +162,8 @@ case class Tree[K, V, T](root: Node[K, V, T]) {
           None
         } else {
           val totalWeight = candidates.map(_._1).sum
-          val chosenOne = findRandomNode(candidates, rng.nextDouble * totalWeight)
+          val k = rng.nextDouble * totalWeight
+          val chosenOne = findRandomNode(candidates, k)
           recur(chosenOne)
         }
     }
