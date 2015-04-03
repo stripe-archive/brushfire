@@ -19,6 +19,45 @@ case class Tree[K, V, T](root: Node[K, V, T]) {
     }
   }
 
+  /**
+   * Maps the feature keys used to split the `Tree` using `f`.
+   */
+  def mapKeys[K1](f: K => K1): Tree[K1, V, T] = {
+    def recur(node: Node[K, V, T]): Node[K1, V, T] = node match {
+      case SplitNode(children) =>
+        SplitNode(children.map { case (k, pred, child) =>
+          (f(k), pred, recur(child))
+        })
+      case LeafNode(index, target) => LeafNode(index, target)
+    }
+
+    Tree(recur(root))
+  }
+
+  /**
+   * Maps the [[Predicate]]s in the `Tree` using `f`. Note, this will only
+   * produce a valid `Tree` if `f` preserves the ordering (ie if
+   * `a.compare(b) == f(a).compare(f(b))`).
+   */
+  def mapPredicates[V1](f: V => V1)(implicit ord: Ordering[V1]): Tree[K, V1, T] = {
+    def mapPred(pred: Predicate[V]): Predicate[V1] = pred match {
+      case EqualTo(v) => EqualTo(f(v))
+      case LessThan(v) => LessThan(f(v))
+      case Not(p) => Not(mapPred(p))
+      case AnyOf(ps) => AnyOf(ps.map(mapPred))
+    }
+
+    def recur(node: Node[K, V, T]): Node[K, V1, T] = node match {
+      case SplitNode(children) =>
+        SplitNode(children.map { case (k, pred, child) =>
+          (k, mapPred(pred), recur(child))
+        })
+      case LeafNode(index, target) => LeafNode(index, target)
+    }
+
+    Tree(recur(root))
+  }
+
   def leafAt(leafIndex: Int): Option[LeafNode[K, V, T]] = leafAt(leafIndex, root)
 
   def leafAt(leafIndex: Int, start: Node[K, V, T]): Option[LeafNode[K, V, T]] = {

@@ -24,7 +24,7 @@ class DispatchedSplitter[A: Ordering, B, C: Ordering, D, T](
         case (Nominal(l), Nominal(r)) => Nominal(nominal.semigroup.plus(l, r))
         case (Continuous(l), Continuous(r)) => Continuous(continuous.semigroup.plus(l, r))
         case (Sparse(l), Sparse(r)) => Sparse(sparse.semigroup.plus(l, r))
-        case _ => error("Values do not match: " + (a, b))
+        case _ => sys.error("Values do not match: " + (a, b))
       }
     }
 
@@ -50,7 +50,7 @@ object Dispatched {
     def compare(left: Dispatched[A, B, C, D], right: Dispatched[A, B, C, D]) = (left, right) match {
       case (Ordinal(l), Ordinal(r)) => ordinalOrdering.compare(l, r)
       case (Continuous(l), Continuous(r)) => continuousOrdering.compare(l, r)
-      case _ => error("Values cannot be compared: " + (left, right))
+      case _ => sys.error("Values cannot be compared: " + (left, right))
     }
   }
 
