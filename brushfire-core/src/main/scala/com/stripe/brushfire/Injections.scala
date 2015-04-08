@@ -83,6 +83,7 @@ object JsonInjections {
         def apply(pred: Predicate[V]) = {
           val obj = JsonNodeFactory.instance.objectNode
           pred match {
+            case IsPresent() => obj.put("exists", toJsonNode(true))
             case EqualTo(v) => obj.put("eq", toJsonNode(v))
             case LessThan(v) => obj.put("lt", toJsonNode(v))
             case Not(pred) => obj.put("not", toJsonNode(pred)(predicateJsonNodeInjection))

@@ -71,6 +71,7 @@ object Dispatched {
 
   def wrapPredicate[X, A: Ordering, B, C: Ordering, D](predicate: Predicate[X])(fn: X => Dispatched[A, B, C, D]): Predicate[Dispatched[A, B, C, D]] =
     predicate match {
+      case IsPresent() => IsPresent()
       case EqualTo(v) => EqualTo(fn(v))
       case LessThan(v) => LessThan(fn(v))
       case Not(p) => Not(wrapPredicate(p)(fn))

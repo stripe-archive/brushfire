@@ -65,16 +65,16 @@ case class QTreeSplitter[T: Monoid](k: Int)
   }
 }
 
-case class SparseBooleanSplitter[T: Group]()
-    extends Splitter[Boolean, T] {
+case class SparseSplitter[V, T: Group]()
+    extends Splitter[V, T] {
 
   type S = T
-  def create(value: Boolean, target: T) = target
+  def create(value: V, target: T) = target
 
   val semigroup = implicitly[Semigroup[T]]
 
   def split(parent: T, stats: T) =
-    Some(BinarySplit(EqualTo(true), stats, Group.minus(parent, stats)))
+    Some(BinarySplit(IsPresent[V], stats, Group.minus(parent, stats)))
 }
 
 case class SpaceSaverSplitter[V, L](capacity: Int = 1000)
