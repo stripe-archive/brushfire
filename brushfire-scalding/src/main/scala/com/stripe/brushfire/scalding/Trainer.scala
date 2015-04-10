@@ -1,6 +1,6 @@
-package com.stripe.brushfire.scalding
+package com.stripe.brushfire
+package scalding
 
-import com.stripe.brushfire._
 import com.twitter.scalding._
 import com.twitter.algebird._
 import com.twitter.bijection._
@@ -32,7 +32,10 @@ case class Trainer[K: Ordering, V, T: Monoid](
 
   def execution = Execution.zip(treeExecution, unitExecution).unit
 
-  def flatMapTrees(fn: ((TypedPipe[Instance[K, V, T]], Sampler[K], Iterable[(Int, Tree[K, V, T])])) => Execution[TypedPipe[(Int, Tree[K, V, T])]]) = {
+  /**
+   * Transform the decision [[Tree]]s in this [[Trainer]].
+   */
+  def flatMapTrees(fn: ((TypedPipe[Instance[K, V, T]], Sampler[K], Iterable[(Int, Tree[K, V, T])])) => Execution[TypedPipe[(Int, Tree[K, V, T])]]): Trainer[K, V, T] = {
     val newExecution = treeExecution
       .flatMap { trees =>
         Execution.zip(trainingDataExecution, samplerExecution, trees.toIterableExecution)
@@ -40,12 +43,20 @@ case class Trainer[K: Ordering, V, T: Monoid](
     copy(treeExecution = newExecution)
   }
 
-  def flatMapSampler(fn: ((TypedPipe[Instance[K, V, T]], Sampler[K])) => Execution[Sampler[K]]) = {
+  /**
+   * Transform the [[Sampler]] used for this `Trainer`.
+   */
+  def flatMapSampler(fn: ((TypedPipe[Instance[K, V, T]], Sampler[K])) => Execution[Sampler[K]]): Trainer[K, V, T] = {
     val newExecution = trainingDataExecution.zip(samplerExecution).flatMap(fn)
     copy(samplerExecution = newExecution)
   }
 
-  def tee[A](fn: ((TypedPipe[Instance[K, V, T]], Sampler[K], Iterable[(Int, Tree[K, V, T])])) => Execution[A]): Trainer[K, V, T] = {
+  /**
+   * This will execute the function with the instances, sampler, and trees for
+   * the current state, ignoring the result. This can be used to spin off some
+   * side-effecting computation, such as writing a file to disk.
+   */
+  def tee(fn: ((TypedPipe[Instance[K, V, T]], Sampler[K], Iterable[(Int, Tree[K, V, T])])) => Execution[Any]): Trainer[K, V, T] = {
     val newExecution = treeExecution
       .flatMap { trees =>
         Execution.zip(trainingDataExecution, samplerExecution, trees.toIterableExecution)
@@ -57,6 +68,11 @@ case class Trainer[K: Ordering, V, T: Monoid](
     copy(trainingDataExecution = trainingDataExecution.flatMap { _.forceToDiskExecution })
   }
 
+  /**
+   * Load previously computed and stored decision trees from the path provided.
+   *
+   * @param path the path to the serialized trees
+   */
   def load(path: String)(implicit inj: Injection[Tree[K, V, T], String]): Trainer[K, V, T] = {
     copy(treeExecution = Execution.from(TypedPipe.from(TreeSource(path))))
   }
@@ -98,7 +114,8 @@ case class Trainer[K: Ordering, V, T: Monoid](
   }
 
   /**
-   * expand each tree by one level, by attempting to split every leaf.
+   * Expand each tree by one level, by attempting to split every leaf.
+   *
    * @param path where to save the new tree
    * @param splitter the splitter to use to generate candidate splits for each leaf
    * @param evaluator the evaluator to use to decide which split to use for each leaf
@@ -119,7 +136,7 @@ case class Trainer[K: Ordering, V, T: Monoid](
                 (treeIndex, tree) <- treeMap;
                 i <- 1.to(sampler.timesInTrainingSet(instance.id, instance.timestamp, treeIndex)).toList;
                 leaf <- tree.leafFor(instance.features).toList if stopper.shouldSplit(leaf.target) && stopper.shouldSplitDistributed(leaf.target);
-                (feature, stats) <- features if (sampler.includeFeature(feature, treeIndex, leaf.index))
+                (feature, stats) <- features if sampler.includeFeature(feature, treeIndex, leaf.index)
               ) yield (treeIndex, leaf.index, feature) -> stats
             }
 

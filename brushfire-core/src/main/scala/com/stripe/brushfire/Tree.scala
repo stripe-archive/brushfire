@@ -3,11 +3,14 @@ package com.stripe.brushfire
 import com.twitter.algebird._
 
 sealed trait Node[K, V, T]
-case class SplitNode[K, V, T](val children: Seq[(K, Predicate[V], Node[K, V, T])]) extends Node[K, V, T]
+case class SplitNode[K, V, T](children: Seq[(K, Predicate[V], Node[K, V, T])]) extends Node[K, V, T]
 case class LeafNode[K, V, T](
-  val index: Int,
+  index: Int,
   target: T) extends Node[K, V, T]
 
+/**
+ * A decision tree whose features are indexed by `K` with values of `V`.
+ */
 case class Tree[K, V, T](root: Node[K, V, T]) {
   private def findLeaf(row: Map[K, V], start: Node[K, V, T]): Option[LeafNode[K, V, T]] = {
     start match {
@@ -153,11 +156,14 @@ case class Tree[K, V, T](root: Node[K, V, T]) {
     }
   }
 
-  def leafFor(row: Map[K, V]) = findLeaf(row, root)
+  /**
+   * Returns the leaf node containing the given instance.
+   */
+  def leafFor(row: Map[K, V]): Option[LeafNode[K, V, T]] = findLeaf(row, root)
 
-  def leafIndexFor(row: Map[K, V]) = findLeaf(row, root).map { _.index }
+  def leafIndexFor(row: Map[K, V]): Option[Int] = findLeaf(row, root).map { _.index }
 
-  def targetFor(row: Map[K, V]) = findLeaf(row, root).map { _.target }
+  def targetFor(row: Map[K, V]): Option[T] = findLeaf(row, root).map { _.target }
 
   def growByLeafIndex(fn: Int => Seq[(K, Predicate[V], T)]) = {
     var newIndex = -1

@@ -54,8 +54,25 @@ trait Evaluator[V, T] {
 
 /** Provides stopping conditions which guide when splits will be attempted */
 trait Stopper[T] {
+
+  /**
+   * Returns `true` if we should continue to split a leaf with the given
+   * distribution.
+   */
   def shouldSplit(target: T): Boolean
+
+  /**
+   * Returns `true` if, ideally, we should avoid splitting a leaf with the
+   * given distribution in-memory.
+   */
   def shouldSplitDistributed(target: T): Boolean
+
+  /**
+   * For the given distribution, this will return the rate at which we should
+   * sample the instances if we wish to make a split in-memory. This method
+   * should return a *safe* value, such that if we sample at the given rate,
+   * all instances should fit in memory.
+   */
   def samplingRateToSplitLocally(target: T): Double
 }
 
