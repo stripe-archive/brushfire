@@ -111,10 +111,10 @@ object JsonInjections {
         }
       }
 
-    implicit def nodeJsonNodeInjection: JsonNodeInjection[Node[K, V, T]] =
-      new AbstractJsonNodeInjection[Node[K, V, T]] {
-        def apply(node: Node[K, V, T]) = node match {
-          case LeafNode(index, target) => {
+    implicit def nodeJsonNodeInjection: JsonNodeInjection[Node[K, V, T, Unit]] =
+      new AbstractJsonNodeInjection[Node[K, V, T, Unit]] {
+        def apply(node: Node[K, V, T, Unit]) = node match {
+          case LeafNode(index, target, _) => {
             val obj = JsonNodeFactory.instance.objectNode
             obj.put("leaf", toJsonNode(index))
             obj.put("distribution", toJsonNode(target))
@@ -159,13 +159,13 @@ object JsonInjections {
                   predicateNode <- tryChild(c, "predicate");
                   predicate <- fromJsonNode[Predicate[V]](predicateNode);
                   childNode <- tryChild(c, "children");
-                  child <- fromJsonNode[Node[K, V, T]](childNode)
+                  child <- fromJsonNode[Node[K, V, T, Unit]](childNode)
                 ) yield (feature, predicate, child)
               }.toList
 
               children.find { _.isFailure } match {
                 case Some(Failure(e)) => Failure(InversionFailure(n, e))
-                case _ => Success(SplitNode[K, V, T](children.map { _.get }))
+                case _ => Success(SplitNode[K, V, T, Unit](children.map { _.get }))
               }
             }
           }
@@ -174,10 +174,9 @@ object JsonInjections {
 
     new AbstractJsonNodeInjection[Tree[K, V, T]] {
       def apply(tree: Tree[K, V, T]) = toJsonNode(tree.root)
-      override def invert(n: JsonNode) = fromJsonNode[Node[K, V, T]](n).map { root => Tree(root) }
+      override def invert(n: JsonNode) = fromJsonNode[Node[K, V, T, Unit]](n).map { root => Tree(root) }
     }
   }
-
 
   implicit def treeJsonStringInjection[K, V, T](implicit jsonInj: JsonNodeInjection[Tree[K, V, T]]): Injection[Tree[K, V, T], String] =
     JsonInjection.toString[Tree[K, V, T]]

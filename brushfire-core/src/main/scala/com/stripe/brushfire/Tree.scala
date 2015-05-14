@@ -2,16 +2,35 @@ package com.stripe.brushfire
 
 import com.twitter.algebird._
 
-sealed trait Node[K, V, T]
-case class SplitNode[K, V, T](val children: Seq[(K, Predicate[V], Node[K, V, T])]) extends Node[K, V, T]
-case class LeafNode[K, V, T](
-  val index: Int,
-  target: T) extends Node[K, V, T]
+sealed trait Node[K, V, T, A] {
+  def annotation: A
+}
 
-case class Tree[K, V, T](root: Node[K, V, T]) {
-  private def findLeaf(row: Map[K, V], start: Node[K, V, T]): Option[LeafNode[K, V, T]] = {
+case class SplitNode[K, V, T, A: Semigroup](children: Seq[(K, Predicate[V], Node[K, V, T, A])]) extends Node[K, V, T, A] {
+  require(children.nonEmpty)
+
+  lazy val annotation: A =
+    Semigroup.sumOption(children.map(_._3.annotation)).get
+}
+
+case class LeafNode[K, V, T, A](
+  index: Int,
+  target: T,
+  annotation: A) extends Node[K, V, T, A]
+
+object LeafNode {
+  def apply[K, V, T, A: Monoid](index: Int, target: T): LeafNode[K, V, T, A] =
+    LeafNode(index, target, Monoid.zero)
+}
+
+// type Tree[K, V, T] = AnnotatedTree[K, V, T, Unit]
+
+case class AnnotatedTree[K, V, T, A: Semigroup](root: Node[K, V, T, A]) {
+  private def findLeaf(row: Map[K, V], start: Node[K, V, T, A]): Option[LeafNode[K, V, T, A]] = {
     start match {
-      case leaf: LeafNode[K, V, T] => Some(leaf)
+      case leaf @ LeafNode(_, _, _) =>
+        Some(leaf)
+
       case SplitNode(children) =>
         children
           .find { case (feature, predicate, _) => predicate(row.get(feature)) }
@@ -19,27 +38,67 @@ case class Tree[K, V, T](root: Node[K, V, T]) {
     }
   }
 
+  private def mapSplits[K0, V0](f: (K, Predicate[V]) => (K0, Predicate[V0])): AnnotatedTree[K0, V0, T, A] = {
+    def recur(node: Node[K, V, T, A]): Node[K0, V0, T, A] = node match {
+      case SplitNode(children) =>
+        SplitNode(children.map {
+          case (key, pred, child) =>
+            val (key0, pred0) = f(key, pred)
+            (key0, pred0, recur(child))
+        })
+
+      case LeafNode(index, target, annotation) =>
+        LeafNode(index, target, annotation)
+    }
+
+    AnnotatedTree(recur(root))
+  }
+
+  private def mapLeaves[T0, A0: Semigroup](f: (T, A) => (T0, A0)): AnnotatedTree[K, V, T0, A0] = {
+    def recur(node: Node[K, V, T, A]): Node[K, V, T0, A0] = node match {
+      case SplitNode(children) =>
+        SplitNode(children.map {
+          case (key, pred, child) =>
+            (key, pred, recur(child))
+        })
+
+      case LeafNode(index, target, annotation) =>
+        val (target1, annotation1) = f(target, annotation)
+        LeafNode(index, target1, annotation1)
+    }
+
+    AnnotatedTree(recur(root))
+  }
+
+  /**
+   * Annotate the tree by mapping the leaf target distributions to some
+   * annotation for the leaves, then bubbling the annotaions up the tree using
+   * the `Semigroup` for the annotation type.
+   */
+  def annotate[A1: Semigroup](f: T => A1): AnnotatedTree[K, V, T, A1] =
+    mapLeaves { (t, _) => (t, f(t)) }
+
+  /**
+   * Re-annotate the leaves of this tree using `f` to transform the
+   * annotations. This will then bubble the annotations up the tree using the
+   * `Semigroup` for `A1`. If `f` is a semigroup homomorphism, then this
+   * (semantically) just transforms the annotation at each node using `f`.
+   */
+  def mapAnnotation[A1: Semigroup](f: A => A1): AnnotatedTree[K, V, T, A1] =
+    mapLeaves { (t, a) => (t, f(a)) }
+
   /**
    * Maps the feature keys used to split the `Tree` using `f`.
    */
-  def mapKeys[K1](f: K => K1): Tree[K1, V, T] = {
-    def recur(node: Node[K, V, T]): Node[K1, V, T] = node match {
-      case SplitNode(children) =>
-        SplitNode(children.map { case (k, pred, child) =>
-          (f(k), pred, recur(child))
-        })
-      case LeafNode(index, target) => LeafNode(index, target)
-    }
-
-    Tree(recur(root))
-  }
+  def mapKeys[K1](f: K => K1): AnnotatedTree[K1, V, T, A] =
+    mapSplits { (k, p) => (f(k), p) }
 
   /**
    * Maps the [[Predicate]]s in the `Tree` using `f`. Note, this will only
    * produce a valid `Tree` if `f` preserves the ordering (ie if
    * `a.compare(b) == f(a).compare(f(b))`).
    */
-  def mapPredicates[V1](f: V => V1)(implicit ord: Ordering[V1]): Tree[K, V1, T] = {
+  def mapPredicates[V1](f: V => V1)(implicit ord: Ordering[V1]): AnnotatedTree[K, V1, T, A] = {
     def mapPred(pred: Predicate[V]): Predicate[V1] = pred match {
       case EqualTo(v) => EqualTo(f(v))
       case LessThan(v) => LessThan(f(v))
@@ -47,22 +106,22 @@ case class Tree[K, V, T](root: Node[K, V, T]) {
       case AnyOf(ps) => AnyOf(ps.map(mapPred))
     }
 
-    def recur(node: Node[K, V, T]): Node[K, V1, T] = node match {
-      case SplitNode(children) =>
-        SplitNode(children.map { case (k, pred, child) =>
-          (k, mapPred(pred), recur(child))
-        })
-      case LeafNode(index, target) => LeafNode(index, target)
-    }
-
-    Tree(recur(root))
+    mapSplits { (k, p) => (k, mapPred(p)) }
   }
 
-  def leafAt(leafIndex: Int): Option[LeafNode[K, V, T]] = leafAt(leafIndex, root)
+  /**
+   * Returns the leaf with index `leafIndex` by performing a DFS.
+   */
+  def leafAt(leafIndex: Int): Option[LeafNode[K, V, T, A]] = leafAt(leafIndex, root)
 
-  def leafAt(leafIndex: Int, start: Node[K, V, T]): Option[LeafNode[K, V, T]] = {
+  /**
+   * Returns the leaf with index `leafIndex` that is a descendant of `start` by
+   * performing a DFS starting with `start`.
+   */
+  def leafAt(leafIndex: Int, start: Node[K, V, T, A]): Option[LeafNode[K, V, T, A]] = {
     start match {
-      case leaf: LeafNode[K, V, T] => if (leaf.index == leafIndex) Some(leaf) else None
+      case leaf @ LeafNode(_, _, _) =>
+        if (leaf.index == leafIndex) Some(leaf) else None
       case SplitNode(children) =>
         children
           .flatMap { case (_, _, child) => leafAt(leafIndex, child) }
@@ -81,8 +140,8 @@ case class Tree[K, V, T](root: Node[K, V, T]) {
    * @param error to calculate an error statistic given observations (validation) and predictions (training).
    * @return The new, pruned tree.
    */
-  def prune[P, E](validationData: Map[Int, T], voter: Voter[T, P], error: Error[T, P, E])(implicit targetMonoid: Monoid[T], errorOrdering: Ordering[E]): Tree[K, V, T] = {
-    Tree(pruneNode(validationData, this.root, voter, error)._2).renumberLeaves
+  def prune[P, E](validationData: Map[Int, T], voter: Voter[T, P], error: Error[T, P, E])(implicit targetMonoid: Monoid[T], errorOrdering: Ordering[E]): AnnotatedTree[K, V, T, A] = {
+    AnnotatedTree(pruneNode(validationData, this.root, voter, error)._2).renumberLeaves
   }
 
   /**
@@ -95,25 +154,34 @@ case class Tree[K, V, T](root: Node[K, V, T]) {
    * @param start The root node of the tree.
    * @return A node at the root of the new, pruned tree.
    */
-  def pruneNode[P, E](validationData: Map[Int, T], start: Node[K, V, T], voter: Voter[T, P], error: Error[T, P, E])(implicit targetMonoid: Monoid[T], errorOrdering: Ordering[E]): (Map[Int, T], Node[K, V, T]) = {
-    type childSeqType = (K, Predicate[V], Node[K, V, T])
+  def pruneNode[P, E](validationData: Map[Int, T], start: Node[K, V, T, A], voter: Voter[T, P], error: Error[T, P, E])(implicit targetMonoid: Monoid[T], errorOrdering: Ordering[E]): (Map[Int, T], Node[K, V, T, A]) = {
+    type ChildSeqType = (K, Predicate[V], Node[K, V, T, A])
     start match {
-      case leaf: LeafNode[K, V, T] => (validationData, leaf) // Bounce at the bottom and start back up the tree.
-      case SplitNode(children) => {
-        // Call pruneNode on each child, accumulating modified children and additions to the validation data along
-        // the way.
-        val (newData, newChildren) = children.foldLeft(validationData, Seq[childSeqType]()) {
-          case ((vData, childSeq), (k, p, child)) => pruneNode(vData, child, voter, error) match {
-            case (v, c) => (v, childSeq :+ (k, p, c))
+      case leaf @ LeafNode(_, _, _) =>
+        // Bounce at the bottom and start back up the tree.
+        (validationData, leaf)
+
+      case SplitNode(children) =>
+        // Call pruneNode on each child, accumulating modified children and
+        // additions to the validation data along the way.
+        val (newData, newChildren) =
+          children.foldLeft((validationData, Seq[ChildSeqType]())) {
+            case ((vData, childSeq), (k, p, child)) =>
+              pruneNode(vData, child, voter, error) match {
+                case (v, c) => (v, childSeq :+ (k, p, c))
+              }
           }
-        }
         // Now that we've taken care of the children, prune the current level.
-        val childLeaves = newChildren.collect { case (k, v, s: LeafNode[K, V, T]) => (k, v, s) }
-        if (childLeaves.size == newChildren.size) // If all children are leaves, we can potentially prune.
-          pruneLevel(SplitNode(newChildren), childLeaves, newData, voter, error)
-        else // If any children are SplitNodes, we can't prune.
+        val childLeaves = newChildren.collect { case (k, v, s @ LeafNode(_, _, _)) => (k, v, s) }
+
+        if (childLeaves.size == newChildren.size) {
+          // If all children are leaves, we can potentially prune.
+          val parent = SplitNode(newChildren)
+          pruneLevel(parent, childLeaves, newData, voter, error)
+        } else {
+          // If any children are SplitNodes, we can't prune.
           (newData, SplitNode(newChildren))
-      }
+        }
     }
   }
 
@@ -127,7 +195,14 @@ case class Tree[K, V, T](root: Node[K, V, T]) {
    * @param children
    * @return
    */
-  def pruneLevel[P, E](parent: SplitNode[K, V, T], children: Seq[(K, Predicate[V], LeafNode[K, V, T])], validationData: Map[Int, T], voter: Voter[T, P], error: Error[T, P, E])(implicit targetMonoid: Monoid[T], errorOrdering: Ordering[E]): (Map[Int, T], Node[K, V, T]) = {
+  def pruneLevel[P, E](
+    parent: SplitNode[K, V, T, A],
+    children: Seq[(K, Predicate[V], LeafNode[K, V, T, A])],
+    validationData: Map[Int, T],
+    voter: Voter[T, P],
+    error: Error[T, P, E])(implicit targetMonoid: Monoid[T],
+      errorOrdering: Ordering[E]): (Map[Int, T], Node[K, V, T, A]) = {
+
     // Get training and validation data and validation error for each leaf.
     val (targets, validations, errors) = children.map {
       case (k, p, leaf) =>
@@ -147,60 +222,78 @@ case class Tree[K, V, T](root: Node[K, V, T]) {
     if (doCombine) { // Create a new leaf from the combination of the children.
       // Find a unique (negative) index for the new leaf:
       val newIndex = -1 * children.map { case (k, p, leaf) => Math.abs(leaf.index) }.max
-      (validationData + (newIndex -> validationSum), LeafNode(newIndex, targetSum))
+      val node = LeafNode[K, V, T, A](newIndex, targetSum, parent.annotation)
+      (validationData + (newIndex -> validationSum), node)
     } else {
       (validationData, parent)
     }
   }
 
-  def leafFor(row: Map[K, V]) = findLeaf(row, root)
+  def leafFor(row: Map[K, V]): Option[LeafNode[K, V, T, A]] =
+    findLeaf(row, root)
 
-  def leafIndexFor(row: Map[K, V]) = findLeaf(row, root).map { _.index }
+  def leafIndexFor(row: Map[K, V]): Option[Int] =
+    findLeaf(row, root).map { _.index }
 
-  def targetFor(row: Map[K, V]) = findLeaf(row, root).map { _.target }
+  def targetFor(row: Map[K, V]): Option[T] =
+    findLeaf(row, root).map { _.target }
 
-  def growByLeafIndex(fn: Int => Seq[(K, Predicate[V], T)]) = {
+  /**
+   * For each leaf, this may convert the leaf to a [[SplitNode]] whose children
+   * have the target distribution returned by calling `fn` with the leaf's
+   * index. If `fn` returns an empty `Seq`, then the leaf is left as-is.
+   */
+  def growByLeafIndex(fn: Int => Seq[(K, Predicate[V], T, A)]): AnnotatedTree[K, V, T, A] = {
     var newIndex = -1
-    def incrIndex = {
+    def incrIndex(): Int = {
       newIndex += 1
       newIndex
     }
 
-    def growFrom(start: Node[K, V, T]): Node[K, V, T] = {
+    def growFrom(start: Node[K, V, T, A]): Node[K, V, T, A] = {
       start match {
-        case LeafNode(index, target) => {
+        case LeafNode(index, target, annotation) =>
           val newChildren = fn(index)
           if (newChildren.isEmpty)
-            LeafNode[K, V, T](incrIndex, target)
+            LeafNode[K, V, T, A](incrIndex(), target, annotation)
           else
-            SplitNode[K, V, T](newChildren.map {
-              case (feature, predicate, target) =>
-                (feature, predicate, LeafNode[K, V, T](incrIndex, target))
+            SplitNode[K, V, T, A](newChildren.map {
+              case (feature, predicate, target, childAnnotation) =>
+                val child = LeafNode[K, V, T, A](incrIndex(), target, childAnnotation)
+                (feature, predicate, child)
             })
-        }
-        case SplitNode(children) => SplitNode[K, V, T](children.map {
-          case (feature, predicate, child) =>
-            (feature, predicate, growFrom(child))
-        })
+
+        case SplitNode(children) =>
+          SplitNode[K, V, T, A](children.map {
+            case (feature, predicate, child) =>
+              (feature, predicate, growFrom(child))
+          })
       }
     }
 
-    Tree(growFrom(root))
+    AnnotatedTree(growFrom(root))
   }
 
-  def updateByLeafIndex(fn: Int => Option[Node[K, V, T]]) = {
-    def updateFrom(start: Node[K, V, T]): Node[K, V, T] = {
+  /**
+   * For each [[LeafNode]] in this tree, this will replace it with the node
+   * returned from `fn` (called with the leaf node's index), if it returns
+   * `Some` node. Otherwise, if `fn` returns `None`, then the leaf node is
+   * left as-is.
+   */
+  def updateByLeafIndex(fn: Int => Option[Node[K, V, T, A]]): AnnotatedTree[K, V, T, A] = {
+    def updateFrom(start: Node[K, V, T, A]): Node[K, V, T, A] = {
       start match {
-        case LeafNode(index, target) =>
+        case LeafNode(index, _, _) =>
           fn(index).getOrElse(start)
-        case SplitNode(children) => SplitNode[K, V, T](children.map {
-          case (feature, predicate, child) =>
-            (feature, predicate, updateFrom(child))
-        })
+        case SplitNode(children) =>
+          SplitNode[K, V, T, A](children.map {
+            case (feature, predicate, child) =>
+              (feature, predicate, updateFrom(child))
+          })
       }
     }
 
-    Tree(updateFrom(root)).renumberLeaves
+    AnnotatedTree(updateFrom(root)).renumberLeaves
   }
 
   /**
@@ -208,13 +301,17 @@ case class Tree[K, V, T](root: Node[K, V, T]) {
    *
    * @return A new tree with leaves renumbered.
    */
-  def renumberLeaves: Tree[K, V, T] = this.growByLeafIndex { i => Nil }
-
+  def renumberLeaves: AnnotatedTree[K, V, T, A] =
+    this.growByLeafIndex { i => Nil }
 }
 
 object Tree {
-  def empty[K, V, T](t: T): Tree[K, V, T] = Tree(LeafNode[K, V, T](0, t))
-  def expand[K, V, T: Monoid](times: Int, leaf: LeafNode[K, V, T], splitter: Splitter[V, T], evaluator: Evaluator[V, T], stopper: Stopper[T], instances: Iterable[Instance[K, V, T]]): Node[K, V, T] = {
+  def apply[K, V, T](node: Node[K, V, T, Unit]): Tree[K, V, T] =
+    AnnotatedTree(node)
+
+  def singleton[K, V, T](t: T): Tree[K, V, T] = Tree(LeafNode(0, t, ()))
+
+  def expand[K, V, T: Monoid](times: Int, leaf: LeafNode[K, V, T, Unit], splitter: Splitter[V, T], evaluator: Evaluator[V, T], stopper: Stopper[T], instances: Iterable[Instance[K, V, T]]): Node[K, V, T, Unit] = {
     if (times > 0 && stopper.shouldSplit(leaf.target)) {
       implicit val jdSemigroup = splitter.semigroup
 
@@ -237,7 +334,7 @@ object Tree {
         if (edges.count { case (pred, target, newInstances) => newInstances.size > 0 } > 1) {
           Some(SplitNode(edges.map {
             case (pred, target, newInstances) =>
-              (splitFeature, pred, expand(times - 1, LeafNode[K, V, T](0, target), splitter, evaluator, stopper, newInstances))
+              (splitFeature, pred, expand[K, V, T](times - 1, LeafNode(0, target), splitter, evaluator, stopper, newInstances))
           }))
         } else {
           None
@@ -248,4 +345,3 @@ object Tree {
     }
   }
 }
-
