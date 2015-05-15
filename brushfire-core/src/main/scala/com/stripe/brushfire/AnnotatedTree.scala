@@ -1,5 +1,8 @@
 package com.stripe.brushfire
 
+import scala.annotation.tailrec
+import scala.util.Random
+
 import com.twitter.algebird._
 
 sealed trait Node[K, V, T, A] {
@@ -34,6 +37,43 @@ case class AnnotatedTree[K, V, T, A: Semigroup](root: Node[K, V, T, A]) {
           .find { case (feature, predicate, _) => predicate(row.get(feature)) }
           .flatMap { case (_, _, child) => findLeaf(row, child) }
     }
+  }
+
+  private def findLeafW(
+    row: Map[K, V],
+    start: Node[K, V, T, A],
+    seed: Option[Long] = None)(implicit toDouble: A => Double): Option[LeafNode[K, V, T, A]] = {
+    lazy val rng: Random = {
+      val random = new Random(seed.getOrElse(row.hashCode.toLong))
+      // Hash codes are typically bad random numbers, but Java's Random uses
+      // the seed as the first random number so we give spin it first.
+      random.nextLong()
+      random
+    }
+
+    @tailrec
+    def select(children: List[Node[K, V, T, A]], k: Double): Option[Node[K, V, T, A]] =
+      children match {
+        case child :: rest if k < child.annotation => Some(child)
+        case child :: rest => select(rest, k - child.annotation)
+        case Nil => None
+      }
+
+    def recur(node: Node[K, V, T, A]): Option[LeafNode[K, V, T, A]] = {
+      node match {
+        case leaf @ LeafNode(_, _, _) =>
+          Some(leaf)
+
+        case SplitNode(children) =>
+          val candidates = children.collect {
+            case (key, pred, child) if pred(row.get(key)) => child
+          }.toList
+          select(candidates, rng.nextDouble * node.annotation)
+            .flatMap(recur)
+      }
+    }
+
+    recur(start)
   }
 
   private def mapSplits[K0, V0](f: (K, Predicate[V]) => (K0, Predicate[V0])): AnnotatedTree[K0, V0, T, A] = {
