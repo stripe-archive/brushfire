@@ -5,7 +5,19 @@ package com.stripe.brushfire
  * `true` or `false`. It is generally used within a [[Tree]] to decide which
  * branch to follow while trying to classify a row/feature vector.
  */
-sealed trait Predicate[V] extends (Option[V] => Boolean)
+sealed trait Predicate[V] extends (Option[V] => Boolean) {
+
+  /**
+   * Map the value types of this [[Predicate]] using `f`.
+   */
+  def map[V1: Ordering](f: V => V1): Predicate[V1] = this match {
+    case EqualTo(v) => EqualTo(f(v))
+    case LessThan(v) => LessThan(f(v))
+    case Not(p) => Not(p.map(f))
+    case AnyOf(list) => AnyOf(list.map(_.map(f)))
+    case IsPresent(p) => IsPresent(p.map(_.map(f)))
+  }
+}
 
 /**
  * A [[Predicate]] that returns `true` iff the input is missing or the input is

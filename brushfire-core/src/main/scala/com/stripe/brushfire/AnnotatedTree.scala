@@ -89,17 +89,8 @@ case class AnnotatedTree[K, V, T, A: Semigroup](root: Node[K, V, T, A]) {
    * produce a valid `Tree` if `f` preserves the ordering (ie if
    * `a.compare(b) == f(a).compare(f(b))`).
    */
-  def mapPredicates[V1](f: V => V1)(implicit ord: Ordering[V1]): AnnotatedTree[K, V1, T, A] = {
-    def mapPred(pred: Predicate[V]): Predicate[V1] = pred match {
-      case EqualTo(v) => EqualTo(f(v))
-      case LessThan(v) => LessThan(f(v))
-      case Not(p) => Not(mapPred(p))
-      case AnyOf(ps) => AnyOf(ps.map(mapPred))
-      case IsPresent(p) => IsPresent(p.map(mapPred))
-    }
-
-    mapSplits { (k, p) => (k, mapPred(p)) }
-  }
+  def mapPredicates[V1: Ordering](f: V => V1): AnnotatedTree[K, V1, T, A] =
+    mapSplits { (k, p) => (k, p.map(f)) }
 
   /**
    * Returns the leaf with index `leafIndex` by performing a DFS.

@@ -63,18 +63,9 @@ object Dispatched {
     splits.map { split =>
       new Split[Dispatched[A, B, C, D], T] {
         def predicates = split.predicates.map {
-          case (pred, p) => (wrapPredicate(fn)(pred), p)
+          case (pred, p) => (pred.map(fn), p)
         }
       }
     }
   }
-
-  def wrapPredicate[X, A: Ordering, B, C: Ordering, D](fn: X => Dispatched[A, B, C, D])(predicate: Predicate[X]): Predicate[Dispatched[A, B, C, D]] =
-    predicate match {
-      case EqualTo(v) => EqualTo(fn(v))
-      case LessThan(v) => LessThan(fn(v))
-      case Not(p) => Not(wrapPredicate(fn)(p))
-      case AnyOf(list) => AnyOf(list.map(wrapPredicate(fn)))
-      case IsPresent(p) => IsPresent(p.map(wrapPredicate(fn)))
-    }
 }
