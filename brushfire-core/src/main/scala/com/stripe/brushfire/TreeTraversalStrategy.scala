@@ -10,7 +10,7 @@ import scala.util.Random
  * traversed. There are many ways to choose which path to take, which are
  * packaged up as different `TraversalStrategy`.
  */
-sealed abstract class TraversalStrategy[K, V, T, A] {
+trait TraversalStrategy[K, V, T, A] {
 
   /**
    * Find the [[LeafNode]] that best fits `row` in the tree.  Generally, the
