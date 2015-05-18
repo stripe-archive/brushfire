@@ -83,6 +83,8 @@ object JsonInjections {
         def apply(pred: Predicate[V]) = {
           val obj = JsonNodeFactory.instance.objectNode
           pred match {
+            case IsPresent(None) => obj.put("exists", toJsonNode[V](null.asInstanceOf[V]))
+            case IsPresent(Some(pred)) => obj.put("exists", toJsonNode(pred)(predicateJsonNodeInjection))
             case EqualTo(v) => obj.put("eq", toJsonNode(v))
             case LessThan(v) => obj.put("lt", toJsonNode(v))
             case Not(pred) => obj.put("not", toJsonNode(pred)(predicateJsonNodeInjection))
@@ -106,6 +108,10 @@ object JsonInjections {
             }
             case Some("not") => fromJsonNode[Predicate[V]](n.get("not")).map { Not(_) }
             case Some("or") => fromJsonNode[List[Predicate[V]]](n.get("or")).map { AnyOf(_) }
+            case Some("exists") =>
+              val predNode = n.get("exists")
+              if (predNode.isNull) Success(IsPresent[V](None))
+              else fromJsonNode[Predicate[V]](predNode).map(p => IsPresent(Some(p)))
             case _ => sys.error("Not a predicate node")
           }
         }
