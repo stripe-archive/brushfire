@@ -47,3 +47,17 @@ case class BinnedBinaryError[M: Monoid]()
     Map(percentage(probabilities.getOrElse(true, 0.0)) -> tuple)
   }
 }
+
+case class AccuracyError[L, M](implicit m: Monoid[M])
+    extends FrequencyError[L, M, (M, M)] {
+
+  lazy val monoid = implicitly[Monoid[(M, M)]]
+
+  def error(label: L, count: M, probabilities: Map[L, Double]) = {
+    val mode = probabilities.maxBy { _._2 }._1
+    if (mode == label)
+      (count, m.zero)
+    else
+      (m.zero, count)
+  }
+}

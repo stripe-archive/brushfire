@@ -1,0 +1,5 @@
+#!/bin/sh
+java -Xmx2G -cp ../brushfire-core/target/brushfire-core-0.5.0-SNAPSHOT-jar-with-dependencies.jar \
+com.stripe.brushfire.local.Example \
+petal-width petal-length sepal-width sepal-length \
+< iris.data
