@@ -75,8 +75,8 @@ object TraversalStrategy {
     new FirstMatch[K, V, T, A]
 
   /** Returns an instance of [[ProbabilisticWeightedMatch]] whose seed is `None`. */
-  def probabilisticWeightedMatch[K, V, T, A](implicit toDouble: A => Double): ProbabilisticWeightedMatch[K, V, T, A] =
-    new ProbabilisticWeightedMatch[K, V, T, A](None)
+  def probabilisticWeightedMatch[K, V, T, A](seed: Long)(implicit toDouble: A => Double): ProbabilisticWeightedMatch[K, V, T, A] =
+    new ProbabilisticWeightedMatch[K, V, T, A](seed)
 
   /** Returns an instance of [[MaxWeightedMatch]]. */
   def maxWeightedMatch[K, V, T, A: Ordering]: MaxWeightedMatch[K, V, T, A] =
@@ -105,15 +105,12 @@ final class FirstMatch[K, V, T, A] extends TraversalStrategy[K, V, T, A] {
  *
  * @param seed an optional seed for the RNG used in a single traversal
  */
-final class ProbabilisticWeightedMatch[K, V, T, A](seed: Option[Long] = None)(implicit toDouble: A => Double) extends TraversalStrategy[K, V, T, A] {
-  def withSeed(seed: Long): ProbabilisticWeightedMatch[K, V, T, A] =
-    new ProbabilisticWeightedMatch(Some(seed))(toDouble)
-
+final class ProbabilisticWeightedMatch[K, V, T, A](seed: Long)(implicit toDouble: A => Double) extends TraversalStrategy[K, V, T, A] {
   def find(init: Node[K, V, T, A], row: Map[K, V]): Option[LeafNode[K, V, T, A]] = {
     lazy val rng: Random = {
-      val random = new Random(seed.getOrElse(row.hashCode.toLong))
-      // Hash codes are typically bad random numbers, but Java's Random uses
-      // the seed as the first random number so we give spin it first.
+      val random = new Random(seed)
+      // Java's Random uses the seed as the first random number, so we give it
+      // spin to get something useful.
       random.nextLong()
       random
     }
