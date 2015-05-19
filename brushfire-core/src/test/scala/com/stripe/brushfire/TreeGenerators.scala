@@ -53,4 +53,3 @@ object TreeGenerators {
     genNode(0, height).map(Tree(_))
   }
 }
-
