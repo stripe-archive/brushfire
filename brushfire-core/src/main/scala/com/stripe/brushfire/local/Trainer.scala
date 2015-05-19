@@ -8,7 +8,7 @@ case class Trainer[K: Ordering, V, T: Monoid](
     sampler: Sampler[K],
     trees: List[Tree[K, V, T]]) {
 
-  private def updateTrees(fn: (Tree[K, V, T], Map[LeafNode[K, V, T], Iterable[Instance[K, V, T]]]) => Tree[K, V, T]) = {
+  private def updateTrees(fn: (Tree[K, V, T], Map[LeafNode[K, V, T, Unit], Iterable[Instance[K, V, T]]]) => Tree[K, V, T]) = {
     val newTrees = trees.zipWithIndex.map {
       case (tree, index) =>
         val byLeaf =
@@ -28,7 +28,7 @@ case class Trainer[K: Ordering, V, T: Monoid](
     copy(trees = newTrees)
   }
 
-  private def updateLeaves(fn: (LeafNode[K, V, T], Iterable[Instance[K, V, T]]) => Node[K, V, T]) = {
+  private def updateLeaves(fn: (LeafNode[K, V, T, Unit], Iterable[Instance[K, V, T]]) => Node[K, V, T, Unit]) = {
     updateTrees {
       case (tree, byLeaf) =>
         val newNodes = byLeaf.map {
@@ -78,7 +78,7 @@ case class Trainer[K: Ordering, V, T: Monoid](
 
 object Trainer {
   def apply[K: Ordering, V, T: Monoid](trainingData: Iterable[Instance[K, V, T]], sampler: Sampler[K]): Trainer[K, V, T] = {
-    val empty = 0.until(sampler.numTrees).toList.map { i => Tree.empty[K, V, T](Monoid.zero) }
+    val empty = 0.until(sampler.numTrees).toList.map { i => Tree.singleton[K, V, T](Monoid.zero) }
     Trainer(trainingData, sampler, empty)
   }
 }
