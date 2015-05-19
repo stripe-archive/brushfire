@@ -1,5 +1,8 @@
 package com.stripe.brushfire
 
+import scala.annotation.tailrec
+import scala.util.Random
+
 import com.twitter.algebird._
 
 sealed trait Node[K, V, T, A] {
@@ -24,17 +27,7 @@ object LeafNode {
 }
 
 case class AnnotatedTree[K, V, T, A: Semigroup](root: Node[K, V, T, A]) {
-  private def findLeaf(row: Map[K, V], start: Node[K, V, T, A]): Option[LeafNode[K, V, T, A]] = {
-    start match {
-      case leaf @ LeafNode(_, _, _) =>
-        Some(leaf)
-
-      case SplitNode(children) =>
-        children
-          .find { case (feature, predicate, _) => predicate(row.get(feature)) }
-          .flatMap { case (_, _, child) => findLeaf(row, child) }
-    }
-  }
+  import AnnotatedTree.defaultTraversalStrategy
 
   private def mapSplits[K0, V0](f: (K, Predicate[V]) => (K0, Predicate[V0])): AnnotatedTree[K0, V0, T, A] = {
     def recur(node: Node[K, V, T, A]): Node[K0, V0, T, A] = node match {
@@ -96,16 +89,8 @@ case class AnnotatedTree[K, V, T, A: Semigroup](root: Node[K, V, T, A]) {
    * produce a valid `Tree` if `f` preserves the ordering (ie if
    * `a.compare(b) == f(a).compare(f(b))`).
    */
-  def mapPredicates[V1](f: V => V1)(implicit ord: Ordering[V1]): AnnotatedTree[K, V1, T, A] = {
-    def mapPred(pred: Predicate[V]): Predicate[V1] = pred match {
-      case EqualTo(v) => EqualTo(f(v))
-      case LessThan(v) => LessThan(f(v))
-      case Not(p) => Not(mapPred(p))
-      case AnyOf(ps) => AnyOf(ps.map(mapPred))
-    }
-
-    mapSplits { (k, p) => (k, mapPred(p)) }
-  }
+  def mapPredicates[V1: Ordering](f: V => V1): AnnotatedTree[K, V1, T, A] =
+    mapSplits { (k, p) => (k, p.map(f)) }
 
   /**
    * Returns the leaf with index `leafIndex` by performing a DFS.
@@ -227,14 +212,14 @@ case class AnnotatedTree[K, V, T, A: Semigroup](root: Node[K, V, T, A]) {
     }
   }
 
-  def leafFor(row: Map[K, V]): Option[LeafNode[K, V, T, A]] =
-    findLeaf(row, root)
+  def leafFor(row: Map[K, V], strategy: TraversalStrategy[K, V, T, A] = defaultTraversalStrategy): Option[LeafNode[K, V, T, A]] =
+    strategy.find(root, row)
 
-  def leafIndexFor(row: Map[K, V]): Option[Int] =
-    findLeaf(row, root).map { _.index }
+  def leafIndexFor(row: Map[K, V], strategy: TraversalStrategy[K, V, T, A] = defaultTraversalStrategy): Option[Int] =
+    strategy.find(root, row).map { _.index }
 
-  def targetFor(row: Map[K, V]): Option[T] =
-    findLeaf(row, root).map { _.target }
+  def targetFor(row: Map[K, V], strategy: TraversalStrategy[K, V, T, A] = defaultTraversalStrategy): Option[T] =
+    strategy.find(root, row).map { _.target }
 
   /**
    * For each leaf, this may convert the leaf to a [[SplitNode]] whose children
@@ -301,4 +286,9 @@ case class AnnotatedTree[K, V, T, A: Semigroup](root: Node[K, V, T, A]) {
    */
   def renumberLeaves: AnnotatedTree[K, V, T, A] =
     this.growByLeafIndex { i => Nil }
+}
+
+object AnnotatedTree {
+  def defaultTraversalStrategy[K, V, T, A]: TraversalStrategy[K, V, T, A] =
+    TraversalStrategy.firstMatch[K, V, T, A]
 }
