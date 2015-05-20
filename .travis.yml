@@ -1,8 +1,13 @@
 laungage: java
+
+sudo: false
+
 script: ./generate_docs.sh
+
 env:
   global:
     secure: E4ScO4S/tgD69iHOzqqXQ7dH5U+rwdEox3C3mSB9YPpI+9/hpnxWvE+NDD1jveveb2SKMP1sxTNNGvci8xoe4m7gMc2My+U1Wh9yUo+SsFUq3sQNaD32N1ZtuH2JwBZRHNwnU/hp2rQrHXQH5UzLKuIybClJTajlxKb24bMj6bA=
+
 branches:
   only:
   - master
