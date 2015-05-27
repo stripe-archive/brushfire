@@ -91,19 +91,9 @@ class TraversalStrategySpec extends WordSpec with Matchers with Checkers {
         val expectedMaxLeaf = Some(collectLeafs(maxTree.root).maxBy(_.target))
         val actualMaxLeaf = maxTree.leafFor(Map.empty, TraversalStrategy.maxTargetMatch(Some(_)))
 
-        println(s"""
-expectedMaxLeaf = $expectedMaxLeaf
-actualMaxLeaf   = $actualMaxLeaf
-""")
-
         val minTree = tree.annotate(Min(_))
         val expectedMinLeaf = Some(collectLeafs(minTree.root).minBy(_.target))
         val actualMinLeaf = minTree.leafFor(Map.empty, TraversalStrategy.minTargetMatch(Some(_)))
-
-        println(s"""
-expectedMinLeaf = $expectedMinLeaf
-actualMinLeaf   = $actualMinLeaf
-""")
 
         ("max leafs match" |: (actualMaxLeaf == expectedMaxLeaf)) &&
           ("min leafs match" |: (actualMinLeaf == expectedMinLeaf))

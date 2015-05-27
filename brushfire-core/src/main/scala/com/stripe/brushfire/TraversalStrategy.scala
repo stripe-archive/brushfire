@@ -151,14 +151,6 @@ final class FirstMatch[K, V, T, A] extends TraversalStrategy[K, V, T, A] {
  */
 final class MaxTargetMatch[K, V, T, A](getMaxTarget: A => Option[T])(implicit ord: Ordering[T]) extends TraversalStrategy[K, V, T, A] {
 
-  /**
-   * Let path finding short circuit if we can get the maximum target of a given
-   * node in constant time (ie from the annotaion). This requires that
-   * `maxTarget` returns the maximum target of all descendant leaf nodes.
-   */
-  def withShortCircuit(maxTarget: A => Option[T]): MaxTargetMatch[K, V, T, A] =
-    new MaxTargetMatch(maxTarget)
-
   def find(init: Node[K, V, T, A], row: Map[K, V]): Option[LeafNode[K, V, T, A]] = {
     def recur(nodes: List[Node[K, V, T, A]], max: Option[LeafNode[K, V, T, A]]): Option[LeafNode[K, V, T, A]] =
       nodes match {
