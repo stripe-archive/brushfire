@@ -162,7 +162,12 @@ final class MaxTargetMatch[K, V, T, A](getMaxTarget: A => Option[T])(implicit or
   def find(init: Node[K, V, T, A], row: Map[K, V]): Option[LeafNode[K, V, T, A]] = {
     def recur(nodes: List[Node[K, V, T, A]], max: Option[LeafNode[K, V, T, A]]): Option[LeafNode[K, V, T, A]] =
       nodes match {
-        case Nil => max
+        case Nil =>
+          max
+        case LeafNode(_, target, _) :: rest if max.isDefined && ord.lt(target, max.get.target) =>
+          recur(rest, max)
+        case (leaf @ LeafNode(_, _, _)) :: rest =>
+          recur(rest, Some(leaf))
         case (node @ SplitNode(_)) :: rest =>
           val newMax = getMaxTarget(node.annotation) match {
             case Some(maxInPath) if max.isDefined && ord.lt(maxInPath, max.get.target) =>

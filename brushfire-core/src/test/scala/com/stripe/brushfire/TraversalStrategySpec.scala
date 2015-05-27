@@ -3,6 +3,7 @@ package com.stripe.brushfire
 import com.twitter.algebird._
 
 import org.scalacheck.Prop
+import org.scalacheck.Prop._
 import org.scalacheck.Arbitrary.arbitrary
 import org.scalatest.{ WordSpec, Matchers }
 import org.scalatest.prop.Checkers
@@ -54,6 +55,59 @@ class TraversalStrategySpec extends WordSpec with Matchers with Checkers {
       tree.leafFor(Map("f1" -> -1D), TraversalStrategy.maxWeightedMatch) shouldBe Some(LeafNode(1, 1D, 53))
       tree.leafFor(Map("f2" -> 1D), TraversalStrategy.maxWeightedMatch) shouldBe Some(LeafNode(3, 333D, 19))
       tree.leafFor(Map("f1" -> -1D, "f2" -> -1D), TraversalStrategy.maxWeightedMatch) shouldBe Some(LeafNode(0, -1D, 33))
+    }
+  }
+
+  def collectLeafs[K, V, T, A](node: Node[K, V, T, A]): Set[LeafNode[K, V, T, A]] =
+    node match {
+      case SplitNode(children) =>
+        children.collect {
+          case (_, p, n) if p(None) => collectLeafs(n)
+        }.flatten.toSet
+
+      case leaf @ LeafNode(_, _, _) =>
+        Set(leaf)
+    }
+
+  "MaxTargetMatch" should {
+    "choose max target in tree without short circuit" in {
+      check { (tree: Tree[String, Double, Double]) =>
+        val leafs = collectLeafs(tree.root)
+
+        val expectedMaxLeaf = Some(leafs.maxBy(_.target))
+        val actualMaxLeaf = tree.leafFor(Map.empty, TraversalStrategy.maxTargetMatch())
+
+        val expectedMinLeaf = Some(leafs.minBy(_.target))
+        val actualMinLeaf = tree.leafFor(Map.empty, TraversalStrategy.minTargetMatch())
+
+        ((actualMaxLeaf == expectedMaxLeaf) :| "max leafs match") &&
+          ((actualMinLeaf == expectedMinLeaf) :| "min leafs match")
+      }
+    }
+
+    "choose max target in tree with short circuit" in {
+      check { (tree: Tree[String, Double, Double]) =>
+        val maxTree = tree.annotate(Max(_))
+        val expectedMaxLeaf = Some(collectLeafs(maxTree.root).maxBy(_.target))
+        val actualMaxLeaf = maxTree.leafFor(Map.empty, TraversalStrategy.maxTargetMatch(Some(_)))
+
+        println(s"""
+expectedMaxLeaf = $expectedMaxLeaf
+actualMaxLeaf   = $actualMaxLeaf
+""")
+
+        val minTree = tree.annotate(Min(_))
+        val expectedMinLeaf = Some(collectLeafs(minTree.root).minBy(_.target))
+        val actualMinLeaf = minTree.leafFor(Map.empty, TraversalStrategy.minTargetMatch(Some(_)))
+
+        println(s"""
+expectedMinLeaf = $expectedMinLeaf
+actualMinLeaf   = $actualMinLeaf
+""")
+
+        ("max leafs match" |: (actualMaxLeaf == expectedMaxLeaf)) &&
+          ("min leafs match" |: (actualMinLeaf == expectedMinLeaf))
+      }
     }
   }
 
