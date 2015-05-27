@@ -14,6 +14,9 @@ case class SplitNode[K, V, T, A: Semigroup](children: Seq[(K, Predicate[V], Node
 
   lazy val annotation: A =
     Semigroup.sumOption(children.map(_._3.annotation)).get
+
+  def findChildren(row: Map[K, V]): List[Node[K, V, T, A]] =
+    children.collect { case (k, p, n) if p(row.get(k)) => n }(collection.breakOut)
 }
 
 case class LeafNode[K, V, T, A](
@@ -27,8 +30,6 @@ object LeafNode {
 }
 
 case class AnnotatedTree[K, V, T, A: Semigroup](root: Node[K, V, T, A]) {
-  import AnnotatedTree.defaultTraversalStrategy
-
   private def mapSplits[K0, V0](f: (K, Predicate[V]) => (K0, Predicate[V0])): AnnotatedTree[K0, V0, T, A] = {
     def recur(node: Node[K, V, T, A]): Node[K0, V0, T, A] = node match {
       case SplitNode(children) =>
@@ -212,14 +213,14 @@ case class AnnotatedTree[K, V, T, A: Semigroup](root: Node[K, V, T, A]) {
     }
   }
 
-  def leafFor(row: Map[K, V], strategy: TraversalStrategy[K, V, T, A] = defaultTraversalStrategy): Option[LeafNode[K, V, T, A]] =
-    strategy.find(root, row)
+  def leafFor(row: Map[K, V])(implicit traversal: TreeTraversal[K, V, T, A]): Option[LeafNode[K, V, T, A]] =
+    traversal.find(root, row).headOption
 
-  def leafIndexFor(row: Map[K, V], strategy: TraversalStrategy[K, V, T, A] = defaultTraversalStrategy): Option[Int] =
-    strategy.find(root, row).map { _.index }
+  def leafIndexFor(row: Map[K, V])(implicit traversal: TreeTraversal[K, V, T, A]): Option[Int] =
+    leafFor(row).map(_.index)
 
-  def targetFor(row: Map[K, V], strategy: TraversalStrategy[K, V, T, A] = defaultTraversalStrategy): Option[T] =
-    strategy.find(root, row).map { _.target }
+  def targetFor(row: Map[K, V])(implicit traversal: TreeTraversal[K, V, T, A], semigroup: Semigroup[T]): Option[T] =
+    semigroup.sumOption(traversal.find(root, row).map(_.target))
 
   /**
    * For each leaf, this may convert the leaf to a [[SplitNode]] whose children
@@ -286,9 +287,4 @@ case class AnnotatedTree[K, V, T, A: Semigroup](root: Node[K, V, T, A]) {
    */
   def renumberLeaves: AnnotatedTree[K, V, T, A] =
     this.growByLeafIndex { i => Nil }
-}
-
-object AnnotatedTree {
-  def defaultTraversalStrategy[K, V, T, A]: TraversalStrategy[K, V, T, A] =
-    TraversalStrategy.firstMatch[K, V, T, A]
 }
