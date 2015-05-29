@@ -55,9 +55,9 @@ object Voter {
   type FrequencyVoter[L, M] = Voter[Map[L, M], Map[L, Double]]
 
   def soft[L, M: Numeric]: FrequencyVoter[L, M] =
-    fromMonoid[Map[L, AveragedValue]]
-      .contramap[Map[L, M]](normalize(_).mapValues(AveragedValue(_)))
-      .map(_.mapValues(_.value))
+    fromMonoid[(Map[L, Double], Int)]
+      .contramap[Map[L, M]](normalize(_) -> 1)
+      .map { case (m, cnt) => m.mapValues(_ / cnt) }
 
   def mode[L, M: Ordering]: FrequencyVoter[L, M] =
     fromMonoid[Map[L, Double]]
@@ -67,10 +67,8 @@ object Voter {
   def threshold[M](threshold: Double, voter: FrequencyVoter[Boolean, M]): Voter[Map[Boolean, M], Boolean] =
     voter.map(m => m.getOrElse(true, 0D) > threshold)
 
-  def mean[M <% Double]: Voter[M, Double] =
-    fromMonoid[AveragedValue]
-      .contramap[M](AveragedValue(_))
-      .map(_.value)
+  def mean[N: Numeric]: Voter[N, Double] =
+    fromAggregator(AveragedValue.numericAggregator[N])
 
   private def normalize[L, N](m: Map[L, N])(implicit num: Numeric[N]): Map[L, Double] = {
     val nonNeg = m.mapValues { n => math.max(num.toDouble(n), 0.0) }
