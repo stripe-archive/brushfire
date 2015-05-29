@@ -8,9 +8,11 @@ import scala.util.Random
 import com.twitter.algebird._
 
 /**
- * A `TreeTraversal` provides a way to find an ordered list of nodes in a tree
- * that match  a row. The actual order they are returned in depends on the
- * implementation.
+ * A `TreeTraversal` provides a way to find all of the leaves in a tree that
+ * some row can evaluate to. Specifically, there may be cases where multiple
+ * predicates in a single split node return `true` for a given row (eg missing
+ * features). A tree traversal chooses which paths to go down (which may be all
+ * of them) and the order in which they are traversed.
  */
 trait TreeTraversal[K, V, T, A] {
 
@@ -21,11 +23,11 @@ trait TreeTraversal[K, V, T, A] {
     LimitedTreeTraversal(this, n)
 
   /**
-   * Find the [[LeafNode]] that best fits `row` in the tree.  Generally, the
+   * Find the [[LeafNode]]s that best fit `row` in the tree.  Generally, the
    * path from `tree.root` to the resulting leaf node will be along *only*
    * `true` predicates. However, when multiple predicates are `true` in a
-   * [[SplitNode]], the actual choice of which one gets chosen is left to the
-   * particular implementation of `TreeTraversal`.
+   * [[SplitNode]], the actual choice of which ones gets traversed is left to
+   * the particular implementation of `TreeTraversal`.
    *
    * @param tree the decision tree to search in
    * @param row  the row/instance we're trying to match with a leaf node
@@ -35,15 +37,15 @@ trait TreeTraversal[K, V, T, A] {
     find(tree.root, row)
 
   /**
-   * Find the [[LeafNode]] that best fits `row` and is a descendant of `init`.
-   * Generally, the path from `init` to the resulting leaf node will be along
-   * *only* `true` predicates. However, when multiple predicates are `true` in
-   * a [[SplitNode]], the actual choice of which one gets chosen is left to the
-   * particular implementation of `TreeTraversal`.
+   * Find the [[LeafNode]]s that best fit `row` in the tree.  Generally, the
+   * path from `node` to the resulting leaf node will be along *only* `true`
+   * predicates. However, when multiple predicates are `true` in a
+   * [[SplitNode]], the actual choice of which ones gets traversed is left to
+   * the particular implementation of `TreeTraversal`.
    *
    * @param init the initial node to start from
    * @param row  the row/instance we're trying to match with a leaf node
-   * @return the leafs node that match the row
+   * @return the leaf nodes that match the row
    */
   def find(node: Node[K, V, T, A], row: Map[K, V]): Stream[LeafNode[K, V, T, A]]
 }
@@ -84,14 +86,19 @@ object TreeTraversal {
    * of a parent node are randomly shuffled, but with nodes with higher weight
    * being given a higher probability of being ordered earlier. This is
    * basically a mix between [[randomDepthFirst]] and [[weightedDepthFirst]].
+   *
+   * The actual algorithm can best be though of as a random sample from a set
+   * of weighted elements without replacement. The weight is directly
+   * proportional to its probability of being sampled, relative to all the
+   * other elements still in the set.
    */
   def probabilisticWeightedDepthFirst[K, V, T, A <% Double](rng: Random = Random): TreeTraversal[K, V, T, A] =
     DepthFirstTreeTraversal(probabilisticShuffle(_, rng)(_.annotation))
 
-  /**
-   * Given a weighted list `xs`, this shuffles the list, but elements with
-   * higher weights have a higher probabilitiy of being ordered first.
-   */
+  // Given a weighted set `xs`, this creates an ordered list of all the elements
+  // in `xs` by sampling without replacement from the set, but giving each
+  // element a probability of being picked that is equal to its weight / total
+  // weight of all elements remaining in the set.
   private[brushfire] def probabilisticShuffle[A](xs: List[A], rng: Random = scala.util.Random)(getWeight: A => Double): List[A] = {
 
     @tailrec
