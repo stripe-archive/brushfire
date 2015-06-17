@@ -80,7 +80,7 @@ case class SpaceSaverSplitter[V, L](capacity: Int = 1000)
   val semigroup = implicitly[Semigroup[S]]
 
   def create(value: V, target: Map[L, Long]) = target.mapValues { c =>
-    Semigroup.sumOption(1L.to(c).map { i => SpaceSaver(capacity, value) }).get
+    Semigroup.intTimes(c, SpaceSaver(capacity, value))
   }
 
   def split(parent: Map[L, Long], stats: S) = {
