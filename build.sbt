@@ -15,10 +15,13 @@ autoAPIMappings in ThisBuild := true
 
 maxErrors in ThisBuild := 8
 
+val unpublished = Seq(publish := (), publishLocal := (), publishArtifact := false)
+
 lazy val root = project.
   in(file(".")).
   aggregate(brushfireCore, brushfireScalding).
-  settings(unidocSettings: _*)
+  settings(unidocSettings: _*).
+  settings(unpublished: _*)
 
 lazy val brushfireCore = project.
   in(file("brushfire-core"))
