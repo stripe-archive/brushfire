@@ -154,7 +154,7 @@ case class Trainer[K: Ordering, V, T: Monoid](
                     for (
                       (feature, split, _) <- map.get(index).toList;
                       (predicate, target) <- split.predicates
-                    ) yield (feature, predicate, target)
+                    ) yield (feature, predicate, target, ())
                   }
 
               treeIndex -> newTree
@@ -293,13 +293,13 @@ case class Trainer[K: Ordering, V, T: Monoid](
             .map {
               case ((treeIndex, leafIndex), instances) =>
                 val target = Monoid.sum(instances.map { _.target })
-                val leaf = LeafNode[K, V, T](0, target)
+                val leaf = LeafNode[K, V, T, Unit](0, target)
                 val expanded = Tree.expand(times, leaf, splitter, evaluator, stopper, instances)
                 treeIndex -> List(leafIndex -> expanded)
             }
 
         val emptyExpansions = TypedPipe.from(0.until(sampler.numTrees))
-          .map { i => i -> List[(Int, Node[K, V, T])]() }
+          .map { i => i -> List[(Int, Node[K, V, T, Unit])]() }
 
         (expansions ++ emptyExpansions)
           .group
@@ -340,7 +340,7 @@ object Trainer {
   val MaxReducers = 20
 
   def apply[K: Ordering, V, T: Monoid](trainingData: TypedPipe[Instance[K, V, T]], sampler: Sampler[K]): Trainer[K, V, T] = {
-    val empty = 0.until(sampler.numTrees).map { treeIndex => (treeIndex, Tree.empty[K, V, T](Monoid.zero)) }
+    val empty = 0.until(sampler.numTrees).map { treeIndex => (treeIndex, Tree.singleton[K, V, T](Monoid.zero)) }
     Trainer(
       Execution.from(trainingData),
       Execution.from(sampler),

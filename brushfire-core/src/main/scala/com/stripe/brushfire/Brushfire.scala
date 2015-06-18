@@ -75,11 +75,22 @@ trait Sampler[-K] {
 }
 
 /** Combines multiple targets into a single prediction **/
-trait Voter[T, P] {
+trait Voter[T, P] { self =>
   def predict[K, V](trees: Iterable[Tree[K, V, T]], row: Map[K, V]): P =
     combine(trees.flatMap { _.targetFor(row) })
 
   def combine(targets: Iterable[T]): P
+
+  /**
+   * Transform the final predictions of this `Voter` with function `f`.
+   */
+  def map[Q](f: P => Q): Voter[T, Q] = new Voter[T, Q] {
+    override def predict[K, V](trees: Iterable[Tree[K, V, T]], row: Map[K, V]): Q =
+      f(self.predict(trees, row))
+
+    def combine(targets: Iterable[T]): Q =
+      f(self.combine(targets))
+  }
 }
 
 /** Computes some kind of error by comparing the trees' predictions to the validation set */

@@ -4,8 +4,6 @@ scalaVersion in ThisBuild := "2.11.5"
 
 crossScalaVersions := Seq("2.10.4")
 
-version in ThisBuild := "0.5.0-SNAPSHOT"
-
 scalacOptions in ThisBuild ++= Seq(
   "-deprecation",
   "-feature",

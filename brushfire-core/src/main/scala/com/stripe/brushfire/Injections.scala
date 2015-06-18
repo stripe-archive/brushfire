@@ -76,13 +76,15 @@ object JsonInjections {
     pInj: JsonNodeInjection[T],
     vInj: JsonNodeInjection[V],
     mon: Monoid[T],
-    ord: Ordering[V] = null): Injection[Tree[K, V, T], String] = {
+    ord: Ordering[V] = null): JsonNodeInjection[Tree[K, V, T]] = {
 
     implicit def predicateJsonNodeInjection: JsonNodeInjection[Predicate[V]] =
       new AbstractJsonNodeInjection[Predicate[V]] {
         def apply(pred: Predicate[V]) = {
           val obj = JsonNodeFactory.instance.objectNode
           pred match {
+            case IsPresent(None) => obj.put("exists", JsonNodeFactory.instance.nullNode)
+            case IsPresent(Some(pred)) => obj.put("exists", toJsonNode(pred)(predicateJsonNodeInjection))
             case EqualTo(v) => obj.put("eq", toJsonNode(v))
             case LessThan(v) => obj.put("lt", toJsonNode(v))
             case Not(pred) => obj.put("not", toJsonNode(pred)(predicateJsonNodeInjection))
@@ -106,15 +108,19 @@ object JsonInjections {
             }
             case Some("not") => fromJsonNode[Predicate[V]](n.get("not")).map { Not(_) }
             case Some("or") => fromJsonNode[List[Predicate[V]]](n.get("or")).map { AnyOf(_) }
+            case Some("exists") =>
+              val predNode = n.get("exists")
+              if (predNode.isNull) Success(IsPresent[V](None))
+              else fromJsonNode[Predicate[V]](predNode).map(p => IsPresent(Some(p)))
             case _ => sys.error("Not a predicate node")
           }
         }
       }
 
-    implicit def nodeJsonNodeInjection: JsonNodeInjection[Node[K, V, T]] =
-      new AbstractJsonNodeInjection[Node[K, V, T]] {
-        def apply(node: Node[K, V, T]) = node match {
-          case LeafNode(index, target) => {
+    implicit def nodeJsonNodeInjection: JsonNodeInjection[Node[K, V, T, Unit]] =
+      new AbstractJsonNodeInjection[Node[K, V, T, Unit]] {
+        def apply(node: Node[K, V, T, Unit]) = node match {
+          case LeafNode(index, target, _) => {
             val obj = JsonNodeFactory.instance.objectNode
             obj.put("leaf", toJsonNode(index))
             obj.put("distribution", toJsonNode(target))
@@ -159,27 +165,27 @@ object JsonInjections {
                   predicateNode <- tryChild(c, "predicate");
                   predicate <- fromJsonNode[Predicate[V]](predicateNode);
                   childNode <- tryChild(c, "children");
-                  child <- fromJsonNode[Node[K, V, T]](childNode)
+                  child <- fromJsonNode[Node[K, V, T, Unit]](childNode)
                 ) yield (feature, predicate, child)
               }.toList
 
               children.find { _.isFailure } match {
                 case Some(Failure(e)) => Failure(InversionFailure(n, e))
-                case _ => Success(SplitNode[K, V, T](children.map { _.get }))
+                case _ => Success(SplitNode[K, V, T, Unit](children.map { _.get }))
               }
             }
           }
         }
       }
 
-    implicit val treeJsonNodeInjection: JsonNodeInjection[Tree[K, V, T]] =
-      new AbstractJsonNodeInjection[Tree[K, V, T]] {
-        def apply(tree: Tree[K, V, T]) = toJsonNode(tree.root)
-        override def invert(n: JsonNode) = fromJsonNode[Node[K, V, T]](n).map { root => Tree(root) }
-      }
-
-    JsonInjection.toString[Tree[K, V, T]]
+    new AbstractJsonNodeInjection[Tree[K, V, T]] {
+      def apply(tree: Tree[K, V, T]) = toJsonNode(tree.root)
+      override def invert(n: JsonNode) = fromJsonNode[Node[K, V, T, Unit]](n).map { root => Tree(root) }
+    }
   }
+
+  implicit def treeJsonStringInjection[K, V, T](implicit jsonInj: JsonNodeInjection[Tree[K, V, T]]): Injection[Tree[K, V, T], String] =
+    JsonInjection.toString[Tree[K, V, T]]
 }
 
 object KryoInjections {

@@ -8,7 +8,9 @@ libraryDependencies ++= {
     chillBijection,
     jacksonMapper,
     jacksonXC,
-    jacksonJAXRS
+    jacksonJAXRS,
+    scalaTest,
+    scalaCheck
   )
 }
 

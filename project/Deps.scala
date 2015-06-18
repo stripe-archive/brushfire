@@ -15,6 +15,9 @@ object Deps {
     val chill = "0.5.2"
 
     val finatra = "1.6.0"
+
+    val scalaTest = "2.2.4"
+    val scalaCheck = "1.12.2"
   }
 
   val algebirdCore   = "com.twitter"         %% "algebird-core"      % V.algebird
@@ -28,4 +31,7 @@ object Deps {
   val scaldingCore   = "com.twitter"         %% "scalding-core"      % V.scalding
 
   val finatra        = "com.twitter"         %% "finatra"            % V.finatra
+
+  val scalaTest      = "org.scalatest"       %% "scalatest"          % V.scalaTest      % "test"
+  val scalaCheck     = "org.scalacheck"      %% "scalacheck"         % V.scalaCheck     % "test"
 }
