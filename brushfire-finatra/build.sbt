@@ -9,8 +9,6 @@ resolvers += "Twitter" at "http://maven.twttr.com"
 
 libraryDependencies += Deps.finatra
 
-Publish.settings
-
 MakeJar.settings
 
 enablePlugins(JavaServerAppPackaging)
