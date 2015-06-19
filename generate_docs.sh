@@ -1,8 +1,8 @@
 #!/bin/sh
 
-if [ "$TRAVIS_PULL_REQUEST" != "false" ]; then
-  exit 0
-fi
+#if [ "$TRAVIS_PULL_REQUEST" != "false" ]; then
+#  exit 0
+#fi
 
 GH_REF="https://${GH_TOKEN:}@github.com/stripe/brushfire.git"
 
