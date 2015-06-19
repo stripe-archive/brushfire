@@ -1,4 +1,4 @@
-laungage: java
+laungage: scala
 script: ./generate_docs.sh
 env:
   global:
