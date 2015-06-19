@@ -1,4 +1,5 @@
 laungage: scala
+jdk: oraclejdk7
 script: ./generate_docs.sh
 env:
   global:

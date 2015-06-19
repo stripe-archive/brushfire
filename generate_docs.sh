@@ -4,7 +4,7 @@
 #  exit 0
 #fi
 
-GH_REF="https://${GH_TOKEN:}@github.com/stripe/brushfire.git"
+GH_REF="https://${GH_TOKEN}@github.com/stripe/brushfire.git"
 
 set -e
 
