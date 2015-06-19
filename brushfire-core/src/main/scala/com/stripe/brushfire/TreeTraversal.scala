@@ -128,12 +128,17 @@ object TreeTraversal {
 case class DepthFirstTreeTraversal[K, V, T, A](order: List[Node[K, V, T, A]] => List[Node[K, V, T, A]])
     extends TreeTraversal[K, V, T, A] {
   def find(start: Node[K, V, T, A], row: Map[K, V]): Stream[LeafNode[K, V, T, A]] = {
+    // A little indirection makes scalac happy to eliminate some tailcalls in loop.
+    def loop0(stack: List[Node[K, V, T, A]]): Stream[LeafNode[K, V, T, A]] =
+      loop(stack)
+
+    @tailrec
     def loop(stack: List[Node[K, V, T, A]]): Stream[LeafNode[K, V, T, A]] =
       stack match {
         case Nil =>
           Stream.empty
         case (leaf @ LeafNode(_, _, _)) :: rest =>
-          leaf #:: loop(rest)
+          leaf #:: loop0(rest)
         case (split @ SplitNode(_)) :: rest =>
           val newStack = split.findChildren(row) match {
             case Nil => rest
@@ -143,7 +148,7 @@ case class DepthFirstTreeTraversal[K, V, T, A](order: List[Node[K, V, T, A]] => 
           loop(newStack)
       }
 
-    loop(start :: Nil)
+    loop0(start :: Nil)
   }
 }
 
