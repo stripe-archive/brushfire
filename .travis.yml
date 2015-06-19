@@ -6,6 +6,7 @@ jdk:
   - oraclejdk7
   - openjdk7
 install:
+  - echo "deb http://dl.bintray.com/sbt/debian /" | sudo tee -a /etc/apt/sources.list.d/sbt.list
   - sudo apt-get update -qq
   - sudo apt-get install -qq sbt
 script:
