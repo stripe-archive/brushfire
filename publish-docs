@@ -1,12 +1,12 @@
-#!/bin/sh
+#!/usr/bin/env sh
 
-if [ "$TRAVIS_PULL_REQUEST" != "false" ]; then
-  exit 0
-fi
+set -ev
 
-GH_REF="https://${GH_TOKEN:}@github.com/stripe/brushfire.git"
+#if [ "$TRAVIS_PULL_REQUEST" != "false" ]; then
+#  exit 0
+#fi
 
-set -e
+GH_REF="https://${GH_TOKEN}@github.com/stripe/brushfire.git"
 
 echo "Generating docs..."
 cd $(dirname $0)
