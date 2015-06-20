@@ -5,6 +5,7 @@ scala:
 jdk:
   - oraclejdk7
   - openjdk7
+sudo: false
 script:
   - sbt ++$TRAVIS_SCALA_VERSION test
 #  - ./publish-docs  -- skip for now.
