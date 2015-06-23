@@ -4,6 +4,7 @@ import scala.annotation.tailrec
 import scala.collection.SortedMap
 import scala.math.Ordering
 import scala.util.Random
+import scala.util.hashing.MurmurHash3
 
 import com.twitter.algebird._
 
@@ -33,8 +34,8 @@ trait TreeTraversal[K, V, T, A] {
    * @param row  the row/instance we're trying to match with a leaf node
    * @return the leaf nodes that best match the row
    */
-  def find(tree: AnnotatedTree[K, V, T, A], row: Map[K, V]): Stream[LeafNode[K, V, T, A]] =
-    find(tree.root, row)
+  def find(tree: AnnotatedTree[K, V, T, A], row: Map[K, V], id: Option[String]): Stream[LeafNode[K, V, T, A]] =
+    find(tree.root, row, id)
 
   /**
    * Find the [[LeafNode]]s that best fit `row` in the tree.  Generally, the
@@ -47,20 +48,20 @@ trait TreeTraversal[K, V, T, A] {
    * @param row  the row/instance we're trying to match with a leaf node
    * @return the leaf nodes that match the row
    */
-  def find(node: Node[K, V, T, A], row: Map[K, V]): Stream[LeafNode[K, V, T, A]]
+  def find(node: Node[K, V, T, A], row: Map[K, V], id: Option[String]): Stream[LeafNode[K, V, T, A]]
 }
 
 object TreeTraversal {
 
-  def find[K, V, T, A](tree: AnnotatedTree[K, V, T, A], row: Map[K, V])(implicit traversal: TreeTraversal[K, V, T, A]): Stream[LeafNode[K, V, T, A]] =
-    traversal.find(tree, row)
+  def find[K, V, T, A](tree: AnnotatedTree[K, V, T, A], row: Map[K, V], id: Option[String] = None)(implicit traversal: TreeTraversal[K, V, T, A]): Stream[LeafNode[K, V, T, A]] =
+    traversal.find(tree, row, id)
 
   /**
    * Performs a depth-first traversal of the tree, returning all matching leaf
    * nodes.
    */
   implicit def depthFirst[K, V, T, A]: TreeTraversal[K, V, T, A] =
-    DepthFirstTreeTraversal(identity)
+    DepthFirstTreeTraversal((_, xs) => xs)
 
   /**
    * A depth first search for matching leaves, randomly choosing the order of
@@ -69,8 +70,8 @@ object TreeTraversal {
    * descend from that node are traversed before moving onto the node's
    * sibling.
    */
-  def randomDepthFirst[K, V, T, A](rng: Random = Random): TreeTraversal[K, V, T, A] =
-    DepthFirstTreeTraversal(rng.shuffle(_))
+  def randomDepthFirst[K, V, T, A]: TreeTraversal[K, V, T, A] =
+    DepthFirstTreeTraversal(_ shuffle _)
 
   /**
    * A depth-first search for matching leaves, where the candidate child nodes
@@ -79,7 +80,7 @@ object TreeTraversal {
    * we will traverse the child with the largest annotation first.
    */
   def weightedDepthFirst[K, V, T, A: Ordering]: TreeTraversal[K, V, T, A] =
-    DepthFirstTreeTraversal(_.sortBy(_.annotation)(Ordering[A].reverse))
+    DepthFirstTreeTraversal((_, xs) => xs.sortBy(_.annotation)(Ordering[A].reverse))
 
   /**
    * A depth-first search for matching leaves, where the candidate child leaves
@@ -92,14 +93,14 @@ object TreeTraversal {
    * proportional to its probability of being sampled, relative to all the
    * other elements still in the set.
    */
-  def probabilisticWeightedDepthFirst[K, V, T, A <% Double](rng: Random = Random): TreeTraversal[K, V, T, A] =
-    DepthFirstTreeTraversal(probabilisticShuffle(_, rng)(_.annotation))
+  def probabilisticWeightedDepthFirst[K, V, T, A <% Double]: TreeTraversal[K, V, T, A] =
+    DepthFirstTreeTraversal(probabilisticShuffle(_, _)(_.annotation))
 
   // Given a weighted set `xs`, this creates an ordered list of all the elements
   // in `xs` by sampling without replacement from the set, but giving each
   // element a probability of being picked that is equal to its weight / total
   // weight of all elements remaining in the set.
-  private[brushfire] def probabilisticShuffle[A](xs: List[A], rng: Random = scala.util.Random)(getWeight: A => Double): List[A] = {
+  private[brushfire] def probabilisticShuffle[A](rng: Random, xs: List[A])(getWeight: A => Double): List[A] = {
 
     @tailrec
     def loop(sum: Double, acc: SortedMap[Double, Int], order: Vector[A], as: List[A]): Vector[A] =
@@ -107,7 +108,9 @@ object TreeTraversal {
         case a :: tail =>
           val sum0 = sum + getWeight(a)
           val acc0 = acc + (sum0 -> order.size)
-          val newHead = acc.from(rng.nextDouble * sum0).headOption
+          val newHead =
+            if (acc.isEmpty) None
+            else acc.from(rng.nextDouble * sum0).headOption
           newHead match {
             case Some((k, i)) =>
               val acc0 = acc + (sum0 -> i) + (k -> order.size)
@@ -123,11 +126,18 @@ object TreeTraversal {
 
     loop(0D, SortedMap.empty, Vector.empty, xs).toList
   }
+
+  def mkRandom(id: String): Random =
+    new Random(MurmurHash3.stringHash(id))
 }
 
-case class DepthFirstTreeTraversal[K, V, T, A](order: List[Node[K, V, T, A]] => List[Node[K, V, T, A]])
+case class DepthFirstTreeTraversal[K, V, T, A](order: (Random, List[Node[K, V, T, A]]) => List[Node[K, V, T, A]])
     extends TreeTraversal[K, V, T, A] {
-  def find(start: Node[K, V, T, A], row: Map[K, V]): Stream[LeafNode[K, V, T, A]] = {
+
+  def find(start: Node[K, V, T, A], row: Map[K, V], id: Option[String]): Stream[LeafNode[K, V, T, A]] = {
+    // Lazy to avoid creation in the fast case.
+    lazy val rng: Random = id.map(TreeTraversal.mkRandom).getOrElse(Random)
+
     // A little indirection makes scalac happy to eliminate some tailcalls in loop.
     def loop0(stack: List[Node[K, V, T, A]]): Stream[LeafNode[K, V, T, A]] =
       loop(stack)
@@ -143,7 +153,7 @@ case class DepthFirstTreeTraversal[K, V, T, A](order: List[Node[K, V, T, A]] => 
           val newStack = split.findChildren(row) match {
             case Nil => rest
             case node :: Nil => node :: rest
-            case candidates => order(candidates) ::: rest
+            case candidates => order(rng, candidates) ::: rest
           }
           loop(newStack)
       }
@@ -156,6 +166,6 @@ case class LimitedTreeTraversal[K, V, T, A](traversal: TreeTraversal[K, V, T, A]
     extends TreeTraversal[K, V, T, A] {
   require(limit > 0, "limit must be greater than 0")
 
-  def find(node: Node[K, V, T, A], row: Map[K, V]): Stream[LeafNode[K, V, T, A]] =
-    traversal.find(node, row).take(limit)
+  def find(node: Node[K, V, T, A], row: Map[K, V], id: Option[String]): Stream[LeafNode[K, V, T, A]] =
+    traversal.find(node, row, id).take(limit)
 }

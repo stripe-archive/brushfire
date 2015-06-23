@@ -213,14 +213,14 @@ case class AnnotatedTree[K, V, T, A: Semigroup](root: Node[K, V, T, A]) {
     }
   }
 
-  def leafFor(row: Map[K, V])(implicit traversal: TreeTraversal[K, V, T, A]): Option[LeafNode[K, V, T, A]] =
-    traversal.find(root, row).headOption
+  def leafFor(row: Map[K, V], id: Option[String] = None)(implicit traversal: TreeTraversal[K, V, T, A]): Option[LeafNode[K, V, T, A]] =
+    traversal.find(root, row, id).headOption
 
-  def leafIndexFor(row: Map[K, V])(implicit traversal: TreeTraversal[K, V, T, A]): Option[Int] =
-    leafFor(row).map(_.index)
+  def leafIndexFor(row: Map[K, V], id: Option[String] = None)(implicit traversal: TreeTraversal[K, V, T, A]): Option[Int] =
+    leafFor(row, id).map(_.index)
 
-  def targetFor(row: Map[K, V])(implicit traversal: TreeTraversal[K, V, T, A], semigroup: Semigroup[T]): Option[T] =
-    semigroup.sumOption(traversal.find(root, row).map(_.target))
+  def targetFor(row: Map[K, V], id: Option[String] = None)(implicit traversal: TreeTraversal[K, V, T, A], semigroup: Semigroup[T]): Option[T] =
+    semigroup.sumOption(traversal.find(root, row, id).map(_.target))
 
   /**
    * For each leaf, this may convert the leaf to a [[SplitNode]] whose children

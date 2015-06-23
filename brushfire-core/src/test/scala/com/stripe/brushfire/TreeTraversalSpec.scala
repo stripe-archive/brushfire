@@ -25,7 +25,7 @@ class TreeTraversalSpec extends WordSpec with Matchers with Checkers {
       check(Prop.forAll(simpleTreeGen) { tree =>
         (tree.root: @unchecked) match {
           case SplitNode(children) =>
-            TreeTraversal.depthFirst.find(tree, Map.empty[String, Double]).headOption == Some(children.head._3)
+            TreeTraversal.depthFirst.find(tree, Map.empty[String, Double], None).headOption == Some(children.head._3)
         }
       })
     }
@@ -33,7 +33,7 @@ class TreeTraversalSpec extends WordSpec with Matchers with Checkers {
     "traverse in order" in {
       check { (tree: Tree[String, Double, Map[String, Long]]) =>
         TreeTraversal.depthFirst
-          .find(tree, Map.empty[String, Double])
+          .find(tree, Map.empty[String, Double], None)
           .map(_.index)
           .sliding(2)
           .forall {
@@ -86,49 +86,51 @@ class TreeTraversalSpec extends WordSpec with Matchers with Checkers {
         Set(leaf)
     }
 
-  "probabilisticWeightedMatch" should {
-    // What we can expect from Java's RNG. We ignore the first, because the code does.
-    // seed = 0 : X, 0.24053641567148587, 0.6374174253501083,  0.5504370051176339, 0.5975452777972018
-    // seed = 1 : X, 0.41008081149220166, 0.20771484130971707, 0.3327170559595112, 0.9677559094241207
+  "probabilisticWeightedDepthFirst" should {
+    // What we can expect from Java's RNG, as used in DepthFirstTreeTraversal.
+    //
+    // seed = "b", 0.2703319497247767, 0.0932475649560437, 0.7544424971549143, 0.40708156683248087, 0.5937069662406929
+    // seed = "c", 0.28329487121994257, 0.6209168529111834, 0.896329641267321, 0.4295933416724764, 0.28764827423012496
+    // seed = "z", 0.3982796920464978, 0.09452393725015651, 0.2645674766831084, 0.45670292528849277, 0.4919659310853626
 
-    def traversal(seed: Long) = TreeTraversal.probabilisticWeightedDepthFirst[String, Double, Double, Int](new Random(seed))
+    val traversal = TreeTraversal.probabilisticWeightedDepthFirst[String, Double, Double, Int]
 
     "choose predictable weighted probabilistic node in a split" in {
-      val split1 = split("f1", LessThan(0D), LeafNode(0, -1D, 2405), LeafNode(1, 1D, 10000 - 2405))
-      traversal(0).find(AnnotatedTree(split1), Map.empty[String, Double]) shouldBe
-        Seq(LeafNode(1, 1D, 10000 - 2405), LeafNode(0, -1D, 2405))
+      val split1 = split("f1", LessThan(0D), LeafNode(0, -1D, 2703), LeafNode(1, 1D, 10000 - 2703))
+      traversal.find(AnnotatedTree(split1), Map.empty[String, Double], Some("b")) shouldBe
+        Seq(LeafNode(1, 1D, 10000 - 2703), LeafNode(0, -1D, 2703))
 
-      val split2 = split("f1", LessThan(0D), LeafNode(0, -1D, 2406), LeafNode(1, 1D, 10000 - 2406))
-      traversal(0).find(AnnotatedTree(split2), Map.empty[String, Double]) shouldBe
-        Seq(LeafNode(0, -1D, 2406), LeafNode(1, 1D, 10000 - 2406))
+      val split2 = split("f1", LessThan(0D), LeafNode(0, -1D, 2704), LeafNode(1, 1D, 10000 - 2704))
+      traversal.find(AnnotatedTree(split2), Map.empty[String, Double], Some("b")) shouldBe
+        Seq(LeafNode(0, -1D, 2704), LeafNode(1, 1D, 10000 - 2704))
 
-      val split3 = split("f1", LessThan(0D), LeafNode(0, -1D, 4100), LeafNode(1, 1D, 10000 - 4100))
-      traversal(1).find(AnnotatedTree(split3), Map.empty[String, Double]) shouldBe
-        Seq(LeafNode(1, 1D, 10000 - 4100), LeafNode(0, -1D, 4100))
+      val split3 = split("f1", LessThan(0D), LeafNode(0, -1D, 3982), LeafNode(1, 1D, 10000 - 3982))
+      traversal.find(AnnotatedTree(split3), Map.empty[String, Double], Some("z")) shouldBe
+        Seq(LeafNode(1, 1D, 10000 - 3982), LeafNode(0, -1D, 3982))
 
-      val split4 = split("f1", LessThan(0D), LeafNode(0, -1D, 4101), LeafNode(1, 1D, 10000 - 4101))
-      traversal(1).find(AnnotatedTree(split4), Map.empty[String, Double]) shouldBe
-        Seq(LeafNode(0, -1D, 4101), LeafNode(1, 1D, 10000 - 4101))
+      val split4 = split("f1", LessThan(0D), LeafNode(0, -1D, 3983), LeafNode(1, 1D, 10000 - 3983))
+      traversal.find(AnnotatedTree(split4), Map.empty[String, Double], Some("z")) shouldBe
+        Seq(LeafNode(0, -1D, 3983), LeafNode(1, 1D, 10000 - 3983))
     }
 
     "choose predictable weighted probabilistic path in a tree" in {
       val tree = AnnotatedTree(
         split("f1", LessThan(0D),
           split("f2", LessThan(0D), // 30
-            LeafNode(0, 1D, 8),
-            LeafNode(1, 2D, 22)),
+            LeafNode(0, 1D, 9),
+            LeafNode(1, 2D, 21)),
           split("f2", LessThan(0D), // 70
             LeafNode(2, 3D, 24),
             LeafNode(3, 4D, 46))))
 
-      traversal(0).find(tree, Map.empty[String, Double]).headOption shouldBe
-        Some(LeafNode(1, 2D, 22))
-      traversal(1).find(tree, Map.empty[String, Double]).headOption shouldBe
+      traversal.find(tree, Map.empty[String, Double], Some("c")).headOption shouldBe
+        Some(LeafNode(1, 2D, 21))
+      traversal.find(tree, Map.empty[String, Double], Some("z")).headOption shouldBe
         Some(LeafNode(2, 3D, 24))
-      traversal(1).find(tree, Map("f1" -> 1D)).headOption shouldBe
+      traversal.find(tree, Map("f1" -> 1D), Some("z")).headOption shouldBe
         Some(LeafNode(3, 4D, 46))
-      traversal(0).find(tree, Map("f1" -> -1D)).headOption shouldBe
-        Some(LeafNode(0, 1D, 8))
+      traversal.find(tree, Map("f1" -> -1D), Some("b")).headOption shouldBe
+        Some(LeafNode(0, 1D, 9))
     }
   }
 }
