@@ -1,12 +1,20 @@
 import sbt._
 import sbt.Keys._
 import com.typesafe.sbt.pgp.PgpKeys._
+import aether.AetherKeys._
 
 object Publish {
   val settings = Seq(
     homepage := Some(url("http://github.com/stripe/brushfire")),
     licenses += ("MIT License", url("http://www.opensource.org/licenses/mit-license.php")),
     publishMavenStyle := true,
+    publish := {
+      if (isSnapshot.value) {
+        aetherDeploy.value
+      } else {
+        publish.value
+      }
+    },
     publishTo := {
       if (isSnapshot.value)
         sys.props.get("stripe.snapshots.url").map("stripe-nexus" at _)
