@@ -2,27 +2,27 @@ package com.stripe.brushfire
 
 import com.twitter.algebird._
 
-case class ChiSquaredEvaluator[V, L, W <% Double](implicit weightMonoid: Monoid[W])
+case class ChiSquaredEvaluator[V, L, W](implicit weightMonoid: Monoid[W], weightDouble: W => Double)
     extends Evaluator[V, Map[L, W]] {
   def evaluate(split: Split[V, Map[L, W]]) = {
-    val rows = split.predicates.map { _._2 }.filter { _.size > 0 }
+    val rows = split.predicates.map { _._2 }.filter { _.nonEmpty }
     if (rows.size > 1) {
       val n = weightMonoid.sum(rows.flatMap { _.values })
       val rowTotals = rows.map { row => weightMonoid.sum(row.values) }.toList
       val columnKeys = rows.flatMap { _.keys }.toList
       val columnTotals = columnKeys.map { column => column -> weightMonoid.sum(rows.flatMap { _.get(column) }) }.toMap
-      val testStatistic = (for (
-        column <- columnKeys;
+      val testStatistic = (for {
+        column <- columnKeys
         (row, index) <- rows.zipWithIndex
-      ) yield {
+      } yield {
         val observed = row.getOrElse(column, weightMonoid.zero)
         val expected = (columnTotals(column) * rowTotals(index)) / n
         val delta = observed - expected
-        ((delta * delta) / expected)
+        (delta * delta) / expected
       }).sum
       (split, testStatistic)
     } else
-      (EmptySplit[V, Map[L, W]], Double.NegativeInfinity)
+      (EmptySplit[V, Map[L, W]](), Double.NegativeInfinity)
   }
 }
 
@@ -37,7 +37,7 @@ case class MinWeightEvaluator[V, L, W: Monoid](minWeight: W => Boolean, wrapped:
     })
       (baseSplit, baseScore)
     else
-      (EmptySplit[V, Map[L, W]], Double.NegativeInfinity)
+      (EmptySplit[V, Map[L, W]](), Double.NegativeInfinity)
   }
 }
 
@@ -55,8 +55,8 @@ case class ErrorEvaluator[V, T, P, E](error: Error[T, P, E], voter: Voter[T, P])
           .map { case (_, target) => error.create(target, voter.combine(Some(target))) })
 
     totalErrorOption match {
-      case Some(totalError) => (split, fn(totalError) * -1)
-      case None => (EmptySplit[V, T], Double.NegativeInfinity)
+      case Some(totalError) => (split, -fn(totalError))
+      case None => (EmptySplit[V, T](), Double.NegativeInfinity)
     }
   }
 }

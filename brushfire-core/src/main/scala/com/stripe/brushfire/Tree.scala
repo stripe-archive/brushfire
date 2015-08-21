@@ -22,7 +22,7 @@ object Tree {
             splitter.split(leaf.target, s).map { x => f -> evaluator.evaluate(x) }
         }
 
-        val (splitFeature, (split, score)) = splits.maxBy { case (f, (x, s)) => s }
+        val (splitFeature, (split, _)) = splits.maxBy { case (f, (x, s)) => s }
         val edges = split.predicates.toList.map {
           case (pred, _) =>
             val newInstances = instances.filter { inst => pred(inst.features.get(splitFeature)) }
@@ -30,7 +30,7 @@ object Tree {
             (pred, target, newInstances)
         }
 
-        if (edges.count { case (pred, target, newInstances) => newInstances.size > 0 } > 1) {
+        if (edges.count { case (_, _, newInstances) => newInstances.nonEmpty } > 1) {
           Some(SplitNode(edges.map {
             case (pred, target, newInstances) =>
               (splitFeature, pred, expand[K, V, T](times - 1, LeafNode(0, target), splitter, evaluator, stopper, newInstances))

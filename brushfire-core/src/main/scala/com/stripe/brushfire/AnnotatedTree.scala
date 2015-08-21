@@ -1,8 +1,5 @@
 package com.stripe.brushfire
 
-import scala.annotation.tailrec
-import scala.util.Random
-
 import com.twitter.algebird._
 
 sealed trait Node[K, V, T, A] {
@@ -64,7 +61,7 @@ case class AnnotatedTree[K, V, T, A: Semigroup](root: Node[K, V, T, A]) {
 
   /**
    * Annotate the tree by mapping the leaf target distributions to some
-   * annotation for the leaves, then bubbling the annotaions up the tree using
+   * annotation for the leaves, then bubbling the annotations up the tree using
    * the `Semigroup` for the annotation type.
    */
   def annotate[A1: Semigroup](f: T => A1): AnnotatedTree[K, V, T, A1] =
@@ -188,13 +185,13 @@ case class AnnotatedTree[K, V, T, A: Semigroup](root: Node[K, V, T, A]) {
       errorOrdering: Ordering[E]): (Map[Int, T], Node[K, V, T, A]) = {
 
     // Get training and validation data and validation error for each leaf.
-    val (targets, validations, errors) = children.map {
+    val (targets, validations, errors) = children.unzip3 {
       case (k, p, leaf) =>
         val trainingTarget = leaf.target
         val validationTarget = validationData.getOrElse(leaf.index, targetMonoid.zero)
         val leafError = error.create(validationTarget, voter.combine(Some(trainingTarget)))
         (trainingTarget, validationTarget, leafError)
-    }.unzip3
+    }
 
     val targetSum = targetMonoid.sum(targets) // Combined training targets to create the training data of the potential combined node.
     val targetPrediction = voter.combine(Some(targetSum)) // Generate prediction from combined target.

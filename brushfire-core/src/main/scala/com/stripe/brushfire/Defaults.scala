@@ -12,13 +12,13 @@ trait LowPriorityDefaults {
 }
 
 trait Defaults extends LowPriorityDefaults {
-  implicit def chiSquaredEvaluator[V, L, W <% Double](implicit weightMonoid: Monoid[W]): Evaluator[V, Map[L, W]] = ChiSquaredEvaluator[V, L, W]
+  implicit def chiSquaredEvaluator[V, L, W](implicit weightMonoid: Monoid[W], weightDouble: W => Double): Evaluator[V, Map[L, W]] = ChiSquaredEvaluator[V, L, W]
   implicit def frequencyStopper[L]: Stopper[Map[L, Long]] = FrequencyStopper(10000, 10)
 
   implicit def intSplitter[T: Monoid]: Splitter[Int, T] = BinarySplitter[Int, T](LessThan(_))
   implicit def stringSplitter[T: Monoid]: Splitter[String, T] = BinarySplitter[String, T](EqualTo(_))
   implicit def doubleSplitter[T: Monoid]: Splitter[Double, T] = BinnedSplitter(BinarySplitter[Double, T](LessThan(_))) { d => downRez(d, 2, 100) }
-  implicit def booleanSplitter[T: Group]: Splitter[Boolean, T] = SparseSplitter[Boolean, T]
+  implicit def booleanSplitter[T: Group]: Splitter[Boolean, T] = SparseSplitter[Boolean, T]()
 
   implicit def dispatchedSplitterWithSpaceSaver[A: Ordering, B, C: Ordering, D, L](
     implicit ordinal: Splitter[A, Map[L, Long]],
@@ -26,7 +26,7 @@ trait Defaults extends LowPriorityDefaults {
     continuous: Splitter[C, Map[L, Long]]): Splitter[Dispatched[A, B, C, D], Map[L, Long]] =
     new DispatchedSplitter(ordinal, nominal, continuous, SpaceSaverSplitter[D, L]())
 
-  implicit def softVoter[L, M: Numeric]: Voter[Map[L, M], Map[L, Double]] = SoftVoter[L, M]
+  implicit def softVoter[L, M: Numeric]: Voter[Map[L, M], Map[L, Double]] = SoftVoter[L, M]()
 
   def downRez(v: Double, base: Int, precision: Int): Double = {
     if (v == 0.0)

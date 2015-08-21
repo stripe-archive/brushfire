@@ -44,7 +44,7 @@ trait TreeTraversal[K, V, T, A] {
    * [[SplitNode]], the actual choice of which ones gets traversed is left to
    * the particular implementation of `TreeTraversal`.
    *
-   * @param init the initial node to start from
+   * @param node the initial node to start from
    * @param row  the row/instance we're trying to match with a leaf node
    * @return the leaf nodes that match the row
    */
@@ -93,7 +93,7 @@ object TreeTraversal {
    * proportional to its probability of being sampled, relative to all the
    * other elements still in the set.
    */
-  def probabilisticWeightedDepthFirst[K, V, T, A <% Double]: TreeTraversal[K, V, T, A] =
+  def probabilisticWeightedDepthFirst[K, V, T, A](implicit conversion: A => Double): TreeTraversal[K, V, T, A] =
     DepthFirstTreeTraversal(probabilisticShuffle(_, _)(_.annotation))
 
   // Given a weighted set `xs`, this creates an ordered list of all the elements
