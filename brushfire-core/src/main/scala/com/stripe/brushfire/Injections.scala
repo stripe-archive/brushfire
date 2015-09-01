@@ -88,11 +88,10 @@ object JsonInjections {
             case EqualTo(v) => obj.put("eq", toJsonNode(v))
             case LessThan(v) => obj.put("lt", toJsonNode(v))
             case Not(pred) => obj.put("not", toJsonNode(pred)(predicateJsonNodeInjection))
-            case AnyOf(preds) => {
+            case AnyOf(preds) =>
               val ary = JsonNodeFactory.instance.arrayNode
               preds.foreach { pred => ary.add(toJsonNode(pred)(predicateJsonNodeInjection)) }
               obj.put("or", ary)
-            }
           }
           obj
         }
@@ -100,12 +99,11 @@ object JsonInjections {
         override def invert(n: JsonNode) = {
           n.getFieldNames.asScala.toList.headOption match {
             case Some("eq") => fromJsonNode[V](n.get("eq")).map { EqualTo(_) }
-            case Some("lt") => {
+            case Some("lt") =>
               if (ord == null)
                 sys.error("No Ordering[V] supplied but less than used")
               else
                 fromJsonNode[V](n.get("lt")).map { LessThan(_) }
-            }
             case Some("not") => fromJsonNode[Predicate[V]](n.get("not")).map { Not(_) }
             case Some("or") => fromJsonNode[List[Predicate[V]]](n.get("or")).map { AnyOf(_) }
             case Some("exists") =>
@@ -120,27 +118,24 @@ object JsonInjections {
     implicit def nodeJsonNodeInjection: JsonNodeInjection[Node[K, V, T, Unit]] =
       new AbstractJsonNodeInjection[Node[K, V, T, Unit]] {
         def apply(node: Node[K, V, T, Unit]) = node match {
-          case LeafNode(index, target, _) => {
+          case LeafNode(index, target, _) =>
             val obj = JsonNodeFactory.instance.objectNode
             obj.put("leaf", toJsonNode(index))
             obj.put("distribution", toJsonNode(target))
             obj
-          }
 
-          case SplitNode(children) => {
+          case SplitNode(children) =>
             val ary = JsonNodeFactory.instance.arrayNode
             children.foreach {
-              case (feature, predicate, child) => {
+              case (feature, predicate, child) =>
                 val obj = JsonNodeFactory.instance.objectNode
                 obj.put("feature", toJsonNode(feature))
                 obj.put("predicate", toJsonNode(predicate))
                 obj.put("display", toJsonNode(Predicate.display(predicate)))
                 obj.put("children", toJsonNode(child)(nodeJsonNodeInjection))
                 ary.add(obj)
-              }
             }
             ary
-          }
         }
 
         def tryChild(node: JsonNode, property: String) = Try {
@@ -157,7 +152,7 @@ object JsonInjections {
               }
             }
 
-            case None => {
+            case None =>
               val children = n.getElements.asScala.map { c =>
                 for (
                   featureNode <- tryChild(c, "feature");
@@ -173,7 +168,6 @@ object JsonInjections {
                 case Some(Failure(e)) => Failure(InversionFailure(n, e))
                 case _ => Success(SplitNode[K, V, T, Unit](children.map { _.get }))
               }
-            }
           }
         }
       }
