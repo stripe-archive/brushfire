@@ -135,7 +135,7 @@ case class DepthFirstTreeTraversal[K, V, T, A](order: (Random, List[Node[K, V, T
 
   def find(start: Node[K, V, T, A], row: Map[K, V], id: Option[String]): Stream[LeafNode[K, V, T, A]] = {
     // Lazy to avoid creation in the fast case.
-    lazy val rng: Random = id.map(TreeTraversal.mkRandom).getOrElse(Random)
+    lazy val rng: Random = id.fold[Random](Random)(TreeTraversal.mkRandom)
 
     // A little indirection makes scalac happy to eliminate some tailcalls in loop.
     def loop0(stack: List[Node[K, V, T, A]]): Stream[LeafNode[K, V, T, A]] =
