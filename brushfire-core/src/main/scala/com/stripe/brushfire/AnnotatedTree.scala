@@ -5,15 +5,22 @@ import scala.util.Random
 
 import com.twitter.algebird._
 
-sealed trait Node[K, V, T, A] {
-  def annotation: A
+sealed trait Node[K, V, T, A]
+
+object Node {
+  /**
+   * Combine annotations for a tree using the [[Semigroup]] instance for [[A]]
+   */
+  def annotation[K, V, T, A: Semigroup](node: Node[K, V, T, A]): A = node match {
+    case SplitNode(children) if children.nonEmpty =>
+      Semigroup.sumOption(children.view.map { case (_, _, node0) => annotation(node0) }).get
+
+    case LeafNode(_, _, annotation) => annotation
+  }
 }
 
-case class SplitNode[K, V, T, A: Semigroup](children: Seq[(K, Predicate[V], Node[K, V, T, A])]) extends Node[K, V, T, A] {
+case class SplitNode[K, V, T, A](children: Seq[(K, Predicate[V], Node[K, V, T, A])]) extends Node[K, V, T, A] {
   require(children.nonEmpty)
-
-  lazy val annotation: A =
-    Semigroup.sumOption(children.map(_._3.annotation)).get
 
   def findChildren(row: Map[K, V]): List[Node[K, V, T, A]] =
     children.collect { case (k, p, n) if p(row.get(k)) => n }(collection.breakOut)
@@ -29,7 +36,7 @@ object LeafNode {
     LeafNode(index, target, Monoid.zero)
 }
 
-case class AnnotatedTree[K, V, T, A: Semigroup](root: Node[K, V, T, A]) {
+case class AnnotatedTree[K, V, T, A](root: Node[K, V, T, A]) {
   private def mapSplits[K0, V0](f: (K, Predicate[V]) => (K0, Predicate[V0])): AnnotatedTree[K0, V0, T, A] = {
     def recur(node: Node[K, V, T, A]): Node[K0, V0, T, A] = node match {
       case SplitNode(children) =>
@@ -46,7 +53,7 @@ case class AnnotatedTree[K, V, T, A: Semigroup](root: Node[K, V, T, A]) {
     AnnotatedTree(recur(root))
   }
 
-  private def mapLeaves[T0, A0: Semigroup](f: (T, A) => (T0, A0)): AnnotatedTree[K, V, T0, A0] = {
+  private def mapLeaves[T0, A0](f: (T, A) => (T0, A0)): AnnotatedTree[K, V, T0, A0] = {
     def recur(node: Node[K, V, T, A]): Node[K, V, T0, A0] = node match {
       case SplitNode(children) =>
         SplitNode(children.map {
@@ -64,19 +71,16 @@ case class AnnotatedTree[K, V, T, A: Semigroup](root: Node[K, V, T, A]) {
 
   /**
    * Annotate the tree by mapping the leaf target distributions to some
-   * annotation for the leaves, then bubbling the annotaions up the tree using
-   * the `Semigroup` for the annotation type.
+   * annotation for the leaves.
    */
-  def annotate[A1: Semigroup](f: T => A1): AnnotatedTree[K, V, T, A1] =
+  def annotate[A1](f: T => A1): AnnotatedTree[K, V, T, A1] =
     mapLeaves { (t, _) => (t, f(t)) }
 
   /**
    * Re-annotate the leaves of this tree using `f` to transform the
-   * annotations. This will then bubble the annotations up the tree using the
-   * `Semigroup` for `A1`. If `f` is a semigroup homomorphism, then this
-   * (semantically) just transforms the annotation at each node using `f`.
+   * annotations.
    */
-  def mapAnnotation[A1: Semigroup](f: A => A1): AnnotatedTree[K, V, T, A1] =
+  def mapAnnotation[A1](f: A => A1): AnnotatedTree[K, V, T, A1] =
     mapLeaves { (t, a) => (t, f(a)) }
 
   /**
@@ -124,7 +128,12 @@ case class AnnotatedTree[K, V, T, A: Semigroup](root: Node[K, V, T, A]) {
    * @param error to calculate an error statistic given observations (validation) and predictions (training).
    * @return The new, pruned tree.
    */
-  def prune[P, E](validationData: Map[Int, T], voter: Voter[T, P], error: Error[T, P, E])(implicit targetMonoid: Monoid[T], errorOrdering: Ordering[E]): AnnotatedTree[K, V, T, A] = {
+  def prune[P, E](
+      validationData: Map[Int, T],
+      voter: Voter[T, P],
+      error: Error[T, P, E])(implicit targetMonoid: Monoid[T],
+        errorOrdering: Ordering[E],
+        annotationSemigroup: Semigroup[A]): AnnotatedTree[K, V, T, A] = {
     AnnotatedTree(pruneNode(validationData, this.root, voter, error)._2).renumberLeaves
   }
 
@@ -138,7 +147,13 @@ case class AnnotatedTree[K, V, T, A: Semigroup](root: Node[K, V, T, A]) {
    * @param start The root node of the tree.
    * @return A node at the root of the new, pruned tree.
    */
-  def pruneNode[P, E](validationData: Map[Int, T], start: Node[K, V, T, A], voter: Voter[T, P], error: Error[T, P, E])(implicit targetMonoid: Monoid[T], errorOrdering: Ordering[E]): (Map[Int, T], Node[K, V, T, A]) = {
+  def pruneNode[P, E](
+      validationData: Map[Int, T],
+      start: Node[K, V, T, A],
+      voter: Voter[T, P],
+      error: Error[T, P, E])(implicit targetMonoid: Monoid[T],
+        errorOrdering: Ordering[E],
+        annotationSemigroup: Semigroup[A]): (Map[Int, T], Node[K, V, T, A]) = {
     type ChildSeqType = (K, Predicate[V], Node[K, V, T, A])
     start match {
       case leaf @ LeafNode(_, _, _) =>
@@ -185,7 +200,8 @@ case class AnnotatedTree[K, V, T, A: Semigroup](root: Node[K, V, T, A]) {
     validationData: Map[Int, T],
     voter: Voter[T, P],
     error: Error[T, P, E])(implicit targetMonoid: Monoid[T],
-      errorOrdering: Ordering[E]): (Map[Int, T], Node[K, V, T, A]) = {
+      errorOrdering: Ordering[E],
+      annotationSemigroup: Semigroup[A]): (Map[Int, T], Node[K, V, T, A]) = {
 
     // Get training and validation data and validation error for each leaf.
     val (targets, validations, errors) = children.map {
@@ -206,7 +222,7 @@ case class AnnotatedTree[K, V, T, A: Semigroup](root: Node[K, V, T, A]) {
     if (doCombine) { // Create a new leaf from the combination of the children.
       // Find a unique (negative) index for the new leaf:
       val newIndex = -1 * children.map { case (k, p, leaf) => Math.abs(leaf.index) }.max
-      val node = LeafNode[K, V, T, A](newIndex, targetSum, parent.annotation)
+      val node = LeafNode[K, V, T, A](newIndex, targetSum, Node.annotation[K, V, T, A](parent))
       (validationData + (newIndex -> validationSum), node)
     } else {
       (validationData, parent)

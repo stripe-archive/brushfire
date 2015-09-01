@@ -79,8 +79,8 @@ object TreeTraversal {
    * annotations. This means that if we have multiple valid candidate children,
    * we will traverse the child with the largest annotation first.
    */
-  def weightedDepthFirst[K, V, T, A: Ordering]: TreeTraversal[K, V, T, A] =
-    DepthFirstTreeTraversal((_, xs) => xs.sortBy(_.annotation)(Ordering[A].reverse))
+  def weightedDepthFirst[K, V, T, A: Ordering: Semigroup]: TreeTraversal[K, V, T, A] =
+    DepthFirstTreeTraversal((_, xs) => xs.sortBy(Node.annotation[K, V, T, A])(Ordering[A].reverse))
 
   /**
    * A depth-first search for matching leaves, where the candidate child leaves
@@ -93,8 +93,8 @@ object TreeTraversal {
    * proportional to its probability of being sampled, relative to all the
    * other elements still in the set.
    */
-  def probabilisticWeightedDepthFirst[K, V, T, A <% Double]: TreeTraversal[K, V, T, A] =
-    DepthFirstTreeTraversal(probabilisticShuffle(_, _)(_.annotation))
+  def probabilisticWeightedDepthFirst[K, V, T, A <% Double: Semigroup]: TreeTraversal[K, V, T, A] =
+    DepthFirstTreeTraversal(probabilisticShuffle(_, _)(Node.annotation[K, V, T, A](_)))
 
   // Given a weighted set `xs`, this creates an ordered list of all the elements
   // in `xs` by sampling without replacement from the set, but giving each
