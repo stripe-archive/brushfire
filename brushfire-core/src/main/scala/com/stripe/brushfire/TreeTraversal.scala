@@ -107,7 +107,6 @@ object TreeTraversal {
       as match {
         case a :: tail =>
           val sum0 = sum + getWeight(a)
-          val acc0 = acc + (sum0 -> order.size)
           val newHead =
             if (acc.isEmpty) None
             else acc.from(rng.nextDouble * sum0).headOption
