@@ -8,7 +8,7 @@ trait LowPriorityDefaults {
     nominal: Splitter[B, T],
     continuous: Splitter[C, T],
     sparse: Splitter[Boolean, T]): Splitter[Dispatched[A, B, C, Boolean], T] =
-    new DispatchedSplitter(ordinal, nominal, continuous, sparse)
+    DispatchedSplitter(ordinal, nominal, continuous, sparse)
 }
 
 trait Defaults extends LowPriorityDefaults {
@@ -24,7 +24,7 @@ trait Defaults extends LowPriorityDefaults {
     implicit ordinal: Splitter[A, Map[L, Long]],
     nominal: Splitter[B, Map[L, Long]],
     continuous: Splitter[C, Map[L, Long]]): Splitter[Dispatched[A, B, C, D], Map[L, Long]] =
-    new DispatchedSplitter(ordinal, nominal, continuous, SpaceSaverSplitter[D, L]())
+    DispatchedSplitter(ordinal, nominal, continuous, SpaceSaverSplitter[D, L]())
 
   implicit def softVoter[L, M: Numeric]: Voter[Map[L, M], Map[L, Double]] = SoftVoter[L, M]()
 

@@ -9,11 +9,11 @@ case class Nominal[B](nominal: B) extends Dispatched[Nothing, B, Nothing, Nothin
 case class Continuous[C](continuous: C) extends Dispatched[Nothing, Nothing, C, Nothing]
 case class Sparse[D](sparse: D) extends Dispatched[Nothing, Nothing, Nothing, D]
 
-class DispatchedSplitter[A: Ordering, B, C: Ordering, D, T](
-  val ordinal: Splitter[A, T],
-  val nominal: Splitter[B, T],
-  val continuous: Splitter[C, T],
-  val sparse: Splitter[D, T])
+case class DispatchedSplitter[A: Ordering, B, C: Ordering, D, T](
+  ordinal: Splitter[A, T],
+  nominal: Splitter[B, T],
+  continuous: Splitter[C, T],
+  sparse: Splitter[D, T])
     extends Splitter[Dispatched[A, B, C, D], T] {
 
   type S = Dispatched[ordinal.S, nominal.S, continuous.S, sparse.S]
