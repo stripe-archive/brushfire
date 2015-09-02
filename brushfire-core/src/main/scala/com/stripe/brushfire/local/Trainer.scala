@@ -8,7 +8,7 @@ case class Trainer[K: Ordering, V, T: Monoid](
     sampler: Sampler[K],
     trees: List[Tree[K, V, T]]) {
 
-  private def updateTrees(fn: (Tree[K, V, T], Map[LeafNode[K, V, T, Unit], Iterable[Instance[K, V, T]]]) => Tree[K, V, T]) = {
+  private def updateTrees(fn: (Tree[K, V, T], Map[LeafNode[K, V, T, Unit], Iterable[Instance[K, V, T]]]) => Tree[K, V, T]): Trainer[K, V, T] = {
     val newTrees = trees.zipWithIndex.map {
       case (tree, index) =>
         val byLeaf =
@@ -28,7 +28,7 @@ case class Trainer[K: Ordering, V, T: Monoid](
     copy(trees = newTrees)
   }
 
-  private def updateLeaves(fn: (LeafNode[K, V, T, Unit], Iterable[Instance[K, V, T]]) => Node[K, V, T, Unit]) = {
+  private def updateLeaves(fn: (LeafNode[K, V, T, Unit], Iterable[Instance[K, V, T]]) => Node[K, V, T, Unit]): Trainer[K, V, T] = {
     updateTrees {
       case (tree, byLeaf) =>
         val newNodes = byLeaf.map {
@@ -40,20 +40,20 @@ case class Trainer[K: Ordering, V, T: Monoid](
     }
   }
 
-  def updateTargets =
+  def updateTargets: Trainer[K, V, T] =
     updateLeaves {
       case (leaf, instances) =>
         val target = implicitly[Monoid[T]].sum(instances.map { _.target })
         leaf.copy(target = target)
     }
 
-  def expand(times: Int)(implicit splitter: Splitter[V, T], evaluator: Evaluator[V, T], stopper: Stopper[T]) =
+  def expand(times: Int)(implicit splitter: Splitter[V, T], evaluator: Evaluator[V, T], stopper: Stopper[T]): Trainer[K, V, T] =
     updateLeaves {
       case (leaf, instances) =>
         Tree.expand(times, leaf, splitter, evaluator, stopper, instances)
     }
 
-  def prune[P, E](error: Error[T, P, E])(implicit voter: Voter[T, P], ord: Ordering[E]) =
+  def prune[P, E](error: Error[T, P, E])(implicit voter: Voter[T, P], ord: Ordering[E]): Trainer[K, V, T] =
     updateTrees {
       case (tree, byLeaf) =>
         val byLeafIndex = byLeaf.map {

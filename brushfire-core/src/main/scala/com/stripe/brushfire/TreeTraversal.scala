@@ -44,7 +44,7 @@ trait TreeTraversal[K, V, T, A] {
    * [[SplitNode]], the actual choice of which ones gets traversed is left to
    * the particular implementation of `TreeTraversal`.
    *
-   * @param init the initial node to start from
+   * @param node the initial node to start from
    * @param row  the row/instance we're trying to match with a leaf node
    * @return the leaf nodes that match the row
    */
@@ -93,7 +93,7 @@ object TreeTraversal {
    * proportional to its probability of being sampled, relative to all the
    * other elements still in the set.
    */
-  def probabilisticWeightedDepthFirst[K, V, T, A <% Double]: TreeTraversal[K, V, T, A] =
+  def probabilisticWeightedDepthFirst[K, V, T, A](implicit conversion: A => Double): TreeTraversal[K, V, T, A] =
     DepthFirstTreeTraversal(probabilisticShuffle(_, _)(_.annotation))
 
   // Given a weighted set `xs`, this creates an ordered list of all the elements
@@ -107,7 +107,6 @@ object TreeTraversal {
       as match {
         case a :: tail =>
           val sum0 = sum + getWeight(a)
-          val acc0 = acc + (sum0 -> order.size)
           val newHead =
             if (acc.isEmpty) None
             else acc.from(rng.nextDouble * sum0).headOption
@@ -136,7 +135,7 @@ case class DepthFirstTreeTraversal[K, V, T, A](order: (Random, List[Node[K, V, T
 
   def find(start: Node[K, V, T, A], row: Map[K, V], id: Option[String]): Stream[LeafNode[K, V, T, A]] = {
     // Lazy to avoid creation in the fast case.
-    lazy val rng: Random = id.map(TreeTraversal.mkRandom).getOrElse(Random)
+    lazy val rng: Random = id.fold[Random](Random)(TreeTraversal.mkRandom)
 
     // A little indirection makes scalac happy to eliminate some tailcalls in loop.
     def loop0(stack: List[Node[K, V, T, A]]): Stream[LeafNode[K, V, T, A]] =

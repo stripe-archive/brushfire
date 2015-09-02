@@ -13,8 +13,8 @@ case class KFoldSampler(numTrees: Int) extends Sampler[Any] {
   val murmur = MurmurHash128(12345)
 
   def timesInTrainingSet(id: String, timestamp: Long, treeIndex: Int) = {
-    val (hash1, hash2) = murmur(id)
-    val h = math.abs(hash1).toLong
+    val (hash1, _) = murmur(id)
+    val h = math.abs(hash1)
     if (h % numTrees == treeIndex)
       0
     else
@@ -34,7 +34,7 @@ case class RFSampler(numTrees: Int, featureRate: Double, samplingRate: Double = 
   def timesInTrainingSet(id: String, timestamp: Long, treeIndex: Int) = {
     val rand = random(id, treeIndex)
     //poisson generator, from knuth
-    var l = math.exp(-samplingRate)
+    val l = math.exp(-samplingRate)
     var k = 0
     var p = 1.0
     while (p > l) {
@@ -55,7 +55,7 @@ case class RFSampler(numTrees: Int, featureRate: Double, samplingRate: Double = 
 
   def random(key: String, seed: Int) = {
     val murmur = MurmurHash128(seed)
-    val (hash1, hash2) = murmur(key)
+    val (hash1, _) = murmur(key)
     new scala.util.Random(hash1)
   }
 }
@@ -69,7 +69,7 @@ case class TimeGroupedSampler[K](base: Sampler[K], period: Long, groups: Int) ex
     val indexInGroup = treeIndex / groups
 
     if (timeGroup == treeGroup)
-      base.timesInTrainingSet(id, timestamp, treeIndex / groups)
+      base.timesInTrainingSet(id, timestamp, indexInGroup)
     else
       0
   }
