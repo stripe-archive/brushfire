@@ -9,23 +9,21 @@ case class Nominal[B](nominal: B) extends Dispatched[Nothing, B, Nothing, Nothin
 case class Continuous[C](continuous: C) extends Dispatched[Nothing, Nothing, C, Nothing]
 case class Sparse[D](sparse: D) extends Dispatched[Nothing, Nothing, Nothing, D]
 
-class DispatchedSplitter[A: Ordering, B, C: Ordering, D, T](
-  val ordinal: Splitter[A, T],
-  val nominal: Splitter[B, T],
-  val continuous: Splitter[C, T],
-  val sparse: Splitter[D, T])
+case class DispatchedSplitter[A: Ordering, B, C: Ordering, D, T](
+  ordinal: Splitter[A, T],
+  nominal: Splitter[B, T],
+  continuous: Splitter[C, T],
+  sparse: Splitter[D, T])
     extends Splitter[Dispatched[A, B, C, D], T] {
 
   type S = Dispatched[ordinal.S, nominal.S, continuous.S, sparse.S]
   val semigroup =
-    Semigroup.from[S] { (a, b) =>
-      (a, b) match {
-        case (Ordinal(l), Ordinal(r)) => Ordinal(ordinal.semigroup.plus(l, r))
-        case (Nominal(l), Nominal(r)) => Nominal(nominal.semigroup.plus(l, r))
-        case (Continuous(l), Continuous(r)) => Continuous(continuous.semigroup.plus(l, r))
-        case (Sparse(l), Sparse(r)) => Sparse(sparse.semigroup.plus(l, r))
-        case _ => sys.error("Values do not match: " + (a, b))
-      }
+    Semigroup.from[S] {
+      case (Ordinal(l), Ordinal(r)) => Ordinal(ordinal.semigroup.plus(l, r))
+      case (Nominal(l), Nominal(r)) => Nominal(nominal.semigroup.plus(l, r))
+      case (Continuous(l), Continuous(r)) => Continuous(continuous.semigroup.plus(l, r))
+      case (Sparse(l), Sparse(r)) => Sparse(sparse.semigroup.plus(l, r))
+      case (a, b) => sys.error("Values do not match: " + (a, b))
     }
 
   def create(value: Dispatched[A, B, C, D], target: T) = {

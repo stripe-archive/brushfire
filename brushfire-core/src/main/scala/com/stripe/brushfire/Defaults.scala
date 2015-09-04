@@ -4,11 +4,11 @@ import com.twitter.algebird._
 
 trait LowPriorityDefaults {
   implicit def dispatchedSplitterWithSparseBoolean[A: Ordering, B, C: Ordering, T](
-    implicit ordinal: Splitter[A, T],
-    nominal: Splitter[B, T],
-    continuous: Splitter[C, T],
-    sparse: Splitter[Boolean, T]): Splitter[Dispatched[A, B, C, Boolean], T] =
-    new DispatchedSplitter(ordinal, nominal, continuous, sparse)
+      implicit ordinal: Splitter[A, T],
+      nominal: Splitter[B, T],
+      continuous: Splitter[C, T],
+      sparse: Splitter[Boolean, T]): Splitter[Dispatched[A, B, C, Boolean], T] =
+    DispatchedSplitter(ordinal, nominal, continuous, sparse)
 }
 
 trait Defaults extends LowPriorityDefaults {
@@ -21,10 +21,10 @@ trait Defaults extends LowPriorityDefaults {
   implicit def booleanSplitter[T: Group]: Splitter[Boolean, T] = SparseSplitter[Boolean, T]()
 
   implicit def dispatchedSplitterWithSpaceSaver[A: Ordering, B, C: Ordering, D, L](
-    implicit ordinal: Splitter[A, Map[L, Long]],
-    nominal: Splitter[B, Map[L, Long]],
-    continuous: Splitter[C, Map[L, Long]]): Splitter[Dispatched[A, B, C, D], Map[L, Long]] =
-    new DispatchedSplitter(ordinal, nominal, continuous, SpaceSaverSplitter[D, L]())
+      implicit ordinal: Splitter[A, Map[L, Long]],
+      nominal: Splitter[B, Map[L, Long]],
+      continuous: Splitter[C, Map[L, Long]]): Splitter[Dispatched[A, B, C, D], Map[L, Long]] =
+    DispatchedSplitter(ordinal, nominal, continuous, SpaceSaverSplitter[D, L]())
 
   implicit def softVoter[L, M: Numeric]: Voter[Map[L, M], Map[L, Double]] = SoftVoter[L, M]()
 
