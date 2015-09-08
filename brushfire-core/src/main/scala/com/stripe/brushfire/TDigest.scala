@@ -26,15 +26,29 @@ private [this] case object TDigestSemigroup extends Semigroup[TDigest] {
 }
 
 object TDigestSplitter {
-  private def splitDists[L](q: Double)(target: L, digest: TDigest): (Map[L, Long], Map[L, Long]) = {
+  /**
+   * Estimate the number of items on either side of a quantile split
+   */
+  private def splitCounts(q: Double, digest: TDigest): (Long, Long) = {
     // the cumulative density reported is sometimes outside of [0,1] so we need to bound it. otherwise
     // the estimated target distribution will be far from realistic... leading the Evaluator to
     // frequently pick a suboptimal split point
-    val leftDist = (digest.cdf(q).max(0.0).min(1.0) * digest.size().toDouble).toLong
-    val rightDist = (digest.size - leftDist).max(0L)
-    val left = if (leftDist > 0L) Map(target -> leftDist) else Map.empty[L, Long]
-    val right = if (rightDist > 0L) Map(target -> rightDist) else Map.empty[L, Long]
+    val left = (digest.cdf(q).max(0.0).min(1.0) * digest.size().toDouble).toLong
+    val right = (digest.size - left).max(0L)
     (left, right)
+  }
+
+  /**
+   * Create a singleton [[scala.collection.Map]] if the value is positive, else return [[scala.collection.Map.empty]]
+   */
+  private def positiveOrEmpty[L]: (L, Long) => Map[L, Long] = {
+    case (key, value) if value > 0L => Map(key -> value)
+    case _ => Map.empty[L, Long]
+  }
+
+  private def targetDistribution[L](q: Double)(target: L, digest: TDigest): (Map[L, Long], Map[L, Long]) = {
+    val (left, right) = splitCounts(q, digest)
+    (positiveOrEmpty(target, left), positiveOrEmpty(target, right))
   }
 }
 
@@ -43,17 +57,29 @@ case class TDigestSplitter[L](k: Int = 25, compression: Double = 100.0) extends 
 
   override def split(parent: Map[L, Long], stats: S): Iterable[Split[Double, Map[L, Long]]] = {
     implicit val tds = TDigestSemigroup
-    import TDigestSplitter.splitDists
+    import TDigestSplitter.targetDistribution
 
     val splits = for {
       // merge the statistics from all targets
       merged <- Semigroup.sumOption(stats.valuesIterator).toSeq
+
+      // generate the requested number of splits evenly between [1/k, 1]
+      // we can skip 0 because the predicate is LessThan, and no targets should
+      // exist below the 0th quantile
       i <- 1 to k
+
+      // first estimate the nth quantile from the merged statistics
+      // this will become a potential split point in the resulting tree
       q = merged.quantile(i.toDouble / k.toDouble).max(0.0).min(merged.size().toDouble)
-      (leftDist, rightDist) = Monoid.sum(stats.map(Function.tupled(splitDists(q))))
-      if leftDist.nonEmpty || rightDist.nonEmpty
+
+      // then estimate the target distribution using the target's statistics
+      (left, right) = Monoid.sum(stats.map(Function.tupled(targetDistribution(q))))
+
+      // the goodness score of an entirely empty split should not be the best
+      // and so they can be discarded immediately
+      if left.nonEmpty || right.nonEmpty
     } yield {
-      BinarySplit(LessThan(q), leftDist, rightDist)
+      BinarySplit(LessThan(q), left, right)
     }
 
     // if the input is not continuous or has too few examples we will end up
