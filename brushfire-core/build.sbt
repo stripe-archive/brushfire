@@ -9,6 +9,7 @@ libraryDependencies ++= {
     jacksonMapper,
     jacksonXC,
     jacksonJAXRS,
+    tDigest,
     scalaTest,
     scalaCheck
   )
