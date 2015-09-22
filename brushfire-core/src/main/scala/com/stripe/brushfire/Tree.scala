@@ -10,33 +10,42 @@ object Tree {
 
   def singleton[K, V, T](t: T): Tree[K, V, T] = Tree(LeafNode(0, t, ()))
 
-  def expand[K, V, T: Monoid](times: Int, leaf: LeafNode[K, V, T, Unit], splitter: Splitter[V, T], evaluator: Evaluator[V, T], stopper: Stopper[T], instances: Iterable[Instance[K, V, T]]): Node[K, V, T, Unit] = {
+  def expand[K, V, T: Monoid](times: Int, treeIndex: Int, leaf: LeafNode[K, V, T, Unit], splitter: Splitter[V, T], evaluator: Evaluator[V, T], stopper: Stopper[T], sampler: Sampler[K], instances: Iterable[Instance[K, V, T]]): Node[K, V, T, Unit] = {
     if (times > 0 && stopper.shouldSplit(leaf.target)) {
       implicit val jdSemigroup = splitter.semigroup
 
       Semigroup.sumOption(instances.flatMap { instance =>
-        instance.features.map { case (f, v) => Map(f -> splitter.create(v, instance.target)) }
+        instance.features.map { case (f, v) =>
+          if(sampler.includeFeature(f, treeIndex, leaf.index))
+            Map(f -> splitter.create(v, instance.target))
+          else
+            Map.empty[K,splitter.S]
+        }
       }).flatMap { featureMap =>
         val splits = featureMap.toList.flatMap {
           case (f, s) =>
             splitter.split(leaf.target, s).map { x => f -> evaluator.evaluate(x) }
         }
 
-        val (splitFeature, (split, _)) = splits.maxBy { case (f, (x, s)) => s }
-        val edges = split.predicates.toList.map {
-          case (pred, _) =>
-            val newInstances = instances.filter { inst => pred(inst.features.get(splitFeature)) }
-            val target = Monoid.sum(newInstances.map { _.target })
-            (pred, target, newInstances)
-        }
-
-        if (edges.count { case (_, _, newInstances) => newInstances.nonEmpty } > 1) {
-          Some(SplitNode(edges.map {
-            case (pred, target, newInstances) =>
-              (splitFeature, pred, expand[K, V, T](times - 1, LeafNode(0, target), splitter, evaluator, stopper, newInstances))
-          }))
-        } else {
+        if(splits.isEmpty)
           None
+        else {
+          val (splitFeature, (split, _)) = splits.maxBy { case (f, (x, s)) => s }
+          val edges = split.predicates.toList.map {
+            case (pred, _) =>
+              val newInstances = instances.filter { inst => pred(inst.features.get(splitFeature)) }
+              val target = Monoid.sum(newInstances.map { _.target })
+              (pred, target, newInstances)
+          }
+
+          if (edges.count { case (_, _, newInstances) => newInstances.nonEmpty } > 1) {
+            Some(SplitNode(edges.map {
+              case (pred, target, newInstances) =>
+                (splitFeature, pred, expand[K, V, T](times - 1, treeIndex, LeafNode(0, target), splitter, evaluator, stopper, sampler, newInstances))
+            }))
+          } else {
+            None
+          }
         }
       }.getOrElse(leaf)
     } else {

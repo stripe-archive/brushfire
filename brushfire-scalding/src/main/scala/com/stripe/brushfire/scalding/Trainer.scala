@@ -294,7 +294,7 @@ case class Trainer[K: Ordering, V, T: Monoid](
               case ((treeIndex, leafIndex), instances) =>
                 val target = Monoid.sum(instances.map { _.target })
                 val leaf = LeafNode[K, V, T, Unit](0, target)
-                val expanded = Tree.expand(times, leaf, splitter, evaluator, stopper, instances)
+                val expanded = Tree.expand(times, treeIndex, leaf, splitter, evaluator, stopper, sampler, instances)
                 treeIndex -> List(leafIndex -> expanded)
             }
 
