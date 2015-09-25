@@ -5,7 +5,7 @@ import sbtassembly._
 
 object MakeJar {
   val settings = Seq(
-    jarName in assembly := name.value + "-" + version.value + "-jar-with-dependencies.jar",
+    assemblyJarName in assembly := name.value + "-" + version.value + "-jar-with-dependencies.jar",
     assemblyMergeStrategy in assembly := {
       val defaultStrategy = (assemblyMergeStrategy in assembly).value
 
