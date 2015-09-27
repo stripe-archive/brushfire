@@ -1,6 +1,6 @@
 package com.stripe.brushfire
 
-import scala.reflect.ClassTag
+import scala.reflect.{ classTag, ClassTag }
 
 import scala.collection.immutable.Queue
 import scala.collection.mutable.ArrayBuilder
@@ -64,24 +64,28 @@ class HeapTree[K, V, T, A] private (
 }
 
 object HeapTree {
-  def fromTree[K: ClassTag, V, T: ClassTag](tree: Tree[K, V, T]): HeapTree[K, V, T, Unit] = {
+  def fromTree[K: ClassTag, V, T: ClassTag, A: ClassTag](tree: AnnotatedTree[K, V, T, A]): HeapTree[K, V, T, A] = {
     val labelsBldr = ArrayBuilder.make[Int]()
     val keysBldr = ArrayBuilder.make[K]()
     val predBldr = ArrayBuilder.make[Predicate[V]]()
     val targetsBldr = ArrayBuilder.make[T]()
+    val annBldr =
+      if (classTag[A] == ClassTag.Unit) None
+      else Some(ArrayBuilder.make[A])
 
     val nullKey = null.asInstanceOf[K]
     val nullPred = null.asInstanceOf[Predicate[V]]
 
     val maxDepth = tree.fold((_, _) => 1)(_.map(_._3).max + 1)
 
-    def addInternalNode(i: Int, lKey: K, lPred: Predicate[V], rKey: K, rPred: Predicate[V], target: T): Unit = {
+    def addInternalNode(i: Int, lKey: K, lPred: Predicate[V], rKey: K, rPred: Predicate[V], target: T, ann: A): Unit = {
       labelsBldr += i
       keysBldr += lKey
       keysBldr += rKey
       predBldr += lPred
       predBldr += rPred
       targetsBldr += target
+      annBldr.foreach(_ += ann)
     }
 
     def addExternalNode(): Unit = {
@@ -92,19 +96,19 @@ object HeapTree {
     // using the `nodes` queue to keep order the search. Internal nodes (split
     // + leaf nodes) are wrapped in `Some`, while external nodes are denoted
     // with `None`.
-    def flatten(i: Int, nodes: Queue[Option[(Int, Node[K, V, T, Unit])]]): Unit = {
+    def flatten(i: Int, nodes: Queue[Option[(Int, Node[K, V, T, A])]]): Unit = {
       if (nodes.nonEmpty) {
         nodes.dequeue match {
-          case (Some((depth, SplitNode(Seq((lKey, lPred, lChild), (rKey, rPred, rChild))))), rest) =>
-            addInternalNode(i, lKey, lPred, rKey, rPred, null.asInstanceOf[T])
+          case (Some((depth, node @ SplitNode(Seq((lKey, lPred, lChild), (rKey, rPred, rChild))))), rest) =>
+            addInternalNode(i, lKey, lPred, rKey, rPred, null.asInstanceOf[T], node.annotation)
             val childDepth = depth + 1
             flatten(i + 1, rest.enqueue(Some(childDepth -> lChild)).enqueue(Some(childDepth -> rChild)))
 
           case (Some((_, SplitNode(children))), _) =>
             throw new IllegalArgumentException("expected binary splits, but found ${children.size}-ary split")
 
-          case (Some((depth, LeafNode(_, target, _))), rest) =>
-            addInternalNode(i, nullKey, nullPred, nullKey, nullPred, target)
+          case (Some((depth, LeafNode(_, target, annotation))), rest) =>
+            addInternalNode(i, nullKey, nullPred, nullKey, nullPred, target, annotation)
             val nodes0 =
               if (depth < maxDepth) rest.enqueue(None).enqueue(None)
               else rest
@@ -119,6 +123,6 @@ object HeapTree {
     }
 
     flatten(1, Queue(Some(1 -> tree.root)))
-    new HeapTree(labelsBldr.result(), keysBldr.result(), predBldr.result(), targetsBldr.result(), None)
+    new HeapTree(labelsBldr.result(), keysBldr.result(), predBldr.result(), targetsBldr.result(), annBldr.map(_.result()))
   }
 }
