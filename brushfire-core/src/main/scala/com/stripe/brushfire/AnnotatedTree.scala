@@ -26,7 +26,20 @@ object LeafNode {
     LeafNode(index, target, Monoid.zero)
 }
 
-case class AnnotatedTree[K, V, T, A: Semigroup](root: Node[K, V, T, A]) {
+case class AnnotatedTree[K, V, T, A: Semigroup](root: Node[K, V, T, A]) extends TreeLike[AnnotatedTree, K, V, T, A] {
+  type TreeNode = Node[K, V, T, A]
+
+  def annotation(node: TreeNode): A =
+    node.annotation
+
+  def withNode[B](node: TreeNode)(
+    split: Seq[(K, Predicate[V], TreeNode)] => B,
+    leaf: (T, A) => B
+  ): B = node match {
+    case SplitNode(children) => split(children)
+    case LeafNode(_, target, annotation) => leaf(target, annotation)
+  }
+
   private def mapSplits[K0, V0](f: (K, Predicate[V]) => (K0, Predicate[V0])): AnnotatedTree[K0, V0, T, A] = {
     def recur(node: Node[K, V, T, A]): Node[K0, V0, T, A] = node match {
       case SplitNode(children) =>
@@ -89,6 +102,25 @@ case class AnnotatedTree[K, V, T, A: Semigroup](root: Node[K, V, T, A]) {
    */
   def mapPredicates[V1: Ordering](f: V => V1): AnnotatedTree[K, V1, T, A] =
     mapSplits { (k, p) => (k, p.map(f)) }
+
+  /**
+   * Perform a fold on the tree, starting from the leaves and moving up.
+   *
+   * @param leaf the function to map leaf nodes to B
+   * @param split the function to map split nodes to B
+   */
+  override def fold[B](leaf: (T, A) => B)(split: Seq[(K, Predicate[V], B)] => B): B = {
+    def recur(node: Node[K, V, T, A]): B = node match {
+      case SplitNode(children) =>
+        split(children.map { case (k, pred, child) =>
+          (k, pred, recur(child))
+        })
+      case LeafNode(_, target, annotation) =>
+        leaf(target, annotation)
+    }
+
+    recur(root)
+  }
 
   /**
    * Returns the leaf with index `leafIndex` by performing a DFS.
