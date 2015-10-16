@@ -47,7 +47,7 @@ If it worked, you should see a JSON representation of 4 versions of a decision t
 To use brushfire in your own SBT project, add the following to your `build.sbt`:
 
 ```scala
-libraryDependencies += "com.stripe" %% "brushfire" % "0.4.0"
+libraryDependencies += "com.stripe" %% "brushfire" % "0.6.3"
 ```
 
 To use brushfire as a jar in your own Maven project, add the following to your POM file:
@@ -56,7 +56,7 @@ To use brushfire as a jar in your own Maven project, add the following to your P
 <dependency>
   <groupId>com.stripe</groupId>
   <artifactId>brushfire_${scala.binary.version}</artifactId>
-  <version>0.4.0</version>
+  <version>0.6.3</version>
 </dependency>
 ```
 
