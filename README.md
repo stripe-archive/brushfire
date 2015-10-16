@@ -29,9 +29,13 @@ In the future we plan to add support for:
 
 Thanks for assistance and contributions:
 
-* Steven Noble <http://twitter.com/snoble>
-* Colin Marc <http://twitter.com/colinmarc>
+* Edwin Chen <https://twitter.com/echen>
+* Roban Kramer <https://twitter.com/robanhk>
 * Dan Frank <http://twitter.com/danielhfrank>
+* Nathan Howell <https://twitter.com/nathanhowell>
+* Colin Marc <http://twitter.com/colinmarc>
+* Steven Noble <http://twitter.com/snoble>
+* Tom Switzer <https://twitter.com/tixxit>
 
 # Quick start
 
