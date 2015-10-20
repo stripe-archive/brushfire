@@ -148,7 +148,7 @@ case class DepthFirstTreeTraversal[K, V, T, A](order: (Random, List[Node[K, V, T
           Stream.empty
         case (leaf @ LeafNode(_, _, _)) :: rest =>
           leaf #:: loop0(rest)
-        case (split @ SplitNode(_)) :: rest =>
+        case (split @ SplitNode(_, _)) :: rest =>
           val newStack = split.findChildren(row) match {
             case Nil => rest
             case node :: Nil => node :: rest

@@ -5,22 +5,23 @@ import com.twitter.algebird._
 /**
  * Represents a single instance of training data.
  *
- * @tparam K feature names
- * @tparam V feature values
+ * @tparam M instance metadata
+ * @tparam F features
  * @tparam T target distribution
  *
  * @constructor create a new instance
- * @param id an identifier unique to this instance
- * @param timestamp the time this instance was observed
+ * @param metadata metadata about this instance
  * @param features a map of named features that make up this instance
  * @param target a distribution of predictions or labels for this instance
  */
-case class Instance[K, V, T](id: String, timestamp: Long, features: Map[K, V], target: T)
+case class Instance[M, F, T](metadata: M, features: F, target: T)
 
 object Instance {
-  def apply[K, V](id: String, timestamp: Long, features: Map[K, V], target: Boolean): Instance[K, V, Map[Boolean, Long]] =
-    Instance(id, timestamp, features, Map(target -> 1L))
+  def apply[K, V](id: String, timestamp: Long, features: Map[K, V], target: Boolean): Instance[DefaultMetadata, Map[K, V], Map[Boolean, Long]] =
+    Instance(DefaultMetadata(id, timestamp), features, Map(target -> 1L))
 }
+
+case class DefaultMetadata(id: String, timestamp: Long)
 
 /**
  * Produces candidate splits from the instances at a leaf node.
@@ -37,19 +38,24 @@ trait Splitter[V, T] {
   /** semigroup to sum up joint distributions */
   def semigroup: Semigroup[S]
 
-  /** return candidate splits given a joint distribution and the parent node's target distrubution */
-  def split(parent: T, stats: S): Iterable[Split[V, T]]
+  /**
+   * generate candidate splits
+   * @param parent the parent node's target distribution
+   * @param stats the joint distribution to split
+   * @param annotation an annotation that must be preserved in each split candidate
+   */
+  def split[A](parent: T, stats: S, annotation: A): Iterable[Split[V, T, A]]
 }
 
 /** Candidate split for a tree node */
-trait Split[V, T] {
-  def predicates: Iterable[(Predicate[V], T)]
+trait Split[V, T, A] {
+  def predicates: Iterable[(Predicate[V], T, A)]
 }
 
 /** Evaluates the goodness of a candidate split */
-trait Evaluator[V, T] {
+trait Evaluator[V, T, A] {
   /** returns a (possibly transformed) version of the input split, and a numeric goodness score */
-  def evaluate(split: Split[V, T]): (Split[V, T], Double)
+  def evaluate(split: Split[V, T, A]): (Split[V, T, A], Double)
 }
 
 /** Provides stopping conditions which guide when splits will be attempted */
@@ -60,18 +66,18 @@ trait Stopper[T] {
 }
 
 /** Allocates instances and features to trees and training or validation sets */
-trait Sampler[-K] {
+trait Sampler[-M, -K] {
   /** returns number of trees to train */
   def numTrees: Int
 
   /** returns how many copies (0 to n) of an instance to train a given tree with */
-  def timesInTrainingSet(id: String, timestamp: Long, treeIndex: Int): Int
+  def timesInTrainingSet(metadata: M, treeIndex: Int): Int
 
   /** returns whether to use an instance to validate a given tree */
-  def includeInValidationSet(id: String, timestamp: Long, treeIndex: Int): Boolean
+  def includeInValidationSet(metadata: M, treeIndex: Int): Boolean
 
   /** returns whether to consider a feature when splitting a given leaf */
-  def includeFeature(key: K, treeIndex: Int, leafIndex: Int): Boolean
+  def includeFeature(metadata: M, key: K, treeIndex: Int, leafIndex: Int): Boolean
 }
 
 /** Computes some kind of error by comparing the trees' predictions to the validation set */
@@ -86,4 +92,11 @@ trait Error[T, P, E] {
    * @param predicted the set of predicted distributions from the trees
    */
   def create(actual: T, predicted: P): E
+}
+
+/** Converts instance metadata to tree annotations */
+trait Annotator[M, A] {
+  def monoid: Monoid[A]
+
+  def create(metadata: M): A
 }

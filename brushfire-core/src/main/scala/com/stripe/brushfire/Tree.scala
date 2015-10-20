@@ -6,14 +6,21 @@ sealed trait Node[K, V, T, A] {
   def annotation: A
 }
 
-case class SplitNode[K, V, T, A: Semigroup](children: Seq[(K, Predicate[V], Node[K, V, T, A])]) extends Node[K, V, T, A] {
+case class SplitNode[K, V, T, A](
+    annotation: A,
+    children: Seq[(K, Predicate[V], Node[K, V, T, A])]) extends Node[K, V, T, A] {
   require(children.nonEmpty)
-
-  lazy val annotation: A =
-    Semigroup.sumOption(children.map(_._3.annotation)).get
 
   def findChildren(row: Map[K, V]): List[Node[K, V, T, A]] =
     children.collect { case (k, p, n) if p(row.get(k)) => n }(collection.breakOut)
+}
+
+object SplitNode{
+  def apply[K, V, T, A: Semigroup](children: Seq[(K, Predicate[V], Node[K, V, T, A])]): SplitNode[K, V, T, A] = {
+    require(children.nonEmpty)
+    val annotation = Semigroup.sumOption(children.view.map(_._3.annotation))
+    SplitNode(annotation.get, children)
+  }
 }
 
 case class LeafNode[K, V, T, A](
@@ -29,8 +36,8 @@ object LeafNode {
 case class Tree[K, V, T, A: Semigroup](root: Node[K, V, T, A]) {
   private def mapSplits[K0, V0](f: (K, Predicate[V]) => (K0, Predicate[V0])): Tree[K0, V0, T, A] = {
     def recur(node: Node[K, V, T, A]): Node[K0, V0, T, A] = node match {
-      case SplitNode(children) =>
-        SplitNode(children.map {
+      case SplitNode(annotation, children) =>
+        SplitNode(annotation, children.map {
           case (key, pred, child) =>
             val (key0, pred0) = f(key, pred)
             (key0, pred0, recur(child))
@@ -45,7 +52,7 @@ case class Tree[K, V, T, A: Semigroup](root: Node[K, V, T, A]) {
 
   private def mapLeaves[T0, A0: Semigroup](f: (T, A) => (T0, A0)): Tree[K, V, T0, A0] = {
     def recur(node: Node[K, V, T, A]): Node[K, V, T0, A0] = node match {
-      case SplitNode(children) =>
+      case SplitNode(_, children) =>
         SplitNode(children.map {
           case (key, pred, child) =>
             (key, pred, recur(child))
@@ -103,7 +110,7 @@ case class Tree[K, V, T, A: Semigroup](root: Node[K, V, T, A]) {
     start match {
       case leaf @ LeafNode(_, _, _) =>
         if (leaf.index == leafIndex) Some(leaf) else None
-      case SplitNode(children) =>
+      case SplitNode(_, children) =>
         children
           .flatMap { case (_, _, child) => leafAt(leafIndex, child) }
           .headOption
@@ -142,7 +149,7 @@ case class Tree[K, V, T, A: Semigroup](root: Node[K, V, T, A]) {
         // Bounce at the bottom and start back up the tree.
         (validationData, leaf)
 
-      case SplitNode(children) =>
+      case SplitNode(_, children) =>
         // Call pruneNode on each child, accumulating modified children and
         // additions to the validation data along the way.
         val (newData, newChildren) =
@@ -244,7 +251,7 @@ case class Tree[K, V, T, A: Semigroup](root: Node[K, V, T, A]) {
                 (feature, predicate, child)
             })
 
-        case SplitNode(children) =>
+        case SplitNode(_, children) =>
           SplitNode[K, V, T, A](children.map {
             case (feature, predicate, child) =>
               (feature, predicate, growFrom(child))
@@ -266,7 +273,7 @@ case class Tree[K, V, T, A: Semigroup](root: Node[K, V, T, A]) {
       start match {
         case LeafNode(index, _, _) =>
           fn(index).getOrElse(start)
-        case SplitNode(children) =>
+        case SplitNode(_, children) =>
           SplitNode[K, V, T, A](children.map {
             case (feature, predicate, child) =>
               (feature, predicate, updateFrom(child))
@@ -282,39 +289,47 @@ case class Tree[K, V, T, A: Semigroup](root: Node[K, V, T, A]) {
    *
    * @return A new tree with leaves renumbered.
    */
-  def renumberLeaves: Tree[K, V, T, A] =
+  def renumberLeaves(implicit annotationSemigroup: Semigroup[A]): Tree[K, V, T, A] =
     this.growByLeafIndex { i => Nil }
 }
 
 object Tree {
-  def singleton[K, V, T](t: T): Tree[K, V, T, Unit] = {
-    Tree(LeafNode[K, V, T, Unit](0, t, ()))
+  def singleton[K, V, T, A: Semigroup](t: T, a: A): Tree[K, V, T, A] = {
+    Tree(LeafNode[K, V, T, A](0, t, a))
   }
 
-  def expand[K, V, T: Monoid](times: Int, leaf: LeafNode[K, V, T, Unit], splitter: Splitter[V, T], evaluator: Evaluator[V, T], stopper: Stopper[T], instances: Iterable[Instance[K, V, T]]): Node[K, V, T, Unit] = {
+  def expand[M, K, V, T: Monoid, A](
+      times: Int,
+      leaf: LeafNode[K, V, T, A],
+      splitter: Splitter[V, T],
+      evaluator: Evaluator[V, T, A],
+      stopper: Stopper[T],
+      annotator: Annotator[M, A],
+      instances: Iterable[Instance[M, Map[K, V], T]]): Node[K, V, T, A] = {
     if (times > 0 && stopper.shouldSplit(leaf.target)) {
       implicit val jdSemigroup = splitter.semigroup
+      implicit val aMonoid = annotator.monoid
 
       Semigroup.sumOption(instances.flatMap { instance =>
-        instance.features.map { case (f, v) => Map(f -> splitter.create(v, instance.target)) }
+        instance.features.map { case (f, v) => Map(f -> (splitter.create(v, instance.target), annotator.create(instance.metadata))) }
       }).flatMap { featureMap =>
         val splits = featureMap.toList.flatMap {
-          case (f, s) =>
-            splitter.split(leaf.target, s).map { x => f -> evaluator.evaluate(x) }
+          case (f, (s, a)) =>
+            splitter.split(leaf.target, s, a).map { x => f -> evaluator.evaluate(x) }
         }
 
         val (splitFeature, (split, _)) = splits.maxBy { case (f, (x, s)) => s }
         val edges = split.predicates.toList.map {
-          case (pred, _) =>
+          case (pred, _, _) =>
             val newInstances = instances.filter { inst => pred(inst.features.get(splitFeature)) }
-            val target = Monoid.sum(newInstances.map { _.target })
-            (pred, target, newInstances)
+            val (target, annotation) = Monoid.sum(newInstances.map { inst => (inst.target, annotator.create(inst.metadata)) })
+            (pred, target, annotation, newInstances)
         }
 
-        if (edges.count { case (_, _, newInstances) => newInstances.nonEmpty } > 1) {
+        if (edges.count { case (_, _, _, newInstances) => newInstances.nonEmpty } > 1) {
           Some(SplitNode(edges.map {
-            case (pred, target, newInstances) =>
-              (splitFeature, pred, expand[K, V, T](times - 1, LeafNode(0, target), splitter, evaluator, stopper, newInstances))
+            case (pred, target, annotation, newInstances) =>
+              (splitFeature, pred, expand[M, K, V, T, A](times - 1, LeafNode(0, target, annotation), splitter, evaluator, stopper, annotator, newInstances))
           }))
         } else {
           None

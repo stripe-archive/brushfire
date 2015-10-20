@@ -35,11 +35,11 @@ case class DispatchedSplitter[A: Ordering, B, C: Ordering, D, T](
     }
   }
 
-  def split(parent: T, stats: S) = stats match {
-    case Ordinal(as) => Dispatched.wrapSplits(ordinal.split(parent, as))(Dispatched.ordinal)
-    case Nominal(bs) => Dispatched.wrapSplits(nominal.split(parent, bs))(Dispatched.nominal)
-    case Continuous(cs) => Dispatched.wrapSplits(continuous.split(parent, cs))(Dispatched.continuous)
-    case Sparse(ds) => Dispatched.wrapSplits(sparse.split(parent, ds))(Dispatched.sparse)
+  def split[M](parent: T, stats: S, annotation: M) = stats match {
+    case Ordinal(as) => Dispatched.wrapSplits(ordinal.split(parent, as, annotation))(Dispatched.ordinal)
+    case Nominal(bs) => Dispatched.wrapSplits(nominal.split(parent, bs, annotation))(Dispatched.nominal)
+    case Continuous(cs) => Dispatched.wrapSplits(continuous.split(parent, cs, annotation))(Dispatched.continuous)
+    case Sparse(ds) => Dispatched.wrapSplits(sparse.split(parent, ds, annotation))(Dispatched.sparse)
   }
 }
 
@@ -57,11 +57,11 @@ object Dispatched {
   def continuous[C](c: C) = Continuous(c)
   def sparse[D](d: D) = Sparse(d)
 
-  def wrapSplits[X, T, A: Ordering, B, C: Ordering, D](splits: Iterable[Split[X, T]])(fn: X => Dispatched[A, B, C, D]) = {
+  def wrapSplits[X, T, A: Ordering, B, C: Ordering, D, M](splits: Iterable[Split[X, T, M]])(fn: X => Dispatched[A, B, C, D]) = {
     splits.map { split =>
-      new Split[Dispatched[A, B, C, D], T] {
+      new Split[Dispatched[A, B, C, D], T, M] {
         def predicates = split.predicates.map {
-          case (pred, p) => (pred.map(fn), p)
+          case (pred, p, a) => (pred.map(fn), p, a)
         }
       }
     }

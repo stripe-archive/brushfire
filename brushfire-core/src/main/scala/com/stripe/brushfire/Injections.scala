@@ -27,6 +27,27 @@ object JsonInjections {
         }
     }
 
+  implicit object UnitInjection extends JsonNodeInjection[Unit] {
+    override def apply(a: Unit): JsonNode = {
+      JsonNodeFactory.instance.objectNode
+    }
+
+    override def invert(b: JsonNode): Try[Unit] = {
+      Success(())
+    }
+  }
+
+  private def tryChild(node: JsonNode, property: String): Try[JsonNode] = Try {
+    val child = node.get(property)
+    assert(child != null, property + " != null")
+    child
+  }
+
+  private def tryFromJsonNode[T: JsonNodeInjection](node: JsonNode, property: String): Try[T] = {
+    tryChild(node, property)
+      .flatMap(fromJsonNode[T])
+  }
+
   implicit def dispatchJsonNodeInjection[A: JsonNodeInjection, B: JsonNodeInjection, C: JsonNodeInjection, D: JsonNodeInjection]: JsonNodeInjection[Dispatched[A, B, C, D]] = new AbstractJsonNodeInjection[Dispatched[A, B, C, D]] {
     def apply(dispatched: Dispatched[A, B, C, D]) = {
       val obj = JsonNodeFactory.instance.objectNode
@@ -71,12 +92,13 @@ object JsonInjections {
     }
   }
 
-  implicit def treeJsonInjection[K, V, T](
+  implicit def treeJsonInjection[K, V, T, A: Semigroup](
     implicit kInj: JsonNodeInjection[K],
     pInj: JsonNodeInjection[T],
     vInj: JsonNodeInjection[V],
+    aInj: JsonNodeInjection[A],
     mon: Monoid[T],
-    ord: Ordering[V] = null): JsonNodeInjection[Tree[K, V, T, Unit]] = {
+    ord: Ordering[V] = null): JsonNodeInjection[Tree[K, V, T, A]] = {
 
     implicit def predicateJsonNodeInjection: JsonNodeInjection[Predicate[V]] =
       new AbstractJsonNodeInjection[Predicate[V]] {
@@ -115,16 +137,16 @@ object JsonInjections {
         }
       }
 
-    implicit def nodeJsonNodeInjection: JsonNodeInjection[Node[K, V, T, Unit]] =
-      new AbstractJsonNodeInjection[Node[K, V, T, Unit]] {
-        def apply(node: Node[K, V, T, Unit]) = node match {
+    implicit def nodeJsonNodeInjection: JsonNodeInjection[Node[K, V, T, A]] =
+      new AbstractJsonNodeInjection[Node[K, V, T, A]] {
+        def apply(node: Node[K, V, T, A]) = node match {
           case LeafNode(index, target, _) =>
             val obj = JsonNodeFactory.instance.objectNode
             obj.put("leaf", toJsonNode(index))
             obj.put("distribution", toJsonNode(target))
             obj
 
-          case SplitNode(children) =>
+          case SplitNode(annotation, children) =>
             val ary = JsonNodeFactory.instance.arrayNode
             children.foreach {
               case (feature, predicate, child) =>
@@ -135,58 +157,70 @@ object JsonInjections {
                 obj.put("children", toJsonNode(child)(nodeJsonNodeInjection))
                 ary.add(obj)
             }
-            ary
+
+            val obj = JsonNodeFactory.instance.objectNode
+            obj.put("annotation", toJsonNode(annotation))
+            obj.put("splits", ary)
+            obj
         }
 
-        def tryChild(node: JsonNode, property: String) = Try {
-          val child = node.get(property)
-          assert(child != null, property + " != null")
-          child
+        private def invertLeaf(n: JsonNode, indexNode: JsonNode): Try[LeafNode[K, V, T, A]] = {
+          for {
+            index <- fromJsonNode[Int](indexNode)
+            target <- fromJsonNode[T](n.get("distribution"))
+            annotation <- fromJsonNode[A](n.get("annotation"))
+          } yield {
+            LeafNode(index, target, annotation)
+          }
+        }
+
+        private def invertSplit(n: JsonNode): Try[SplitNode[K, V, T, A]] = {
+          import Monad.scalaTry // needed for Applicative.sequence
+          for {
+            annotation <- fromJsonNode[A](n.get("annotation"))
+            splitsNode <- tryChild(n, "splits")
+            splits <- Applicative.sequence {
+              splitsNode.getElements.asScala.toSeq.map { c =>
+                for {
+                  feature <- tryFromJsonNode[K](c, "feature")
+                  predicate <- tryFromJsonNode[Predicate[V]](c, "predicate")
+                  child <- tryFromJsonNode[Node[K, V, T, A]](c, "children")
+                } yield {
+                  (feature, predicate, child)
+                }
+              }
+            }
+          } yield {
+            SplitNode[K, V, T, A](annotation, splits)
+          }
         }
 
         override def invert(n: JsonNode) = {
           Option(n.get("leaf")) match {
-            case Some(indexNode) => fromJsonNode[Int](indexNode).flatMap { index =>
-              fromJsonNode[T](n.get("distribution")).map { target =>
-                LeafNode(index, target)
-              }
-            }
-
+            case Some(indexNode) => invertLeaf(n, indexNode)
             case None =>
-              val children = n.getElements.asScala.map { c =>
-                for (
-                  featureNode <- tryChild(c, "feature");
-                  feature <- fromJsonNode[K](featureNode);
-                  predicateNode <- tryChild(c, "predicate");
-                  predicate <- fromJsonNode[Predicate[V]](predicateNode);
-                  childNode <- tryChild(c, "children");
-                  child <- fromJsonNode[Node[K, V, T, Unit]](childNode)
-                ) yield (feature, predicate, child)
-              }.toList
-
-              children.find { _.isFailure } match {
-                case Some(Failure(e)) => Failure(InversionFailure(n, e))
-                case _ => Success(SplitNode[K, V, T, Unit](children.map { _.get }))
+              invertSplit(n).recoverWith {
+                case e => Failure(InversionFailure(n, e))
               }
           }
         }
       }
 
-    new AbstractJsonNodeInjection[Tree[K, V, T, Unit]] {
-      def apply(tree: Tree[K, V, T, Unit]) = toJsonNode(tree.root)
-      override def invert(n: JsonNode) = fromJsonNode[Node[K, V, T, Unit]](n).map { root => Tree(root) }
+    new AbstractJsonNodeInjection[Tree[K, V, T, A]] {
+      def apply(tree: Tree[K, V, T, A]) = toJsonNode(tree.root)
+      override def invert(n: JsonNode) = fromJsonNode[Node[K, V, T, A]](n).map { root => Tree(root) }
     }
   }
 
-  implicit def treeJsonStringInjection[K, V, T](implicit jsonInj: JsonNodeInjection[Tree[K, V, T, Unit]]): Injection[Tree[K, V, T, Unit], String] =
-    JsonInjection.toString[Tree[K, V, T, Unit]]
+  implicit def treeJsonStringInjection[K, V, T, A](implicit jsonInj: JsonNodeInjection[Tree[K, V, T, A]]): Injection[Tree[K, V, T, A], String] =
+    JsonInjection.toString[Tree[K, V, T, A]]
 }
 
 object KryoInjections {
-  implicit def tree2Bytes[K, V, T]: Injection[Tree[K, V, T, Unit], Array[Byte]] = new AbstractInjection[Tree[K, V, T, Unit], Array[Byte]] {
-    override def apply(a: Tree[K, V, T, Unit]) = KryoInjection(a)
-    override def invert(b: Array[Byte]) = KryoInjection.invert(b).asInstanceOf[util.Try[Tree[K, V, T, Unit]]]
+  implicit def tree2Bytes[K, V, T, A]: Injection[Tree[K, V, T, A], Array[Byte]] = new AbstractInjection[Tree[K, V, T, A], Array[Byte]] {
+    override def apply(a: Tree[K, V, T, A]) = KryoInjection(a)
+    override def invert(b: Array[Byte]) = KryoInjection.invert(b).asInstanceOf[util.Try[Tree[K, V, T, A]]]
   }
 
-  implicit def tree2String[K, V, T]: Injection[Tree[K, V, T, Unit], String] = Injection.connect[Tree[K, V, T, Unit], Array[Byte], Base64String, String]
+  implicit def tree2String[K, V, T, A]: Injection[Tree[K, V, T, A], String] = Injection.connect[Tree[K, V, T, A], Array[Byte], Base64String, String]
 }

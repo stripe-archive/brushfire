@@ -3,17 +3,17 @@ package com.stripe.brushfire.local
 import com.stripe.brushfire._
 import com.twitter.algebird._
 
-case class Trainer[K: Ordering, V, T: Monoid](
-    trainingData: Iterable[Instance[K, V, T]],
-    sampler: Sampler[K],
-    trees: List[Tree[K, V, T, Unit]]) {
+case class Trainer[M, K: Ordering, V, T: Monoid, A: Semigroup](
+    trainingData: Iterable[Instance[M, Map[K, V], T]],
+    sampler: Sampler[M, K],
+    trees: List[Tree[K, V, T, A]]) {
 
-  private def updateTrees(fn: (Tree[K, V, T, Unit], Map[LeafNode[K, V, T, Unit], Iterable[Instance[K, V, T]]]) => Tree[K, V, T, Unit]): Trainer[K, V, T] = {
+  private def updateTrees(fn: (Tree[K, V, T, A], Map[LeafNode[K, V, T, A], Iterable[Instance[M, Map[K, V], T]]]) => Tree[K, V, T, A]): Trainer[M, K, V, T, A] = {
     val newTrees = trees.zipWithIndex.par.map {
       case (tree, index) =>
         val byLeaf =
           trainingData.flatMap { instance =>
-            val repeats = sampler.timesInTrainingSet(instance.id, instance.timestamp, index)
+            val repeats = sampler.timesInTrainingSet(instance.metadata, index)
             if (repeats > 0) {
               tree.leafFor(instance.features).map { leaf =>
                 1.to(repeats).toList.map { i => (instance, leaf) }
@@ -28,7 +28,7 @@ case class Trainer[K: Ordering, V, T: Monoid](
     copy(trees = newTrees.toList)
   }
 
-  private def updateLeaves(fn: (LeafNode[K, V, T, Unit], Iterable[Instance[K, V, T]]) => Node[K, V, T, Unit]): Trainer[K, V, T] = {
+  private def updateLeaves(fn: (LeafNode[K, V, T, A], Iterable[Instance[M, Map[K, V], T]]) => Node[K, V, T, A]): Trainer[M, K, V, T, A] = {
     updateTrees {
       case (tree, byLeaf) =>
         val newNodes = byLeaf.map {
@@ -40,20 +40,20 @@ case class Trainer[K: Ordering, V, T: Monoid](
     }
   }
 
-  def updateTargets: Trainer[K, V, T] =
+  def updateTargets: Trainer[M, K, V, T, A] =
     updateLeaves {
       case (leaf, instances) =>
         val target = implicitly[Monoid[T]].sum(instances.map { _.target })
         leaf.copy(target = target)
     }
 
-  def expand(times: Int)(implicit splitter: Splitter[V, T], evaluator: Evaluator[V, T], stopper: Stopper[T]): Trainer[K, V, T] =
+  def expand(times: Int)(implicit splitter: Splitter[V, T], evaluator: Evaluator[V, T, A], stopper: Stopper[T], annotator: Annotator[M, A]): Trainer[M, K, V, T, A] =
     updateLeaves {
       case (leaf, instances) =>
-        Tree.expand(times, leaf, splitter, evaluator, stopper, instances)
+        Tree.expand(times, leaf, splitter, evaluator, stopper, annotator, instances)
     }
 
-  def prune[P, E](error: Error[T, P, E])(implicit voter: Voter[T, P], ord: Ordering[E]): Trainer[K, V, T] =
+  def prune[P, E](error: Error[T, P, E])(implicit voter: Voter[T, P], ord: Ordering[E]): Trainer[M, K, V, T, A] =
     updateTrees {
       case (tree, byLeaf) =>
         val byLeafIndex = byLeaf.map {
@@ -67,7 +67,7 @@ case class Trainer[K: Ordering, V, T: Monoid](
     val errors = trainingData.map { instance =>
       val useTrees = trees.zipWithIndex.filter {
         case (tree, i) =>
-          sampler.includeInValidationSet(instance.id, instance.timestamp, i)
+          sampler.includeInValidationSet(instance.metadata, i)
       }.map { _._1 }
       val prediction = voter.predict(useTrees, instance.features)
       error.create(instance.target, prediction)
@@ -77,8 +77,10 @@ case class Trainer[K: Ordering, V, T: Monoid](
 }
 
 object Trainer {
-  def apply[K: Ordering, V, T: Monoid](trainingData: Iterable[Instance[K, V, T]], sampler: Sampler[K]): Trainer[K, V, T] = {
-    val empty = 0.until(sampler.numTrees).toList.map { i => Tree.singleton[K, V, T](Monoid.zero) }
+  def apply[M, K: Ordering, V, T: Monoid](
+      trainingData: Iterable[Instance[M, Map[K, V], T]],
+      sampler: Sampler[M, K]): Trainer[M, K, V, T, Unit] = {
+    val empty = 0.until(sampler.numTrees).toList.map { i => Tree.singleton[K, V, T, Unit](Monoid.zero[T], ()) }
     Trainer(trainingData, sampler, empty)
   }
 }

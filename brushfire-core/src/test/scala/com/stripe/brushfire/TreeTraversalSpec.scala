@@ -15,16 +15,16 @@ class TreeTraversalSpec extends WordSpec with Matchers with Checkers {
 
   "depthFirst" should {
     "always choose the left side of a split in a binary tree" in {
-      val simpleTreeGen = genBinaryTree(arbitrary[String], arbitrary[Double], arbitrary[Map[String, Long]], 2)
+      val simpleTreeGen = genBinaryTree(arbitrary[String], arbitrary[Double], arbitrary[Map[String, Long]], arbitrary[Unit], 2)
         .filter(_.root match {
-          case SplitNode(children) =>
+          case SplitNode(_, children) =>
             children.collect { case (_, IsPresent(_), _) => true }.isEmpty
           case _ =>
             false
         })
       check(Prop.forAll(simpleTreeGen) { tree =>
         (tree.root: @unchecked) match {
-          case SplitNode(children) =>
+          case SplitNode(_, children) =>
             TreeTraversal.depthFirst.find(tree, Map.empty[String, Double], None).headOption == Some(children.head._3)
         }
       })
@@ -45,7 +45,7 @@ class TreeTraversalSpec extends WordSpec with Matchers with Checkers {
   }
 
   def split[T, A: Semigroup](key: String, pred: Predicate[Double], left: Node[String, Double, T, A], right: Node[String, Double, T, A]): SplitNode[String, Double, T, A] =
-    SplitNode((key, pred, left) :: (key, Not(pred), right) :: Nil)
+    SplitNode(Semigroup.plus(left.annotation, right.annotation), (key, pred, left) :: (key, Not(pred), right) :: Nil)
 
   "weightedDepthFirst" should {
     implicit val traversal = TreeTraversal.weightedDepthFirst[String, Double, Double, Int]
@@ -77,7 +77,7 @@ class TreeTraversalSpec extends WordSpec with Matchers with Checkers {
 
   def collectLeafs[K, V, T, A](node: Node[K, V, T, A]): Set[LeafNode[K, V, T, A]] =
     node match {
-      case SplitNode(children) =>
+      case SplitNode(_, children) =>
         children.collect {
           case (_, p, n) if p(None) => collectLeafs(n)
         }.flatten.toSet

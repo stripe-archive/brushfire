@@ -1,5 +1,6 @@
 package com.stripe.brushfire
 
+import com.twitter.algebird.Semigroup
 import org.scalacheck.{ Gen, Arbitrary }
 import org.scalacheck.Arbitrary.arbitrary
 
@@ -27,12 +28,18 @@ object TreeGenerators {
 
   val DefaultTreeHeight = 6
 
-  implicit def arbitraryTree[K: Arbitrary, V: Arbitrary: Ordering, T: Arbitrary]: Arbitrary[Tree[K, V, T, Unit]] =
-    Arbitrary(genBinaryTree(arbitrary[K], arbitrary[V], arbitrary[T], DefaultTreeHeight))
+  implicit def arbitraryTree[K: Arbitrary, V: Arbitrary: Ordering, T: Arbitrary, A: Arbitrary: Semigroup]: Arbitrary[Tree[K, V, T, A]] =
+    Arbitrary(genBinaryTree(arbitrary[K], arbitrary[V], arbitrary[T], arbitrary[A], DefaultTreeHeight))
 
-  def genBinaryTree[K, V: Ordering, T](genK: Gen[K], genV: Gen[V], genT: Gen[T], height: Int): Gen[Tree[K, V, T, Unit]] = {
-    def genLeafNode(index: Int): Gen[LeafNode[K, V, T, Unit]] =
-      genT.map(LeafNode(index, _))
+  def genBinaryTree[K, V: Ordering, T, A: Semigroup](genK: Gen[K], genV: Gen[V], genT: Gen[T], genA: Gen[A], height: Int): Gen[Tree[K, V, T, A]] = {
+    def genLeafNode(index: Int): Gen[LeafNode[K, V, T, A]] = {
+      for {
+        t <- genT
+        a <- genA
+      } yield {
+        LeafNode(index, t, a)
+      }
+    }
 
     def genSplit(index: Int, maxDepth: Int) = for {
       pred <- genPredicate(genV)
@@ -43,7 +50,7 @@ object TreeGenerators {
       (key, pred, left),
       (key, Not(pred), right)))
 
-    def genNode(index: Int, maxDepth: Int): Gen[Node[K, V, T, Unit]] =
+    def genNode(index: Int, maxDepth: Int): Gen[Node[K, V, T, A]] =
       if (maxDepth > 1) {
         Gen.frequency(maxDepth -> genSplit(index, maxDepth), 1 -> genLeafNode(index))
       } else {

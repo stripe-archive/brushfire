@@ -55,7 +55,7 @@ object TDigestSplitter {
 case class TDigestSplitter[L](k: Int = 25, compression: Double = 100.0) extends Splitter[Double, Map[L, Long]] {
   override type S = Map[L, TDigest]
 
-  override def split(parent: Map[L, Long], stats: S): Iterable[Split[Double, Map[L, Long]]] = {
+  override def split[A](parent: Map[L, Long], stats: S, annotation: A): Iterable[Split[Double, Map[L, Long], A]] = {
     implicit val tds = TDigestSemigroup
     import TDigestSplitter.targetDistribution
 
@@ -79,7 +79,7 @@ case class TDigestSplitter[L](k: Int = 25, compression: Double = 100.0) extends 
       // and so they can be discarded immediately
       if left.nonEmpty || right.nonEmpty
     } yield {
-      BinarySplit(LessThan(q), left, right)
+      BinarySplit(LessThan(q), left, right, annotation)
     }
 
     // if the input is not continuous or has too few examples we will end up

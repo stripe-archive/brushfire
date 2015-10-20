@@ -2,9 +2,9 @@ package com.stripe.brushfire
 
 import com.twitter.algebird._
 
-case class ChiSquaredEvaluator[V, L, W](implicit weightMonoid: Monoid[W], weightDouble: W => Double)
-    extends Evaluator[V, Map[L, W]] {
-  def evaluate(split: Split[V, Map[L, W]]) = {
+case class ChiSquaredEvaluator[V, L, W, A](implicit weightMonoid: Monoid[W], weightDouble: W => Double)
+    extends Evaluator[V, Map[L, W], A] {
+  def evaluate(split: Split[V, Map[L, W], A]) = {
     val rows = split.predicates.map { _._2 }.filter { _.nonEmpty }
     if (rows.size > 1) {
       val n = weightMonoid.sum(rows.flatMap { _.values })
@@ -22,41 +22,41 @@ case class ChiSquaredEvaluator[V, L, W](implicit weightMonoid: Monoid[W], weight
       }).sum
       (split, testStatistic)
     } else
-      (EmptySplit[V, Map[L, W]](), Double.NegativeInfinity)
+      (EmptySplit[V, Map[L, W], A](), Double.NegativeInfinity)
   }
 }
 
-case class MinWeightEvaluator[V, L, W: Monoid](minWeight: W => Boolean, wrapped: Evaluator[V, Map[L, W]])
-    extends Evaluator[V, Map[L, W]] {
-  def evaluate(split: Split[V, Map[L, W]]) = {
+case class MinWeightEvaluator[V, L, W: Monoid, A](minWeight: W => Boolean, wrapped: Evaluator[V, Map[L, W], A])
+    extends Evaluator[V, Map[L, W], A] {
+  def evaluate(split: Split[V, Map[L, W], A]) = {
     val (baseSplit, baseScore) = wrapped.evaluate(split)
     if (baseSplit.predicates.forall {
-      case (pred, freq) =>
+      case (pred, freq, annotation) =>
         val totalWeight = Monoid.sum(freq.values)
         minWeight(totalWeight)
     })
       (baseSplit, baseScore)
     else
-      (EmptySplit[V, Map[L, W]](), Double.NegativeInfinity)
+      (EmptySplit[V, Map[L, W], A](), Double.NegativeInfinity)
   }
 }
 
-case class EmptySplit[V, P]() extends Split[V, P] {
+case class EmptySplit[V, P, A]() extends Split[V, P, A] {
   val predicates = Nil
 }
 
-case class ErrorEvaluator[V, T, P, E](error: Error[T, P, E], voter: Voter[T, P])(fn: E => Double)
-    extends Evaluator[V, T] {
-  def evaluate(split: Split[V, T]) = {
+case class ErrorEvaluator[V, T, P, E, A](error: Error[T, P, E], voter: Voter[T, P])(fn: E => Double)
+    extends Evaluator[V, T, A] {
+  def evaluate(split: Split[V, T, A]) = {
     val totalErrorOption =
       error.semigroup.sumOption(
         split
           .predicates
-          .map { case (_, target) => error.create(target, voter.combine(Some(target))) })
+          .map { case (_, target, _) => error.create(target, voter.combine(Some(target))) })
 
     totalErrorOption match {
       case Some(totalError) => (split, -fn(totalError))
-      case None => (EmptySplit[V, T](), Double.NegativeInfinity)
+      case None => (EmptySplit[V, T, A](), Double.NegativeInfinity)
     }
   }
 }

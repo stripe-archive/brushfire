@@ -12,11 +12,11 @@ object Example extends Defaults {
       val parts = line.split(",").reverse.toList
       val label = parts.head
       val values = parts.tail.map { s => s.toDouble }
-      Instance(line, 0L, Map(cols.zip(values): _*), Map(label -> 1L))
+      Instance(DefaultMetadata(line, 0L), Map(cols.zip(values): _*), Map(label -> 1L))
     }.toList
 
     var trainer =
-      Trainer(trainingData, KFoldSampler(4))
+      Trainer(trainingData, KFoldSampler[DefaultMetadata](_.id, 4))
         .updateTargets
 
     println(trainer.validate(AccuracyError()))

@@ -9,10 +9,34 @@ trait LowPriorityDefaults {
       continuous: Splitter[C, T],
       sparse: Splitter[Boolean, T]): Splitter[Dispatched[A, B, C, Boolean], T] =
     DispatchedSplitter(ordinal, nominal, continuous, sparse)
+
+  implicit def monoidAnnotator[M: Monoid]: Annotator[M, M] = {
+    new Annotator[M, M] {
+      override val monoid: Monoid[M] = {
+        implicitly[Monoid[M]]
+      }
+
+      override def create(metadata: M): M = {
+        metadata
+      }
+    }
+  }
+
+  implicit def defaultMetadataAnnotator[M: Monoid]: Annotator[DefaultMetadata, M] = {
+    new Annotator[DefaultMetadata, M] {
+      override val monoid: Monoid[M] = {
+        implicitly[Monoid[M]]
+      }
+
+      override def create(metadata: DefaultMetadata): M = {
+        Monoid.zero[M]
+      }
+    }
+  }
 }
 
 trait Defaults extends LowPriorityDefaults {
-  implicit def chiSquaredEvaluator[V, L, W](implicit weightMonoid: Monoid[W], weightDouble: W => Double): Evaluator[V, Map[L, W]] = ChiSquaredEvaluator[V, L, W]
+  implicit def chiSquaredEvaluator[V, L, W, A](implicit weightMonoid: Monoid[W], weightDouble: W => Double): Evaluator[V, Map[L, W], A] = ChiSquaredEvaluator[V, L, W, A]
   implicit def frequencyStopper[L]: Stopper[Map[L, Long]] = FrequencyStopper(10000, 10)
 
   implicit def intSplitter[T: Monoid]: Splitter[Int, T] = BinarySplitter[Int, T](LessThan(_))
