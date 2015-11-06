@@ -27,10 +27,10 @@ object TreeGenerators {
 
   val DefaultTreeHeight = 6
 
-  implicit def arbitraryTree[K: Arbitrary, V: Arbitrary: Ordering, T: Arbitrary]: Arbitrary[Tree[K, V, T]] =
+  implicit def arbitraryTree[K: Arbitrary, V: Arbitrary: Ordering, T: Arbitrary]: Arbitrary[Tree[K, V, T, Unit]] =
     Arbitrary(genBinaryTree(arbitrary[K], arbitrary[V], arbitrary[T], DefaultTreeHeight))
 
-  def genBinaryTree[K, V: Ordering, T](genK: Gen[K], genV: Gen[V], genT: Gen[T], height: Int): Gen[Tree[K, V, T]] = {
+  def genBinaryTree[K, V: Ordering, T](genK: Gen[K], genV: Gen[V], genT: Gen[T], height: Int): Gen[Tree[K, V, T, Unit]] = {
     def genLeafNode(index: Int): Gen[LeafNode[K, V, T, Unit]] =
       genT.map(LeafNode(index, _))
 

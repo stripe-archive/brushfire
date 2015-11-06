@@ -6,9 +6,9 @@ import com.twitter.algebird._
 case class Trainer[K: Ordering, V, T: Monoid](
     trainingData: Iterable[Instance[K, V, T]],
     sampler: Sampler[K],
-    trees: List[Tree[K, V, T]]) {
+    trees: List[Tree[K, V, T, Unit]]) {
 
-  private def updateTrees(fn: (Tree[K, V, T], Map[LeafNode[K, V, T, Unit], Iterable[Instance[K, V, T]]]) => Tree[K, V, T]): Trainer[K, V, T] = {
+  private def updateTrees(fn: (Tree[K, V, T, Unit], Map[LeafNode[K, V, T, Unit], Iterable[Instance[K, V, T]]]) => Tree[K, V, T, Unit]): Trainer[K, V, T] = {
     val newTrees = trees.zipWithIndex.par.map {
       case (tree, index) =>
         val byLeaf =

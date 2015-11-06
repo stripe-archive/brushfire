@@ -31,7 +31,7 @@ class TreeTraversalSpec extends WordSpec with Matchers with Checkers {
     }
 
     "traverse in order" in {
-      check { (tree: Tree[String, Double, Map[String, Long]]) =>
+      check { (tree: Tree[String, Double, Map[String, Long], Unit]) =>
         TreeTraversal.depthFirst
           .find(tree, Map.empty[String, Double], None)
           .map(_.index)
@@ -52,14 +52,14 @@ class TreeTraversalSpec extends WordSpec with Matchers with Checkers {
 
     "choose the heaviest node in a split" in {
       val split1 = split("f1", LessThan(0D), LeafNode(0, -1D, 12), LeafNode(0, 1D, 9))
-      AnnotatedTree(split1).leafFor(Map.empty[String, Double]) shouldBe Some(split1.children.head._3)
+      Tree(split1).leafFor(Map.empty[String, Double]) shouldBe Some(split1.children.head._3)
 
       val split2 = split("f2", LessThan(0D), LeafNode(0, -1D, -3), LeafNode(0, 1D, 9))
-      AnnotatedTree(split2).leafFor(Map.empty[String, Double]) shouldBe Some(split2.children.last._3)
+      Tree(split2).leafFor(Map.empty[String, Double]) shouldBe Some(split2.children.last._3)
     }
 
     "choose heaviest path in a tree" in {
-      val tree = AnnotatedTree(
+      val tree = Tree(
         split("f1", LessThan(0D),
           split("f2", LessThan(0D),
             LeafNode(0, -1D, 33),
@@ -97,24 +97,24 @@ class TreeTraversalSpec extends WordSpec with Matchers with Checkers {
 
     "choose predictable weighted probabilistic node in a split" in {
       val split1 = split("f1", LessThan(0D), LeafNode(0, -1D, 2703), LeafNode(1, 1D, 10000 - 2703))
-      traversal.find(AnnotatedTree(split1), Map.empty[String, Double], Some("b")) shouldBe
+      traversal.find(Tree(split1), Map.empty[String, Double], Some("b")) shouldBe
         Seq(LeafNode(1, 1D, 10000 - 2703), LeafNode(0, -1D, 2703))
 
       val split2 = split("f1", LessThan(0D), LeafNode(0, -1D, 2704), LeafNode(1, 1D, 10000 - 2704))
-      traversal.find(AnnotatedTree(split2), Map.empty[String, Double], Some("b")) shouldBe
+      traversal.find(Tree(split2), Map.empty[String, Double], Some("b")) shouldBe
         Seq(LeafNode(0, -1D, 2704), LeafNode(1, 1D, 10000 - 2704))
 
       val split3 = split("f1", LessThan(0D), LeafNode(0, -1D, 3982), LeafNode(1, 1D, 10000 - 3982))
-      traversal.find(AnnotatedTree(split3), Map.empty[String, Double], Some("z")) shouldBe
+      traversal.find(Tree(split3), Map.empty[String, Double], Some("z")) shouldBe
         Seq(LeafNode(1, 1D, 10000 - 3982), LeafNode(0, -1D, 3982))
 
       val split4 = split("f1", LessThan(0D), LeafNode(0, -1D, 3983), LeafNode(1, 1D, 10000 - 3983))
-      traversal.find(AnnotatedTree(split4), Map.empty[String, Double], Some("z")) shouldBe
+      traversal.find(Tree(split4), Map.empty[String, Double], Some("z")) shouldBe
         Seq(LeafNode(0, -1D, 3983), LeafNode(1, 1D, 10000 - 3983))
     }
 
     "choose predictable weighted probabilistic path in a tree" in {
-      val tree = AnnotatedTree(
+      val tree = Tree(
         split("f1", LessThan(0D),
           split("f2", LessThan(0D), // 30
             LeafNode(0, 1D, 9),

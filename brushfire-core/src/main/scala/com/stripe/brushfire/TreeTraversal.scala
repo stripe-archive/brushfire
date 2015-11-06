@@ -34,7 +34,7 @@ trait TreeTraversal[K, V, T, A] {
    * @param row  the row/instance we're trying to match with a leaf node
    * @return the leaf nodes that best match the row
    */
-  def find(tree: AnnotatedTree[K, V, T, A], row: Map[K, V], id: Option[String]): Stream[LeafNode[K, V, T, A]] =
+  def find(tree: Tree[K, V, T, A], row: Map[K, V], id: Option[String]): Stream[LeafNode[K, V, T, A]] =
     find(tree.root, row, id)
 
   /**
@@ -53,7 +53,7 @@ trait TreeTraversal[K, V, T, A] {
 
 object TreeTraversal {
 
-  def find[K, V, T, A](tree: AnnotatedTree[K, V, T, A], row: Map[K, V], id: Option[String] = None)(implicit traversal: TreeTraversal[K, V, T, A]): Stream[LeafNode[K, V, T, A]] =
+  def find[K, V, T, A](tree: Tree[K, V, T, A], row: Map[K, V], id: Option[String] = None)(implicit traversal: TreeTraversal[K, V, T, A]): Stream[LeafNode[K, V, T, A]] =
     traversal.find(tree, row, id)
 
   /**

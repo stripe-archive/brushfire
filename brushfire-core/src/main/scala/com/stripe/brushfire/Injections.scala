@@ -76,7 +76,7 @@ object JsonInjections {
     pInj: JsonNodeInjection[T],
     vInj: JsonNodeInjection[V],
     mon: Monoid[T],
-    ord: Ordering[V] = null): JsonNodeInjection[Tree[K, V, T]] = {
+    ord: Ordering[V] = null): JsonNodeInjection[Tree[K, V, T, Unit]] = {
 
     implicit def predicateJsonNodeInjection: JsonNodeInjection[Predicate[V]] =
       new AbstractJsonNodeInjection[Predicate[V]] {
@@ -172,21 +172,21 @@ object JsonInjections {
         }
       }
 
-    new AbstractJsonNodeInjection[Tree[K, V, T]] {
-      def apply(tree: Tree[K, V, T]) = toJsonNode(tree.root)
+    new AbstractJsonNodeInjection[Tree[K, V, T, Unit]] {
+      def apply(tree: Tree[K, V, T, Unit]) = toJsonNode(tree.root)
       override def invert(n: JsonNode) = fromJsonNode[Node[K, V, T, Unit]](n).map { root => Tree(root) }
     }
   }
 
-  implicit def treeJsonStringInjection[K, V, T](implicit jsonInj: JsonNodeInjection[Tree[K, V, T]]): Injection[Tree[K, V, T], String] =
-    JsonInjection.toString[Tree[K, V, T]]
+  implicit def treeJsonStringInjection[K, V, T](implicit jsonInj: JsonNodeInjection[Tree[K, V, T, Unit]]): Injection[Tree[K, V, T, Unit], String] =
+    JsonInjection.toString[Tree[K, V, T, Unit]]
 }
 
 object KryoInjections {
-  implicit def tree2Bytes[K, V, T]: Injection[Tree[K, V, T], Array[Byte]] = new AbstractInjection[Tree[K, V, T], Array[Byte]] {
-    override def apply(a: Tree[K, V, T]) = KryoInjection(a)
-    override def invert(b: Array[Byte]) = KryoInjection.invert(b).asInstanceOf[util.Try[Tree[K, V, T]]]
+  implicit def tree2Bytes[K, V, T]: Injection[Tree[K, V, T, Unit], Array[Byte]] = new AbstractInjection[Tree[K, V, T, Unit], Array[Byte]] {
+    override def apply(a: Tree[K, V, T, Unit]) = KryoInjection(a)
+    override def invert(b: Array[Byte]) = KryoInjection.invert(b).asInstanceOf[util.Try[Tree[K, V, T, Unit]]]
   }
 
-  implicit def tree2String[K, V, T]: Injection[Tree[K, V, T], String] = Injection.connect[Tree[K, V, T], Array[Byte], Base64String, String]
+  implicit def tree2String[K, V, T]: Injection[Tree[K, V, T, Unit], String] = Injection.connect[Tree[K, V, T, Unit], Array[Byte], Base64String, String]
 }

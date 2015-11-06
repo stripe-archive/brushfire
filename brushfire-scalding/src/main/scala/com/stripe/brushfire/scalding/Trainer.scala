@@ -15,16 +15,16 @@ abstract class TrainerJob(args: Args) extends ExecutionJob[Unit](args) with Defa
 }
 
 object TreeSource {
-  def apply[K, V, T](path: String)(implicit inj: Injection[Tree[K, V, T], String]) = {
+  def apply[K, V, T, A](path: String)(implicit inj: Injection[Tree[K, V, T, A], String]) = {
     implicit val bij = Injection.unsafeToBijection(inj).inverse
-    typed.BijectedSourceSink[(Int, String), (Int, Tree[K, V, T])](TypedTsv(path))
+    typed.BijectedSourceSink[(Int, String), (Int, Tree[K, V, T, A])](TypedTsv(path))
   }
 }
 
 case class Trainer[K: Ordering, V, T: Monoid](
     @transient trainingDataExecution: Execution[TypedPipe[Instance[K, V, T]]],
     @transient samplerExecution: Execution[Sampler[K]],
-    @transient treeExecution: Execution[TypedPipe[(Int, Tree[K, V, T])]],
+    @transient treeExecution: Execution[TypedPipe[(Int, Tree[K, V, T, Unit])]],
     @transient unitExecution: Execution[Unit],
     reducers: Int) {
 
@@ -32,7 +32,7 @@ case class Trainer[K: Ordering, V, T: Monoid](
 
   def execution = Execution.zip(treeExecution, unitExecution).unit
 
-  def flatMapTrees(fn: ((TypedPipe[Instance[K, V, T]], Sampler[K], Iterable[(Int, Tree[K, V, T])])) => Execution[TypedPipe[(Int, Tree[K, V, T])]]) = {
+  def flatMapTrees(fn: ((TypedPipe[Instance[K, V, T]], Sampler[K], Iterable[(Int, Tree[K, V, T, Unit])])) => Execution[TypedPipe[(Int, Tree[K, V, T, Unit])]]) = {
     val newExecution = treeExecution
       .flatMap { trees =>
         Execution.zip(trainingDataExecution, samplerExecution, trees.toIterableExecution)
@@ -45,7 +45,7 @@ case class Trainer[K: Ordering, V, T: Monoid](
     copy(samplerExecution = newExecution)
   }
 
-  def tee[A](fn: ((TypedPipe[Instance[K, V, T]], Sampler[K], Iterable[(Int, Tree[K, V, T])])) => Execution[A]): Trainer[K, V, T] = {
+  def tee[A](fn: ((TypedPipe[Instance[K, V, T]], Sampler[K], Iterable[(Int, Tree[K, V, T, Unit])])) => Execution[A]): Trainer[K, V, T] = {
     val newExecution = treeExecution
       .flatMap { trees =>
         Execution.zip(trainingDataExecution, samplerExecution, trees.toIterableExecution)
@@ -57,7 +57,7 @@ case class Trainer[K: Ordering, V, T: Monoid](
     copy(trainingDataExecution = trainingDataExecution.flatMap { _.forceToDiskExecution })
   }
 
-  def load(path: String)(implicit inj: Injection[Tree[K, V, T], String]): Trainer[K, V, T] = {
+  def load(path: String)(implicit inj: Injection[Tree[K, V, T, Unit], String]): Trainer[K, V, T] = {
     copy(treeExecution = Execution.from(TypedPipe.from(TreeSource(path))))
   }
 
@@ -67,7 +67,7 @@ case class Trainer[K: Ordering, V, T: Monoid](
    * The leaves target distributions will be set to the summed distributions of the instances
    * in the training set that would get classified to them. Often used to initialize an empty tree.
    */
-  def updateTargets(path: String)(implicit inj: Injection[Tree[K, V, T], String]): Trainer[K, V, T] = {
+  def updateTargets(path: String)(implicit inj: Injection[Tree[K, V, T, Unit], String]): Trainer[K, V, T] = {
     flatMapTrees {
       case (trainingData, sampler, trees) =>
         lazy val treeMap = trees.toMap
@@ -103,7 +103,7 @@ case class Trainer[K: Ordering, V, T: Monoid](
    * @param splitter the splitter to use to generate candidate splits for each leaf
    * @param evaluator the evaluator to use to decide which split to use for each leaf
    */
-  def expand[S](path: String)(implicit splitter: Splitter[V, T], evaluator: Evaluator[V, T], stopper: Stopper[T], inj: Injection[Tree[K, V, T], String]) = {
+  def expand[S](path: String)(implicit splitter: Splitter[V, T], evaluator: Evaluator[V, T], stopper: Stopper[T], inj: Injection[Tree[K, V, T, Unit], String]) = {
     flatMapTrees {
       case (trainingData, sampler, trees) =>
         implicit val splitSemigroup = new SplitSemigroup[K, V, T]
@@ -190,7 +190,7 @@ case class Trainer[K: Ordering, V, T: Monoid](
    * Construct a Map[Int,T] from the trainingData for each tree, and then transform the trees using the prune method.
    *
    */
-  def prune[P, E](path: String, error: Error[T, P, E])(implicit voter: Voter[T, P], inj: Injection[Tree[K, V, T], String], ord: Ordering[E]): Trainer[K, V, T] = {
+  def prune[P, E](path: String, error: Error[T, P, E])(implicit voter: Voter[T, P], inj: Injection[Tree[K, V, T, Unit], String], ord: Ordering[E]): Trainer[K, V, T] = {
     flatMapTrees {
       case (trainingData, sampler, trees) =>
         lazy val treeMap = trees.toMap
@@ -257,12 +257,12 @@ case class Trainer[K: Ordering, V, T: Monoid](
   }
 
   /** recursively expand multiple times, writing out the new tree at each step */
-  def expandTimes(base: String, times: Int)(implicit splitter: Splitter[V, T], evaluator: Evaluator[V, T], stopper: Stopper[T], inj: Injection[Tree[K, V, T], String]) = {
+  def expandTimes(base: String, times: Int)(implicit splitter: Splitter[V, T], evaluator: Evaluator[V, T], stopper: Stopper[T], inj: Injection[Tree[K, V, T, Unit], String]) = {
     updateTargets(stepPath(base, 0))
       .expandFrom(base, 1, times)
   }
 
-  def expandFrom(base: String, step: Int, to: Int)(implicit splitter: Splitter[V, T], evaluator: Evaluator[V, T], stopper: Stopper[T], inj: Injection[Tree[K, V, T], String]): Trainer[K, V, T] = {
+  def expandFrom(base: String, step: Int, to: Int)(implicit splitter: Splitter[V, T], evaluator: Evaluator[V, T], stopper: Stopper[T], inj: Injection[Tree[K, V, T, Unit], String]): Trainer[K, V, T] = {
     if (step > to)
       this
     else {
@@ -271,7 +271,7 @@ case class Trainer[K: Ordering, V, T: Monoid](
     }
   }
 
-  def expandInMemory(path: String, times: Int)(implicit splitter: Splitter[V, T], evaluator: Evaluator[V, T], stopper: Stopper[T], inj: Injection[Tree[K, V, T], String]): Trainer[K, V, T] = {
+  def expandInMemory(path: String, times: Int)(implicit splitter: Splitter[V, T], evaluator: Evaluator[V, T], stopper: Stopper[T], inj: Injection[Tree[K, V, T, Unit], String]): Trainer[K, V, T] = {
     flatMapTrees {
       case (trainingData, sampler, trees) =>
 
