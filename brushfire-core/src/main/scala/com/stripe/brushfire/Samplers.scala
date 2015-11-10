@@ -83,18 +83,18 @@ case class TimeGroupedSampler[-M, -K](timestamp: M => Long, base: Sampler[M, K],
   }
 }
 
-case class OutOfTimeSampler[-M, -K](timestamp: M => Long, base: Sampler[M, K], threshold: Long) extends Sampler[M, K] {
+case class MetadataFilterSampler[-M, -K](base: Sampler[M, K], includeInTraining: M => Boolean) extends Sampler[M, K] {
   def numTrees = base.numTrees
 
   def timesInTrainingSet(metadata: M, treeIndex: Int) = {
-    if (timestamp(metadata) < threshold)
+    if (includeInTraining(metadata))
       base.timesInTrainingSet(metadata, treeIndex)
     else
       0
   }
 
   def includeInValidationSet(metadata: M, treeIndex: Int) = {
-    timestamp(metadata) >= threshold
+    !includeInTraining(metadata)
   }
 
   def includeFeature(metadata: M, name: K, treeIndex: Int, leafIndex: Int) = {

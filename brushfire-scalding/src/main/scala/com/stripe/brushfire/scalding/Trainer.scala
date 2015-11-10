@@ -355,7 +355,7 @@ case class Trainer[M, K: Ordering, V, T: Monoid, A](
           .sum
           .map { q => q.quantileBounds(quantile)._2.toLong }
           .toIterableExecution
-          .map { thresholds => OutOfTimeSampler[M, K](timestamp = _.timestamp, sampler, thresholds.head) }
+          .map { thresholds => MetadataFilterSampler[M, K](sampler, includeInTraining = _.timestamp < thresholds.head) }
     }
   }
 }
