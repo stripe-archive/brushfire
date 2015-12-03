@@ -8,7 +8,7 @@ case class Trainer[K: Ordering, V, T: Monoid](
     sampler: Sampler[K],
     trees: List[Tree[K, V, T]]) {
 
-  private def updateTrees(fn: (Tree[K, V, T], Map[LeafNode[K, V, T, Unit], Iterable[Instance[K, V, T]]]) => Tree[K, V, T]): Trainer[K, V, T] = {
+  private def updateTrees(fn: (Tree[K, V, T], Int, Map[LeafNode[K, V, T, Unit], Iterable[Instance[K, V, T]]]) => Tree[K, V, T]): Trainer[K, V, T] = {
     val newTrees = trees.zipWithIndex.par.map {
       case (tree, index) =>
         val byLeaf =
@@ -23,17 +23,17 @@ case class Trainer[K: Ordering, V, T: Monoid](
             }
           }.groupBy { _._2 }
             .mapValues { _.map { _._1 } }
-        fn(tree, byLeaf)
+        fn(tree, index, byLeaf)
     }
     copy(trees = newTrees.toList)
   }
 
-  private def updateLeaves(fn: (LeafNode[K, V, T, Unit], Iterable[Instance[K, V, T]]) => Node[K, V, T, Unit]): Trainer[K, V, T] = {
+  private def updateLeaves(fn: (Int, LeafNode[K, V, T, Unit], Iterable[Instance[K, V, T]]) => Node[K, V, T, Unit]): Trainer[K, V, T] = {
     updateTrees {
-      case (tree, byLeaf) =>
+      case (tree, treeIndex, byLeaf) =>
         val newNodes = byLeaf.map {
           case (leaf, instances) =>
-            leaf.index -> fn(leaf, instances)
+            leaf.index -> fn(treeIndex, leaf, instances)
         }
 
         tree.updateByLeafIndex(newNodes.lift)
@@ -42,20 +42,20 @@ case class Trainer[K: Ordering, V, T: Monoid](
 
   def updateTargets: Trainer[K, V, T] =
     updateLeaves {
-      case (leaf, instances) =>
+      case (treeIndex, leaf, instances) =>
         val target = implicitly[Monoid[T]].sum(instances.map { _.target })
         leaf.copy(target = target)
     }
 
   def expand(times: Int)(implicit splitter: Splitter[V, T], evaluator: Evaluator[V, T], stopper: Stopper[T]): Trainer[K, V, T] =
     updateLeaves {
-      case (leaf, instances) =>
-        Tree.expand(times, leaf, splitter, evaluator, stopper, instances)
+      case (treeIndex, leaf, instances) =>
+        Tree.expand(times, treeIndex, leaf, splitter, evaluator, stopper, sampler, instances)
     }
 
   def prune[P, E](error: Error[T, P, E])(implicit voter: Voter[T, P], ord: Ordering[E]): Trainer[K, V, T] =
     updateTrees {
-      case (tree, byLeaf) =>
+      case (tree, treeIndex, byLeaf) =>
         val byLeafIndex = byLeaf.map {
           case (l, instances) =>
             l.index -> implicitly[Monoid[T]].sum(instances.map { _.target })
@@ -64,13 +64,17 @@ case class Trainer[K: Ordering, V, T: Monoid](
     }
 
   def validate[P, E](error: Error[T, P, E])(implicit voter: Voter[T, P]): Option[E] = {
-    val errors = trainingData.map { instance =>
+    val errors = trainingData.flatMap { instance =>
       val useTrees = trees.zipWithIndex.filter {
         case (tree, i) =>
           sampler.includeInValidationSet(instance.id, instance.timestamp, i)
       }.map { _._1 }
-      val prediction = voter.predict(useTrees, instance.features)
-      error.create(instance.target, prediction)
+      if(useTrees.isEmpty)
+        None
+      else {
+        val prediction = voter.predict(useTrees, instance.features)
+        Some(error.create(instance.target, prediction))
+      }
     }
     error.semigroup.sumOption(errors)
   }
