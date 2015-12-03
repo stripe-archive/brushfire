@@ -46,6 +46,23 @@ case class BinnedBinaryError[M: Monoid]()
     val tuple = if (label) (count, Monoid.zero[M]) else (Monoid.zero[M], count)
     Map(percentage(probabilities.getOrElse(true, 0.0)) -> tuple)
   }
+
+  def thresholds(err: Map[Int, (M,M)])(implicit num: Numeric[M]): List[(Int, ConfusionMatrix)] =
+    err.keys.toList.sorted.map{threshold =>
+      threshold -> ConfusionMatrix(
+        err.filter{_._1 >= threshold}.map{x => num.toDouble(x._2._1)}.sum,
+        err.filter{_._1 < threshold}.map{x => num.toDouble(x._2._2)}.sum,
+        err.filter{_._1 >= threshold}.map{x => num.toDouble(x._2._2)}.sum,
+        err.filter{_._1 < threshold}.map{x => num.toDouble(x._2._1)}.sum)
+    }
+
+  def auc(err: Map[Int, (M, M)])(implicit num: Numeric[M]) =
+    thresholds(err).map{_._2}.reverse.sliding(2,1).map{cms =>
+      val cm1 = cms(0)
+      val cm2 = cms(1)
+      (cm2.falsePositiveRate - cm1.falsePositiveRate) *
+      (cm1.truePositiveRate + cm2.truePositiveRate)
+    }.sum / 2.0
 }
 
 case class AccuracyError[L, M](implicit m: Monoid[M])

@@ -24,7 +24,8 @@ lazy val root = project.
   settings(unpublished: _*)
 
 lazy val brushfireCore = project.
-  in(file("brushfire-core"))
+  in(file("brushfire-core")).
+  disablePlugins(sbtassembly.AssemblyPlugin)
 
 lazy val brushfireScalding = project.
   in(file("brushfire-scalding")).
