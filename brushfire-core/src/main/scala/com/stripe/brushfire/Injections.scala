@@ -110,7 +110,7 @@ object JsonInjections {
               val predNode = n.get("exists")
               if (predNode.isNull) Success(IsPresent[V](None))
               else fromJsonNode[Predicate[V]](predNode).map(p => IsPresent(Some(p)))
-            case _ => sys.error("Not a predicate node")
+            case _ => sys.error("Not a predicate node: " + n)
           }
         }
       }
@@ -124,57 +124,49 @@ object JsonInjections {
             obj.put("distribution", toJsonNode(target))
             obj
 
-          case SplitNode(children) =>
-            val ary = JsonNodeFactory.instance.arrayNode
-            children.foreach {
-              case (feature, predicate, child) =>
-                val obj = JsonNodeFactory.instance.objectNode
-                obj.put("feature", toJsonNode(feature))
-                obj.put("predicate", toJsonNode(predicate))
-                obj.put("display", toJsonNode(Predicate.display(predicate)))
-                obj.put("children", toJsonNode(child)(nodeJsonNodeInjection))
-                ary.add(obj)
-            }
-            ary
+          case SplitNode(p, k, lc, rc, _) =>
+            val obj = JsonNodeFactory.instance.objectNode
+            obj.put("predicate", toJsonNode(p)(predicateJsonNodeInjection))
+            obj.put("key", toJsonNode(k))
+            obj.put("left", toJsonNode(lc)(nodeJsonNodeInjection))
+            obj.put("right", toJsonNode(rc)(nodeJsonNodeInjection))
+            obj
         }
 
-        def tryChild(node: JsonNode, property: String) = Try {
-          val child = node.get(property)
-          assert(child != null, property + " != null")
-          child
-        }
-
-        override def invert(n: JsonNode) = {
-          Option(n.get("leaf")) match {
-            case Some(indexNode) => fromJsonNode[Int](indexNode).flatMap { index =>
-              fromJsonNode[T](n.get("distribution")).map { target =>
-                LeafNode(index, target)
-              }
-            }
-
-            case None =>
-              val children = n.getElements.asScala.map { c =>
-                for (
-                  featureNode <- tryChild(c, "feature");
-                  feature <- fromJsonNode[K](featureNode);
-                  predicateNode <- tryChild(c, "predicate");
-                  predicate <- fromJsonNode[Predicate[V]](predicateNode);
-                  childNode <- tryChild(c, "children");
-                  child <- fromJsonNode[Node[K, V, T, Unit]](childNode)
-                ) yield (feature, predicate, child)
-              }.toList
-
-              children.find { _.isFailure } match {
-                case Some(Failure(e)) => Failure(InversionFailure(n, e))
-                case _ => Success(SplitNode[K, V, T, Unit](children.map { _.get }))
-              }
+        def tryChild(node: JsonNode, property: String): Try[JsonNode] =
+          Try {
+            val child = node.get(property)
+            assert(child != null, property + " != null")
+            child
           }
+
+        def tryLoad[T: JsonNodeInjection](node: JsonNode, property: String): Try[T] = {
+          val child = node.get(property)
+          if (child == null) Failure(new IllegalArgumentException(property + " != null"))
+          else fromJsonNode[T](child)
         }
+
+        override def invert(n: JsonNode): Try[Node[K, V, T, Unit]] =
+          if (n.has("leaf")) {
+            for {
+              index <- tryLoad[Int](n, "leaf")
+              target <- tryLoad[T](n, "distribution")
+            } yield LeafNode(index, target)
+          } else {
+            for {
+              p <- tryLoad[Predicate[V]](n, "predicate")
+              k <- tryLoad[K](n, "key")
+              left <- tryLoad[Node[K, V, T, Unit]](n, "left")(nodeJsonNodeInjection)
+              right <- tryLoad[Node[K, V, T, Unit]](n, "right")(nodeJsonNodeInjection)
+            } yield SplitNode(p, k, left, right)
+          }
       }
 
     new AbstractJsonNodeInjection[Tree[K, V, T]] {
-      def apply(tree: Tree[K, V, T]) = toJsonNode(tree.root)
-      override def invert(n: JsonNode) = fromJsonNode[Node[K, V, T, Unit]](n).map { root => Tree(root) }
+      def apply(tree: Tree[K, V, T]): JsonNode =
+        toJsonNode(tree.root)
+      override def invert(n: JsonNode): Try[Tree[K, V, T]] =
+        fromJsonNode[Node[K, V, T, Unit]](n).map(root => Tree(root))
     }
   }
 

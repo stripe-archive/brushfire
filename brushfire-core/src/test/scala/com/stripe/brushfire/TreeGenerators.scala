@@ -39,9 +39,7 @@ object TreeGenerators {
       key <- genK
       left <- genNode(index, maxDepth - 1)
       right <- genNode(index | (1 << (maxDepth - 1)), maxDepth - 1)
-    } yield SplitNode(List(
-      (key, pred, left),
-      (key, Not(pred), right)))
+    } yield SplitNode(pred, key, left, right)
 
     def genNode(index: Int, maxDepth: Int): Gen[Node[K, V, T, Unit]] =
       if (maxDepth > 1) {

@@ -42,14 +42,22 @@ trait Splitter[V, T] {
 }
 
 /** Candidate split for a tree node */
-trait Split[V, T] {
-  def predicates: Iterable[(Predicate[V], T)]
+sealed trait Split[V, T] {
+  def predicate: Predicate[V]
+  def leftDistribution: T
+  def rightDistribution: T
+  def distributions: List[T] = leftDistribution :: rightDistribution :: Nil
+
+  def createSplitNode[K](feature: K): SplitNode[K, V, T, Unit] =
+    SplitNode(predicate, feature, LeafNode(-1, leftDistribution), LeafNode(-1, rightDistribution))
 }
+
+case class BinarySplit[V, T](predicate: Predicate[V], leftDistribution: T, rightDistribution: T) extends Split[V, T]
 
 /** Evaluates the goodness of a candidate split */
 trait Evaluator[V, T] {
   /** returns a (possibly transformed) version of the input split, and a numeric goodness score */
-  def evaluate(split: Split[V, T]): (Split[V, T], Double)
+  def evaluate(split: Split[V, T]): Option[(Split[V, T], Double)]
 }
 
 /** Provides stopping conditions which guide when splits will be attempted */

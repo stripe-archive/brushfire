@@ -13,19 +13,25 @@ import org.scalatest.prop.Checkers
 class TreeTraversalSpec extends WordSpec with Matchers with Checkers {
   import TreeGenerators._
 
+  def split[T, A: Semigroup](key: String, pred: Predicate[Double], left: Node[String, Double, T, A], right: Node[String, Double, T, A]): SplitNode[String, Double, T, A] =
+    SplitNode(pred, key, left, right)
+
   "depthFirst" should {
     "always choose the left side of a split in a binary tree" in {
       val simpleTreeGen = genBinaryTree(arbitrary[String], arbitrary[Double], arbitrary[Map[String, Long]], 2)
         .filter(_.root match {
-          case SplitNode(children) =>
-            children.collect { case (_, IsPresent(_), _) => true }.isEmpty
+          case SplitNode(p, _, _, _, _) =>
+            p match {
+              case IsPresent(_) => false
+              case _ => true
+            }
           case _ =>
             false
         })
       check(Prop.forAll(simpleTreeGen) { tree =>
         (tree.root: @unchecked) match {
-          case SplitNode(children) =>
-            TreeTraversal.depthFirst.find(tree, Map.empty[String, Double], None).headOption == Some(children.head._3)
+          case SplitNode(_, _, lc, rc, _) =>
+            TreeTraversal.depthFirst.find(tree, Map.empty[String, Double], None).headOption == Some(lc)
         }
       })
     }
@@ -44,18 +50,15 @@ class TreeTraversalSpec extends WordSpec with Matchers with Checkers {
     }
   }
 
-  def split[T, A: Semigroup](key: String, pred: Predicate[Double], left: Node[String, Double, T, A], right: Node[String, Double, T, A]): SplitNode[String, Double, T, A] =
-    SplitNode((key, pred, left) :: (key, Not(pred), right) :: Nil)
-
   "weightedDepthFirst" should {
     implicit val traversal = TreeTraversal.weightedDepthFirst[String, Double, Double, Int]
 
     "choose the heaviest node in a split" in {
       val split1 = split("f1", LessThan(0D), LeafNode(0, -1D, 12), LeafNode(0, 1D, 9))
-      AnnotatedTree(split1).leafFor(Map.empty[String, Double]) shouldBe Some(split1.children.head._3)
+      AnnotatedTree(split1).leafFor(Map.empty[String, Double]) shouldBe Some(split1.leftChild)
 
       val split2 = split("f2", LessThan(0D), LeafNode(0, -1D, -3), LeafNode(0, 1D, 9))
-      AnnotatedTree(split2).leafFor(Map.empty[String, Double]) shouldBe Some(split2.children.last._3)
+      AnnotatedTree(split2).leafFor(Map.empty[String, Double]) shouldBe Some(split2.rightChild)
     }
 
     "choose heaviest path in a tree" in {
@@ -77,11 +80,8 @@ class TreeTraversalSpec extends WordSpec with Matchers with Checkers {
 
   def collectLeafs[K, V, T, A](node: Node[K, V, T, A]): Set[LeafNode[K, V, T, A]] =
     node match {
-      case SplitNode(children) =>
-        children.collect {
-          case (_, p, n) if p(None) => collectLeafs(n)
-        }.flatten.toSet
-
+      case SplitNode(p, _, lc, rc, _) =>
+        (if (p.run(None)) List(lc, rc) else Nil).flatMap(collectLeafs).toSet
       case leaf @ LeafNode(_, _, _) =>
         Set(leaf)
     }

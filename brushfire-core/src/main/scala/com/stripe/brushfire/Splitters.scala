@@ -2,8 +2,7 @@ package com.stripe.brushfire
 
 import com.twitter.algebird._
 
-case class BinarySplitter[V, T: Monoid](partition: V => Predicate[V])
-    extends Splitter[V, T] {
+case class BinarySplitter[V, T: Monoid](partition: V => Predicate[V]) extends Splitter[V, T] {
 
   type S = Map[V, T]
   def create(value: V, target: T) = Map(value -> target)
@@ -13,7 +12,7 @@ case class BinarySplitter[V, T: Monoid](partition: V => Predicate[V])
   def split(parent: T, stats: Map[V, T]) = {
     stats.keys.map { v =>
       val predicate = partition(v)
-      val (trues, falses) = stats.partition { case (v, d) => predicate(Some(v)) }
+      val (trues, falses) = stats.partition { case (v, d) => predicate.run(Some(v)) }
       BinarySplit(predicate, Monoid.sum(trues.values), Monoid.sum(falses.values))
     }
   }
@@ -92,13 +91,4 @@ case class SpaceSaverSplitter[V, L](capacity: Int = 1000)
         BinarySplit(EqualTo(v), mins, Group.minus(parent, mins))
       }
   }
-}
-
-case class BinarySplit[V, T](
-  predicate: Predicate[V],
-  leftDistribution: T,
-  rightDistribution: T)
-    extends Split[V, T] {
-  def predicates =
-    List(predicate -> leftDistribution, Not(predicate) -> rightDistribution)
 }

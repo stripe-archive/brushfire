@@ -59,11 +59,7 @@ object Dispatched {
 
   def wrapSplits[X, T, A: Ordering, B, C: Ordering, D](splits: Iterable[Split[X, T]])(fn: X => Dispatched[A, B, C, D]) = {
     splits.map { split =>
-      new Split[Dispatched[A, B, C, D], T] {
-        def predicates = split.predicates.map {
-          case (pred, p) => (pred.map(fn), p)
-        }
-      }
+      BinarySplit(split.predicate.map(fn), split.leftDistribution, split.rightDistribution)
     }
   }
 }

@@ -130,12 +130,11 @@ case class Trainer[K: Ordering, V, T: Monoid](
             .flatMap {
               case ((treeIndex, leafIndex, feature), target) =>
                 treeMap(treeIndex).leafAt(leafIndex).toList.flatMap { leaf =>
-                  splitter
-                    .split(leaf.target, target)
-                    .map { rawSplit =>
-                      val (split, goodness) = evaluator.evaluate(rawSplit)
+                  splitter.split(leaf.target, target).flatMap { rawSplit =>
+                    evaluator.evaluate(rawSplit).map { case (split, goodness) =>
                       treeIndex -> Map(leafIndex -> (feature, split, goodness))
                     }
+                  }
                 }
             }
 
@@ -146,18 +145,15 @@ case class Trainer[K: Ordering, V, T: Monoid](
           .group
           .withReducers(reducers)
           .sum
-          .map {
-            case (treeIndex, map) =>
-              val newTree =
-                treeMap(treeIndex)
-                  .growByLeafIndex { index =>
-                    for (
-                      (feature, split, _) <- map.get(index).toList;
-                      (predicate, target) <- split.predicates
-                    ) yield (feature, predicate, target, ())
-                  }
+          .map { case (treeIndex, map) =>
+            val newTree =
+              treeMap(treeIndex).growByLeafIndex { index =>
+                map.get(index).map { case (feature, split, _) =>
+                  split.createSplitNode(feature)
+                }
+              }
 
-              treeIndex -> newTree
+            treeIndex -> newTree.renumberLeaves
           }.writeThrough(TreeSource(path))
     }
   }

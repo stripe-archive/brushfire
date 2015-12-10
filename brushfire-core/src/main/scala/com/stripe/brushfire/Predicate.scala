@@ -5,7 +5,13 @@ package com.stripe.brushfire
  * `true` or `false`. It is generally used within a [[Tree]] to decide which
  * branch to follow while trying to classify a row/feature vector.
  */
-sealed trait Predicate[V] extends (Option[V] => Boolean) {
+sealed trait Predicate[V] extends (Option[V] => Option[Boolean]) {
+
+  def run(o: Option[V]): Boolean =
+    apply(o) match {
+      case Some(b) => b
+      case None => true
+    }
 
   /**
    * Map the value types of this [[Predicate]] using `f`.
@@ -24,7 +30,7 @@ sealed trait Predicate[V] extends (Option[V] => Boolean) {
  * defined and is equal to `value` (according to the input's `equals` method).
  */
 case class EqualTo[V](value: V) extends Predicate[V] {
-  def apply(v: Option[V]) = v.isEmpty || (v.get == value)
+  def apply(v: Option[V]): Option[Boolean] = v.map(_ == value)
 }
 
 /**
@@ -33,7 +39,7 @@ case class EqualTo[V](value: V) extends Predicate[V] {
  * of type `V` to handle the comparison.
  */
 case class LessThan[V](value: V)(implicit ord: Ordering[V]) extends Predicate[V] {
-  def apply(v: Option[V]) = v.isEmpty || ord.lt(v.get, value)
+  def apply(v: Option[V]): Option[Boolean] = v.map(x => ord.lt(x, value))
 }
 
 /**
@@ -41,7 +47,7 @@ case class LessThan[V](value: V)(implicit ord: Ordering[V]) extends Predicate[V]
  * `false` if `pred` returns `true`.
  */
 case class Not[V](pred: Predicate[V]) extends Predicate[V] {
-  def apply(v: Option[V]) = v.isEmpty || !pred(v)
+  def apply(v: Option[V]): Option[Boolean] = pred(v).map(!_)
 }
 
 /**
@@ -49,7 +55,10 @@ case class Not[V](pred: Predicate[V]) extends Predicate[V] {
  * returns `true`.
  */
 case class AnyOf[V](preds: Seq[Predicate[V]]) extends Predicate[V] {
-  def apply(v: Option[V]) = preds.exists { p => p(v) }
+  def apply(v: Option[V]): Option[Boolean] = {
+    val it = preds.iterator.map(_(v)).flatten
+    if (!it.hasNext) None else Some(it.exists(_ == true))
+  }
 }
 
 /**
@@ -63,7 +72,11 @@ case class AnyOf[V](preds: Seq[Predicate[V]]) extends Predicate[V] {
  * value is present (not missing).
  */
 case class IsPresent[V](pred: Option[Predicate[V]]) extends Predicate[V] {
-  def apply(v: Option[V]) = v.isDefined && pred.fold(true)(_(v))
+  def apply(v: Option[V]): Option[Boolean] =
+    pred match {
+      case None => Some(v.isDefined)
+      case Some(pred) => Some(v.isDefined && pred(v) == Some(true))
+    }
 }
 
 object Predicate {
