@@ -124,21 +124,20 @@ object JsonInjections {
             obj.put("distribution", toJsonNode(target))
             obj
 
-          case SplitNode(p, k, lc, rc, _) =>
+          case SplitNode(k, p, lc, rc, _) =>
             val obj = JsonNodeFactory.instance.objectNode
-            obj.put("predicate", toJsonNode(p)(predicateJsonNodeInjection))
             obj.put("key", toJsonNode(k))
+            obj.put("predicate", toJsonNode(p)(predicateJsonNodeInjection))
             obj.put("left", toJsonNode(lc)(nodeJsonNodeInjection))
             obj.put("right", toJsonNode(rc)(nodeJsonNodeInjection))
             obj
         }
 
-        def tryChild(node: JsonNode, property: String): Try[JsonNode] =
-          Try {
-            val child = node.get(property)
-            assert(child != null, property + " != null")
-            child
-          }
+        def tryChild(node: JsonNode, property: String): Try[JsonNode] = {
+          val child = node.get(property)
+          if (child == null) Failure(new IllegalArgumentException(property + " != null"))
+          else Success(child)
+        }
 
         def tryLoad[T: JsonNodeInjection](node: JsonNode, property: String): Try[T] = {
           val child = node.get(property)
@@ -154,11 +153,11 @@ object JsonInjections {
             } yield LeafNode(index, target)
           } else {
             for {
-              p <- tryLoad[Predicate[V]](n, "predicate")
               k <- tryLoad[K](n, "key")
+              p <- tryLoad[Predicate[V]](n, "predicate")
               left <- tryLoad[Node[K, V, T, Unit]](n, "left")(nodeJsonNodeInjection)
               right <- tryLoad[Node[K, V, T, Unit]](n, "right")(nodeJsonNodeInjection)
-            } yield SplitNode(p, k, left, right)
+            } yield SplitNode(k, p, left, right)
           }
       }
 

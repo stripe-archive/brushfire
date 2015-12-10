@@ -51,7 +51,7 @@ case class Split[V, T](predicate: Predicate[V], leftDistribution: T, rightDistri
    * renumbered if this node is put into a larger tree.
    */
   def createSplitNode[K](feature: K): SplitNode[K, V, T, Unit] =
-    SplitNode(predicate, feature, LeafNode(0, leftDistribution), LeafNode(1, rightDistribution))
+    SplitNode(feature, predicate, LeafNode(0, leftDistribution), LeafNode(1, rightDistribution))
 }
 
 

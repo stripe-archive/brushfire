@@ -9,16 +9,16 @@ sealed abstract class Node[K, V, T, A] {
 
   def renumber(nextId: Int): (Int, Node[K, V, T, A]) =
     this match {
-      case SplitNode(p, k, lc0, rc0, a) =>
+      case SplitNode(k, p, lc0, rc0, a) =>
         val (n1, lc) = lc0.renumber(nextId)
         val (n2, rc) = rc0.renumber(n1)
-        (n2, SplitNode(p, k, lc, rc, a))
+        (n2, SplitNode(k, p, lc, rc, a))
       case LeafNode(_, target, annotation) =>
         (nextId + 1, LeafNode(nextId, target, annotation))
     }
 }
 
-case class SplitNode[K, V, T, A](predicate: Predicate[V], key: K, leftChild: Node[K, V, T, A], rightChild: Node[K, V, T, A], annotation: A) extends Node[K, V, T, A] {
+case class SplitNode[K, V, T, A](key: K, predicate: Predicate[V], leftChild: Node[K, V, T, A], rightChild: Node[K, V, T, A], annotation: A) extends Node[K, V, T, A] {
   def evaluate(row: Map[K, V]): List[Node[K, V, T, A]] =
     predicate(row.get(key)) match {
       case Some(true) => leftChild :: Nil
@@ -28,8 +28,8 @@ case class SplitNode[K, V, T, A](predicate: Predicate[V], key: K, leftChild: Nod
 }
 
 object SplitNode {
-  def apply[K, V, T, A: Semigroup](p: Predicate[V], k: K, lc: Node[K, V, T, A], rc: Node[K, V, T, A]): SplitNode[K, V, T, A] =
-    SplitNode(p, k, lc, rc, Semigroup.plus(lc.annotation, rc.annotation))
+  def apply[K, V, T, A: Semigroup](k: K, p: Predicate[V], lc: Node[K, V, T, A], rc: Node[K, V, T, A]): SplitNode[K, V, T, A] =
+    SplitNode(k, p, lc, rc, Semigroup.plus(lc.annotation, rc.annotation))
 }
 
 case class LeafNode[K, V, T, A](index: Int, target: T, annotation: A) extends Node[K, V, T, A]
@@ -48,9 +48,9 @@ case class AnnotatedTree[K, V, T, A: Semigroup](root: Node[K, V, T, A]) {
   private def mapSplits[K0, V0](f: (K, Predicate[V]) => (K0, Predicate[V0])): AnnotatedTree[K0, V0, T, A] = {
     def recur(node: Node[K, V, T, A]): Node[K0, V0, T, A] = {
       node match {
-        case SplitNode(p, k, lc, rc, _) =>
+        case SplitNode(k, p, lc, rc, _) =>
           val (key, pred) = f(k, p)
-          SplitNode(pred, key, recur(lc), recur(rc))
+          SplitNode(key, pred, recur(lc), recur(rc))
         case LeafNode(index, target, a) =>
           LeafNode(index, target, a)
       }
@@ -64,8 +64,8 @@ case class AnnotatedTree[K, V, T, A: Semigroup](root: Node[K, V, T, A]) {
    */
   private def mapLeaves[T0, A0: Semigroup](f: (T, A) => (T0, A0)): AnnotatedTree[K, V, T0, A0] = {
     def recur(node: Node[K, V, T, A]): Node[K, V, T0, A0] = node match {
-      case SplitNode(p, k, lc, rc, _) =>
-        SplitNode(p, k, recur(lc), recur(rc))
+      case SplitNode(k, p, lc, rc, _) =>
+        SplitNode(k, p, recur(lc), recur(rc))
       case LeafNode(index, target, a) =>
         val (target1, a1) = f(target, a)
         LeafNode(index, target1, a1)
@@ -117,7 +117,7 @@ case class AnnotatedTree[K, V, T, A: Semigroup](root: Node[K, V, T, A]) {
    */
   def leafAt(leafIndex: Int, start: Node[K, V, T, A]): Option[LeafNode[K, V, T, A]] =
     start match {
-      case SplitNode(p, k, lc, rc, _) =>
+      case SplitNode(k, p, lc, rc, _) =>
         leafAt(leafIndex, lc) match {
           case None => leafAt(leafIndex, rc)
           case some => some
@@ -159,7 +159,7 @@ case class AnnotatedTree[K, V, T, A: Semigroup](root: Node[K, V, T, A]) {
         // Bounce at the bottom and start back up the tree.
         (validationData, leaf)
 
-      case SplitNode(p, k, lc0, rc0, _) =>
+      case SplitNode(k, p, lc0, rc0, _) =>
         val (vData, lc1) = pruneNode(validationData, lc0, voter, error)
         val (newData, rc1) = pruneNode(vData, rc0, voter, error)
 
@@ -169,12 +169,12 @@ case class AnnotatedTree[K, V, T, A: Semigroup](root: Node[K, V, T, A]) {
           case lc2 @ LeafNode(_, _, _) =>
             rc1 match {
               case rc2 @ LeafNode(_, _, _) =>
-                pruneLevel(SplitNode(p, k, lc2, rc2), lc2, rc2, newData, voter, error)
+                pruneLevel(SplitNode(k, p, lc2, rc2), lc2, rc2, newData, voter, error)
               case _ =>
-                (newData, SplitNode(p, k, lc1, rc1))
+                (newData, SplitNode(k, p, lc1, rc1))
             }
           case _ =>
-            (newData, SplitNode(p, k, lc1, rc1))
+            (newData, SplitNode(k, p, lc1, rc1))
         }
     }
   }
@@ -249,10 +249,10 @@ case class AnnotatedTree[K, V, T, A: Semigroup](root: Node[K, V, T, A]) {
             case None => (nextIndex + 1, LeafNode(nextIndex, target, annotation))
             case Some(split) => split.renumber(nextIndex)
           }
-        case SplitNode(p, k, lc0, rc0, _) =>
+        case SplitNode(k, p, lc0, rc0, _) =>
           val (n1, lc) = growFrom(nextIndex, lc0)
           val (n2, rc) = growFrom(n1, rc0)
-          (n2, SplitNode(p, k, lc, rc))
+          (n2, SplitNode(k, p, lc, rc))
       }
     }
 
@@ -270,8 +270,8 @@ case class AnnotatedTree[K, V, T, A: Semigroup](root: Node[K, V, T, A]) {
       start match {
         case LeafNode(index, _, _) =>
           fn(index).getOrElse(start)
-        case SplitNode(p, k, lc0, rc0, _) =>
-          SplitNode(p, k, updateFrom(lc0), updateFrom(rc0))
+        case SplitNode(k, p, lc0, rc0, _) =>
+          SplitNode(k, p, updateFrom(lc0), updateFrom(rc0))
       }
     }
 

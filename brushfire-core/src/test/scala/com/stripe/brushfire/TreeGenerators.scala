@@ -35,11 +35,11 @@ object TreeGenerators {
       genT.map(LeafNode(index, _))
 
     def genSplit(index: Int, maxDepth: Int) = for {
-      pred <- genPredicate(genV)
       key <- genK
+      pred <- genPredicate(genV)
       left <- genNode(index, maxDepth - 1)
       right <- genNode(index | (1 << (maxDepth - 1)), maxDepth - 1)
-    } yield SplitNode(pred, key, left, right)
+    } yield SplitNode(key, pred, left, right)
 
     def genNode(index: Int, maxDepth: Int): Gen[Node[K, V, T, Unit]] =
       if (maxDepth > 1) {

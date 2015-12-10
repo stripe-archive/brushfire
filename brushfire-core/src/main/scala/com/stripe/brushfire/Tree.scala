@@ -37,7 +37,7 @@ object Tree {
             val target = Monoid.sum(newInstances.map(_.target))
             expand(times - 1, treeIndex, LeafNode(0, target), splitter, evaluator, stopper, sampler, newInstances)
           }
-          Some(SplitNode(pred, splitFeature, ex(left), ex(right)))
+          Some(SplitNode(splitFeature, pred, ex(left), ex(right)))
         }
       }.getOrElse(leaf)
     } else {

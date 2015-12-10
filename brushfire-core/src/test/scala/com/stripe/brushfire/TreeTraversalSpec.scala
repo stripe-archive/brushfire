@@ -14,13 +14,13 @@ class TreeTraversalSpec extends WordSpec with Matchers with Checkers {
   import TreeGenerators._
 
   def split[T, A: Semigroup](key: String, pred: Predicate[Double], left: Node[String, Double, T, A], right: Node[String, Double, T, A]): SplitNode[String, Double, T, A] =
-    SplitNode(pred, key, left, right)
+    SplitNode(key, pred, left, right)
 
   "depthFirst" should {
     "always choose the left side of a split in a binary tree" in {
       val simpleTreeGen = genBinaryTree(arbitrary[String], arbitrary[Double], arbitrary[Map[String, Long]], 2)
         .filter(_.root match {
-          case SplitNode(p, _, _, _, _) =>
+          case SplitNode(_, p, _, _, _) =>
             p match {
               case IsPresent(_) => false
               case _ => true
@@ -80,7 +80,7 @@ class TreeTraversalSpec extends WordSpec with Matchers with Checkers {
 
   def collectLeafs[K, V, T, A](node: Node[K, V, T, A]): Set[LeafNode[K, V, T, A]] =
     node match {
-      case SplitNode(p, _, lc, rc, _) =>
+      case SplitNode(_, p, lc, rc, _) =>
         (if (p.run(None)) List(lc, rc) else Nil).flatMap(collectLeafs).toSet
       case leaf @ LeafNode(_, _, _) =>
         Set(leaf)

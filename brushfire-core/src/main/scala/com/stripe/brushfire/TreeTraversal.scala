@@ -151,7 +151,7 @@ case class DepthFirstTreeTraversal[K, V, T, A](order: (Random, List[Node[K, V, T
         case (split @ SplitNode(_, _, _, _, _)) :: rest =>
           val newStack = split.evaluate(row) match {
             case Nil => rest
-            //case node :: Nil => node :: rest
+            case node :: Nil => node :: rest
             case candidates => order(rng, candidates) ::: rest
           }
           loop(newStack)
