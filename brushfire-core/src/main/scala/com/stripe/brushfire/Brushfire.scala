@@ -42,17 +42,18 @@ trait Splitter[V, T] {
 }
 
 /** Candidate split for a tree node */
-sealed trait Split[V, T] {
-  def predicate: Predicate[V]
-  def leftDistribution: T
-  def rightDistribution: T
-  def distributions: List[T] = leftDistribution :: rightDistribution :: Nil
+case class Split[V, T](predicate: Predicate[V], leftDistribution: T, rightDistribution: T) {
 
+  /**
+   * Given a feature key, create a SplitNode from this Split.
+   *
+   * Note that the leaves of this node will likely need to be
+   * renumbered if this node is put into a larger tree.
+   */
   def createSplitNode[K](feature: K): SplitNode[K, V, T, Unit] =
-    SplitNode(predicate, feature, LeafNode(-1, leftDistribution), LeafNode(-1, rightDistribution))
+    SplitNode(predicate, feature, LeafNode(0, leftDistribution), LeafNode(1, rightDistribution))
 }
 
-case class BinarySplit[V, T](predicate: Predicate[V], leftDistribution: T, rightDistribution: T) extends Split[V, T]
 
 /** Evaluates the goodness of a candidate split */
 trait Evaluator[V, T] {

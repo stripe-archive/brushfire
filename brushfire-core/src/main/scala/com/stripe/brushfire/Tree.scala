@@ -31,14 +31,13 @@ object Tree {
         } yield (f, tpl)
 
         if (splits.isEmpty) None else {
-          val (splitFeature, (split, _)) = splits.maxBy { case (f, (x, s)) => s }
-          val pred = split.predicate
+          val (splitFeature, (Split(pred, left, right), _)) = splits.maxBy { case (f, (x, s)) => s }
           def ex(dist: T): Node[K, V, T, Unit] = {
             val newInstances = instances.filter { inst => pred.run(inst.features.get(splitFeature)) }
             val target = Monoid.sum(newInstances.map(_.target))
             expand(times - 1, treeIndex, LeafNode(0, target), splitter, evaluator, stopper, sampler, newInstances)
           }
-          Some(SplitNode(pred, splitFeature, ex(split.leftDistribution), ex(split.rightDistribution)))
+          Some(SplitNode(pred, splitFeature, ex(left), ex(right)))
         }
       }.getOrElse(leaf)
     } else {

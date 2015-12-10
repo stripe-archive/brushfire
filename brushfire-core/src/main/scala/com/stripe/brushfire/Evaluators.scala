@@ -5,7 +5,8 @@ import com.twitter.algebird._
 case class ChiSquaredEvaluator[V, L, W](implicit weightMonoid: Monoid[W], weightDouble: W => Double)
     extends Evaluator[V, Map[L, W]] {
   def evaluate(split: Split[V, Map[L, W]]): Option[(Split[V, Map[L, W]], Double)] = {
-    val rows = split.distributions.filter { _.nonEmpty }
+    val Split(_, left, right) = split
+    val rows = (left :: right :: Nil).filter(_.nonEmpty)
     if (rows.size > 1) {
       val n = weightMonoid.sum(rows.flatMap { _.values })
       val rowTotals = rows.map { row => weightMonoid.sum(row.values) }.toList
@@ -33,16 +34,15 @@ case class MinWeightEvaluator[V, L, W: Monoid](minWeight: W => Boolean, wrapped:
   private[this] def test(dist: Map[L, W]): Boolean = minWeight(Monoid.sum(dist.values))
 
   def evaluate(split: Split[V, Map[L, W]]): Option[(Split[V, Map[L, W]], Double)] =
-    wrapped.evaluate(split).filter { case (baseSplit, _) =>
-      test(baseSplit.leftDistribution) && test(baseSplit.rightDistribution)
+    wrapped.evaluate(split).filter { case (Split(_, left, right), _) =>
+      test(left) && test(right)
     }
 }
 
 case class ErrorEvaluator[V, T, P, E](error: Error[T, P, E], voter: Voter[T, P])(fn: E => Double) extends Evaluator[V, T] {
   def evaluate(split: Split[V, T]): Option[(Split[V, T], Double)] = {
+    val Split(_, left, right) = split
     def e(t: T): E = error.create(t, voter.combine(Some(t)))
-    val e0 = e(split.leftDistribution)
-    val e1 = e(split.rightDistribution)
-    Some((split, -fn(error.semigroup.plus(e0, e1))))
+    Some((split, -fn(error.semigroup.plus(e(left), e(right)))))
   }
 }
