@@ -1,10 +1,14 @@
 package com.stripe.brushfire
 
 import com.twitter.algebird._
+import com.stripe.bonsai.{ FullBinaryTree, FullBinaryTreeOps }
 
 import java.lang.Math.{abs, max}
 
+import Types._
+
 sealed abstract class Node[K, V, T, A] {
+
   def annotation: A
 
   def renumber(nextId: Int): (Int, Node[K, V, T, A]) =
@@ -16,6 +20,12 @@ sealed abstract class Node[K, V, T, A] {
       case LeafNode(_, target, annotation) =>
         (nextId + 1, LeafNode(nextId, target, annotation))
     }
+
+  def fold[B](f: (Node[K, V, T, A], Node[K, V, T, A], (K, Predicate[V], A)) => B, g: Tuple3[Int, T, A] => B): B =
+    this match {
+      case SplitNode(k, p, lc, rc, a) => f(lc, rc, (k, p, a))
+      case LeafNode(index, target, a) => g((index, target, a))
+    }
 }
 
 case class SplitNode[K, V, T, A](key: K, predicate: Predicate[V], leftChild: Node[K, V, T, A], rightChild: Node[K, V, T, A], annotation: A) extends Node[K, V, T, A] {
@@ -25,6 +35,8 @@ case class SplitNode[K, V, T, A](key: K, predicate: Predicate[V], leftChild: Nod
       case Some(false) => rightChild :: Nil
       case None => leftChild :: rightChild :: Nil
     }
+
+  def splitLabel: (K, Predicate[V], A) = (key, predicate, annotation)
 }
 
 object SplitNode {
@@ -32,7 +44,9 @@ object SplitNode {
     SplitNode(k, p, lc, rc, Semigroup.plus(lc.annotation, rc.annotation))
 }
 
-case class LeafNode[K, V, T, A](index: Int, target: T, annotation: A) extends Node[K, V, T, A]
+case class LeafNode[K, V, T, A](index: Int, target: T, annotation: A) extends Node[K, V, T, A] {
+  def leafLabel: (Int, T, A) = (index, target, annotation)
+}
 
 object LeafNode {
   def apply[K, V, T, A: Monoid](index: Int, target: T): LeafNode[K, V, T, A] =
@@ -40,6 +54,8 @@ object LeafNode {
 }
 
 case class AnnotatedTree[K, V, T, A: Semigroup](root: Node[K, V, T, A]) {
+
+  import AnnotatedTree.AnnotatedTreeTraversal
 
   /**
    * Transform the splits of a tree (the predicates and keys of the
@@ -227,14 +243,14 @@ case class AnnotatedTree[K, V, T, A: Semigroup](root: Node[K, V, T, A]) {
     }
   }
 
-  def leafFor(row: Map[K, V], id: Option[String] = None)(implicit traversal: TreeTraversal[K, V, T, A]): Option[LeafNode[K, V, T, A]] =
-    traversal.find(this, row, id).headOption
+  def leafFor(row: Map[K, V], id: Option[String] = None)(implicit traversal: AnnotatedTreeTraversal[K, V, T, A]): Option[(Int, T, A)] =
+    traversal.search(this, row, id).headOption
 
-  def leafIndexFor(row: Map[K, V], id: Option[String] = None)(implicit traversal: TreeTraversal[K, V, T, A]): Option[Int] =
-    leafFor(row, id).map(_.index)
+  def leafIndexFor(row: Map[K, V], id: Option[String] = None)(implicit traversal: AnnotatedTreeTraversal[K, V, T, A]): Option[Int] =
+    leafFor(row, id).map(_._1)
 
-  def targetFor(row: Map[K, V], id: Option[String] = None)(implicit traversal: TreeTraversal[K, V, T, A], semigroup: Semigroup[T]): Option[T] =
-    semigroup.sumOption(traversal.find(this, row, id).map(_.target))
+  def targetFor(row: Map[K, V], id: Option[String] = None)(implicit traversal: AnnotatedTreeTraversal[K, V, T, A], semigroup: Semigroup[T]): Option[T] =
+    semigroup.sumOption(leafFor(row, id).map(_._2))
 
   /**
    * For each leaf, this may convert the leaf to a [[SplitNode]] whose children
@@ -285,4 +301,25 @@ case class AnnotatedTree[K, V, T, A: Semigroup](root: Node[K, V, T, A]) {
    */
   def renumberLeaves: AnnotatedTree[K, V, T, A] =
     AnnotatedTree(root.renumber(0)._2)
+
+  def compress: FullBinaryTree[(K, Predicate[V], A), (Int, T, A)] =
+    FullBinaryTree(this)
+}
+
+object AnnotatedTree {
+
+  type AnnotatedTreeTraversal[K, V, T, A] = TreeTraversal[AnnotatedTree[K, V, T, A], K, V, T, A]
+
+  implicit def fullBinaryTreeOpsForAnnotatedTree[K, V, T, A]: FullBinaryTreeOps[AnnotatedTree[K, V, T, A], (K, Predicate[V], A), (Int, T, A)] =
+    new FullBinaryTreeOpsForAnnotatedTree[K, V, T, A]
+}
+
+class FullBinaryTreeOpsForAnnotatedTree[K, V, T, A] extends FullBinaryTreeOps[AnnotatedTree[K, V, T, A], (K, Predicate[V], A), (Int, T, A)] {
+  type Node = com.stripe.brushfire.Node[K, V, T, A]
+
+  def root(t: AnnotatedTree[K, V, T, A]): Option[Node] = Some(t.root)
+
+  def foldNode[B](node: Node)(
+    f: (Node, Node, (K, Predicate[V], A)) => B,
+    g: Tuple3[Int, T, A] => B): B = node.fold(f, g)
 }

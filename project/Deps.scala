@@ -9,6 +9,7 @@ object Deps {
     val algebird = "0.9.0"
     val jackson = "1.9.13"
     val bijection = "0.7.0"
+    val bonsai = "0.1.3-SNAPSHOT"
     val tDigest = "3.1"
 
     val hadoopClient = "2.5.2"
@@ -23,6 +24,7 @@ object Deps {
 
   val algebirdCore   = "com.twitter"         %% "algebird-core"      % V.algebird
   val bijectionJson  = "com.twitter"         %% "bijection-json"     % V.bijection
+  val bonsai         = "com.stripe"          %% "bonsai-core"        % V.bonsai
   val chillBijection = "com.twitter"         %% "chill-bijection"    % V.chill
   val jacksonMapper  = "org.codehaus.jackson" % "jackson-mapper-asl" % V.jackson
   val jacksonXC      = "org.codehaus.jackson" % "jackson-xc"         % V.jackson

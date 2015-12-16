@@ -2,6 +2,9 @@ package com.stripe.brushfire
 
 import com.twitter.algebird._
 
+import Types._
+import AnnotatedTree.AnnotatedTreeTraversal
+
 /** Combines multiple targets into a single prediction **/
 trait Voter[T, P] { self =>
 
@@ -26,7 +29,7 @@ trait Voter[T, P] { self =>
       f(self.combine(targets))
   }
 
-  final def predict[K, V, A](trees: Iterable[AnnotatedTree[K, V, T, A]], row: Map[K, V])(implicit traversal: TreeTraversal[K, V, T, A], semigroup: Semigroup[T]): P =
+  final def predict[K, V, A](trees: Iterable[AnnotatedTree[K, V, T, A]], row: Map[K, V])(implicit traversal: AnnotatedTreeTraversal[K, V, T, A], semigroup: Semigroup[T]): P =
     combine(trees.flatMap(_.targetFor(row)))
 }
 

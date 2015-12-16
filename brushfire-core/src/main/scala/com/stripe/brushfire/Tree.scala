@@ -1,5 +1,6 @@
 package com.stripe.brushfire
 
+import com.stripe.bonsai.FullBinaryTreeOps
 import com.twitter.algebird._
 
 // type Tree[K, V, T] = AnnotatedTree[K, V, T, Unit]
@@ -44,4 +45,7 @@ object Tree {
       leaf
     }
   }
+
+  implicit def fullBinaryTreeOpsForTree[K, V, T]: FullBinaryTreeOps[Tree[K, V, T], (K, Predicate[V], Unit), (Int, T, Unit)] =
+    new FullBinaryTreeOpsForAnnotatedTree[K, V, T, Unit]
 }
