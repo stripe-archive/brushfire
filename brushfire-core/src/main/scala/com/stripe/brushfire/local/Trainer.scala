@@ -57,7 +57,7 @@ case class Expand[K,V,T](sampler: Sampler[K], stopper: Stopper[T], splitter: Spl
     for
       ((treeIndex, tree) <- trees.toList;
       i <- 1.to(sampler.timesInTrainingSet(instance.id, instance.timestamp, treeIndex)).toList;
-      leaf <- tree.leafFor(instance.features).toList if stopper.shouldSplit(leaf.target) && stopper.shouldSplitDistributed(leaf.target);
+      leaf <- tree.leafFor(instance.features).toList if stopper.shouldSplit(leaf.target);
       (feature, stats) <- features if (sampler.includeFeature(feature, treeIndex, leaf.index)))
         yield (treeIndex, leaf.index, feature) -> stats
   }
@@ -90,12 +90,35 @@ case class Expand[K,V,T](sampler: Sampler[K], stopper: Stopper[T], splitter: Spl
   }
 }
 
+
+trait OutputStep[K,V,T,O] {
+  def prepare(trees: Map[Int, Tree[K,V,T]], instance: Instance[K,V,T]): Seq[O]
+  def semigroup: Semigroup[O]
+}
+
+case class Validate[K,V,T:Semigroup,P,E](sampler: Sampler[K], error: Error[T, P,E], voter: Voter[T, P])
+  extends OutputStep[K,V,T,E] {
+
+  def prepare(trees: Map[Int, Tree[K,V,T]], instance: Instance[K,V,T]) = {
+    val predictions =
+      for (
+        (treeIndex, tree) <- trees
+          if sampler.includeInValidationSet(instance.id, instance.timestamp, treeIndex);
+        target <- tree.targetFor(instance.features).toList
+      ) yield target
+
+    List(error.create(instance.target, voter.combine(predictions)))
+  }
+
+  val semigroup = error.semigroup
+}
+
 case class Trainer[K: Ordering, V, T: Monoid](
     trainingData: Iterable[Instance[K, V, T]],
     sampler: Sampler[K],
     trees: List[Tree[K, V, T]]) {
 
-  def updateTrainer(step: TrainingStep[K,V,T]): Trainer[K,V,T] = {
+  def trainingStep(step: TrainingStep[K,V,T]): Trainer[K,V,T] = {
     val treeMap = trees.zipWithIndex.map{case (t,i) => i->t}.toMap
     var sums1 = Map[(Int,Int,step.K1),step.V1]()
 
@@ -111,7 +134,9 @@ case class Trainer[K: Ordering, V, T: Monoid](
 
     var sums2 = treeMap.mapValues{tree => Map[Int, step.V2]()}
     sums1.foreach{case ((treeIndex, leafIndex, k), v1) =>
-      step.lift(treeMap(treeIndex), leafIndex, k, v1).foreach{v2 =>
+      val lifted = step.lift(treeMap(treeIndex), leafIndex, k, v1)
+
+      lifted.foreach{v2 =>
         val combined = sums2(treeIndex).get(leafIndex) match {
           case Some(old) => step.semigroup2.plus(old,v2)
           case none => v2
@@ -129,38 +154,25 @@ case class Trainer[K: Ordering, V, T: Monoid](
     Trainer(trainingData, sampler, newTrees)
   }
 
-  def updateTargets =
-    updateTrainer(UpdateTargets(sampler))
-
-  def expand(implicit splitter: Splitter[V, T], evaluator: Evaluator[V, T], stopper: Stopper[T]) =
-    updateTrainer(Expand(sampler, stopper, splitter, evaluator))
-
-/*
-  def prune[P, E](error: Error[T, P, E])(implicit voter: Voter[T, P], ord: Ordering[E]): Trainer[K, V, T] =
-    updateTrees {
-      case (tree, treeIndex, byLeaf) =>
-        val byLeafIndex = byLeaf.map {
-          case (l, instances) =>
-            l.index -> implicitly[Monoid[T]].sum(instances.map { _.target })
-        }
-        tree.prune(byLeafIndex, voter, error)
-    }
-
-  def validate[P, E](error: Error[T, P, E])(implicit voter: Voter[T, P]): Option[E] = {
-    val errors = trainingData.flatMap { instance =>
-      val useTrees = trees.zipWithIndex.filter {
-        case (tree, i) =>
-          sampler.includeInValidationSet(instance.id, instance.timestamp, i)
-      }.map { _._1 }
-      if(useTrees.isEmpty)
-        None
-      else {
-        val prediction = voter.predict(useTrees, instance.features)
-        Some(error.create(instance.target, prediction))
+  def outputStep[O](step: OutputStep[K,V,T,O]): Option[O] = {
+    val treeMap = trees.zipWithIndex.map{case (t,i) => i->t}.toMap
+    var output: Option[O] = None
+    trainingData.foreach{instance =>
+      step.prepare(treeMap, instance).foreach{o =>
+        output = Some(output.map{old => step.semigroup.plus(old, o)}.getOrElse(o))
       }
     }
-    error.semigroup.sumOption(errors)
-  }*/
+    output
+  }
+
+  def updateTargets =
+    trainingStep(UpdateTargets(sampler))
+
+  def expand(implicit splitter: Splitter[V, T], evaluator: Evaluator[V, T], stopper: Stopper[T]) =
+    trainingStep(Expand(sampler, stopper, splitter, evaluator))
+
+  def validate[P, E](error: Error[T, P, E])(implicit voter: Voter[T, P]): Option[E] =
+    outputStep[E](Validate(sampler, error, voter))
 }
 
 object Trainer {

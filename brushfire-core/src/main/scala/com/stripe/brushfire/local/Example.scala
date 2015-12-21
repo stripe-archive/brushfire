@@ -2,8 +2,11 @@ package com.stripe.brushfire.local
 
 import com.stripe.brushfire._
 import com.twitter.algebird._
+import com.twitter.bijection._
 
 object Example extends Defaults {
+
+  import JsonInjections._
 
   def main(args: Array[String]) {
     val cols = args.toList
@@ -19,13 +22,18 @@ object Example extends Defaults {
       Trainer(trainingData, KFoldSampler(4))
         .updateTargets
 
-  //  println(trainer.validate(AccuracyError()))
-  //  println(trainer.validate(BrierScoreError()))
+    println(trainer.validate(AccuracyError()))
+    println(trainer.validate(BrierScoreError()))
 
     1.to(10).foreach { i =>
       trainer = trainer.expand
-   //   println(trainer.validate(AccuracyError()))
-   //   println(trainer.validate(BrierScoreError()))
+      printTrees(trainer.trees)
+      println(trainer.validate(AccuracyError()))
+      println(trainer.validate(BrierScoreError()))
+    }
+
+    def printTrees[K,V,T](trees: List[Tree[K,V,T]])(implicit inj: Injection[Tree[K, V, T], String]) {
+      trees.foreach{tree => println(inj(tree))}
     }
 /*
     implicit val ord = Ordering.by[AveragedValue, Double] { _.value }
