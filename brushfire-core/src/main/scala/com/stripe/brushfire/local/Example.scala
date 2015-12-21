@@ -19,18 +19,19 @@ object Example extends Defaults {
       Trainer(trainingData, KFoldSampler(4))
         .updateTargets
 
-    println(trainer.validate(AccuracyError()))
-    println(trainer.validate(BrierScoreError()))
+  //  println(trainer.validate(AccuracyError()))
+  //  println(trainer.validate(BrierScoreError()))
 
     1.to(10).foreach { i =>
-      trainer = trainer.expand(1)
-      println(trainer.validate(AccuracyError()))
-      println(trainer.validate(BrierScoreError()))
+      trainer = trainer.expand
+   //   println(trainer.validate(AccuracyError()))
+   //   println(trainer.validate(BrierScoreError()))
     }
-
+/*
     implicit val ord = Ordering.by[AveragedValue, Double] { _.value }
     trainer = trainer.prune(BrierScoreError())
     println(trainer.validate(AccuracyError()))
     println(trainer.validate(BrierScoreError()))
+*/
   }
 }
