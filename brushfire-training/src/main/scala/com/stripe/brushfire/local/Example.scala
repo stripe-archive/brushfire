@@ -1,6 +1,7 @@
 package com.stripe.brushfire.local
 
 import com.stripe.brushfire._
+import com.stripe.brushfire.training._
 import com.twitter.algebird._
 import com.twitter.bijection._
 

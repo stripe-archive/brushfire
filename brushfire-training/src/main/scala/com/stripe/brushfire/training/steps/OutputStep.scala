@@ -1,6 +1,7 @@
-package com.stripe.brushfire.training
+package com.stripe.brushfire.training.steps
 
 import com.stripe.brushfire._
+import com.stripe.brushfire.training._
 import com.twitter.algebird._
 
 trait OutputStep[K,V,T,O] {

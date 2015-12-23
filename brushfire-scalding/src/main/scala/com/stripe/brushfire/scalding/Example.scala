@@ -1,6 +1,7 @@
 package com.stripe.brushfire.scalding
 
 import com.stripe.brushfire._
+import com.stripe.brushfire.training._
 import com.twitter.scalding._
 import com.twitter.algebird.AveragedValue
 
@@ -35,17 +36,17 @@ abstract class CSVJob(args: Args) extends TrainerJob(args) {
   def train(trainingData: TypedPipe[Instance[String, Double, Map[String, Long]]]): Trainer[String, Double, Map[String, Long]] = {
     Trainer(trainingData, KFoldSampler(4))
       .expandTimes(args("output"), 3)
-      .expandInMemory(args("output") + "/mem", 10)
+    //  .expandInMemory(args("output") + "/mem", 10)
       .validate(error) { writeValueTsvExecution(args("output") + "/bs") }
       .featureImportance(error) { writeTsvExecution(args("output") + "/fi") }
-      .prune(args("output") + "/pruned", error = error)
+    //  .prune(args("output") + "/pruned", error = error)
       .validate(error) { writeValueTsvExecution(args("output") + "/pruned-bs") }
       .featureImportance(error) { writeTsvExecution(args("output") + "/pruned-fi") }
   }
 
   def trainer() = {
     args.optional("load") match {
-      case Some(path) => Trainer(trainingData, KFoldSampler(4)).load(path).prune(args("output") + "/pruned", error = error)
+      case Some(path) => Trainer(trainingData, KFoldSampler(4)).load(path)
       case None => train(trainingData)
     }
   }

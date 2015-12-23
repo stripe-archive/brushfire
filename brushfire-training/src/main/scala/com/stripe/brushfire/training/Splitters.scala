@@ -1,5 +1,6 @@
-package com.stripe.brushfire
+package com.stripe.brushfire.training
 
+import com.stripe.brushfire._
 import com.twitter.algebird._
 
 case class BinarySplitter[V, T: Monoid](partition: V => Predicate[V])
@@ -102,3 +103,4 @@ case class BinarySplit[V, T](
   def predicates =
     List(predicate -> leftDistribution, Not(predicate) -> rightDistribution)
 }
+
