@@ -10,7 +10,7 @@ object Tree {
 
   def singleton[K, V, T](t: T): Tree[K, V, T] = Tree(LeafNode(0, t, ()))
 
-  def expand[K, V, T: Monoid](times: Int, treeIndex: Int, leaf: LeafNode[K, V, T, Unit], splitter: Splitter[V, T], evaluator: Evaluator[V, T], stopper: Stopper[T], sampler: Sampler[K], instances: Iterable[Instance[K, V, T]]): Node[K, V, T, Unit] = {
+  def expand[K, V, T: Monoid](times: Int, treeIndex: Int, leaf: LeafNode[K, V, T, Unit], splitter: Splitter[V, T], evaluator: Evaluator[T], stopper: Stopper[T], sampler: Sampler[K], instances: Iterable[Instance[K, V, T]]): Node[K, V, T, Unit] = {
     if (times > 0 && stopper.shouldSplit(leaf.target)) {
       implicit val jdSemigroup = splitter.semigroup
 
@@ -24,13 +24,18 @@ object Tree {
       }).flatMap { featureMap =>
         val splits = featureMap.toList.flatMap {
           case (f, s) =>
-            splitter.split(leaf.target, s).map { x => f -> evaluator.evaluate(x) }
+            splitter.split(leaf.target, s).flatMap { x =>
+              val targets = x.predicates.map{_._2}
+              evaluator
+                .trainingError(rootTarget, targets)
+                .map{s => f -> (x, s) }
+            }
         }
 
         if(splits.isEmpty)
           None
         else {
-          val (splitFeature, (split, _)) = splits.maxBy { case (f, (x, s)) => s }
+          val (splitFeature, (split, _)) = splits.minBy { case (f, (x, s)) => s }
           val edges = split.predicates.toList.map {
             case (pred, _) =>
               val newInstances = instances.filter { inst => pred(inst.features.get(splitFeature)) }

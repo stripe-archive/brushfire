@@ -2,16 +2,16 @@ package com.stripe.brushfire
 
 import com.twitter.algebird._
 
-case class ChiSquaredEvaluator[V, L, W](implicit weightMonoid: Monoid[W], weightDouble: W => Double)
-    extends Evaluator[V, Map[L, W]] {
-  def evaluate(split: Split[V, Map[L, W]]) = {
-    val rows = split.predicates.map { _._2 }.filter { _.nonEmpty }
+case class ChiSquaredEvaluator[L, W](implicit weightMonoid: Monoid[W], weightDouble: W => Double)
+    extends Evaluator[Map[L, W]] {
+  def trainingError(root: Map[L, W], leaves: Iterable[Map[L,W]]) = {
+    val rows = leaves.filter { _.nonEmpty }
     if (rows.size > 1) {
       val n = weightMonoid.sum(rows.flatMap { _.values })
       val rowTotals = rows.map { row => weightMonoid.sum(row.values) }.toList
       val columnKeys = rows.flatMap { _.keys }.toList
       val columnTotals = columnKeys.map { column => column -> weightMonoid.sum(rows.flatMap { _.get(column) }) }.toMap
-      val testStatistic = (for {
+      Some((for {
         column <- columnKeys
         (row, index) <- rows.zipWithIndex
       } yield {
@@ -19,44 +19,30 @@ case class ChiSquaredEvaluator[V, L, W](implicit weightMonoid: Monoid[W], weight
         val expected = (columnTotals(column) * rowTotals(index)) / n
         val delta = observed - expected
         (delta * delta) / expected
-      }).sum
-      (split, testStatistic)
+      }).sum * -1)
     } else
-      (EmptySplit[V, Map[L, W]](), Double.NegativeInfinity)
+      None
   }
 }
 
-case class MinWeightEvaluator[V, L, W: Monoid](minWeight: W => Boolean, wrapped: Evaluator[V, Map[L, W]])
-    extends Evaluator[V, Map[L, W]] {
-  def evaluate(split: Split[V, Map[L, W]]) = {
-    val (baseSplit, baseScore) = wrapped.evaluate(split)
-    if (baseSplit.predicates.forall {
-      case (pred, freq) =>
-        val totalWeight = Monoid.sum(freq.values)
-        minWeight(totalWeight)
-    })
-      (baseSplit, baseScore)
+case class MinWeightEvaluator[L, W: Monoid](minWeight: W => Boolean, wrapped: Evaluator[Map[L, W]])
+    extends Evaluator[Map[L, W]] {
+  def trainingError(root: Map[L, W], leaves: Iterable[Map[L,W]]) = {
+    if (leaves.forall {freq => minWeight(Monoid.sum(freq.values))})
+      wrapped.trainingError(root, leaves)
     else
-      (EmptySplit[V, Map[L, W]](), Double.NegativeInfinity)
+      None
   }
 }
 
-case class EmptySplit[V, P]() extends Split[V, P] {
-  val predicates = Nil
-}
+case class ErrorEvaluator[T, P, E](error: Error[T, P, E], voter: Voter[T, P])(fn: E => Double)
+    extends Evaluator[T] {
+  def trainingError(root: T, leaves: Iterable[T]) = {
+    val errors = leaves.map { target => error.create(target, voter.combine(Some(target)))}
 
-case class ErrorEvaluator[V, T, P, E](error: Error[T, P, E], voter: Voter[T, P])(fn: E => Double)
-    extends Evaluator[V, T] {
-  def evaluate(split: Split[V, T]) = {
-    val totalErrorOption =
-      error.semigroup.sumOption(
-        split
-          .predicates
-          .map { case (_, target) => error.create(target, voter.combine(Some(target))) })
-
-    totalErrorOption match {
-      case Some(totalError) => (split, -fn(totalError))
-      case None => (EmptySplit[V, T](), Double.NegativeInfinity)
-    }
+    error
+      .semigroup
+      .sumOption(errors)
+      .map{e => fn(e)}
   }
 }

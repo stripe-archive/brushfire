@@ -46,10 +46,9 @@ trait Split[V, T] {
   def predicates: Iterable[(Predicate[V], T)]
 }
 
-/** Evaluates the goodness of a candidate split */
-trait Evaluator[V, T] {
-  /** returns a (possibly transformed) version of the input split, and a numeric goodness score */
-  def evaluate(split: Split[V, T]): (Split[V, T], Double)
+trait Evaluator[T] {
+  /** returns an overall numeric training error for a tree or split, or None for infinite/unacceptable error */
+  def trainingError(root: T, leaves: Iterable[T]): Option[Double]
 }
 
 /** Provides stopping conditions which guide when splits will be attempted */
