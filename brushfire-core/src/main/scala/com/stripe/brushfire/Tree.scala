@@ -10,7 +10,7 @@ object Tree {
 
   def singleton[K, V, T](t: T): Tree[K, V, T] = Tree(LeafNode(0, t, ()))
 
-  def expand[K, V, T: Monoid](times: Int, treeIndex: Int, leaf: LeafNode[K, V, T, Unit], splitter: Splitter[V, T], evaluator: Evaluator[T], stopper: Stopper[T], sampler: Sampler[K], instances: Iterable[Instance[K, V, T]]): Node[K, V, T, Unit] = {
+  def expand[K, V, T: Monoid](times: Int, treeIndex: Int, rootTarget: T, leaf: LeafNode[K, V, T, Unit], splitter: Splitter[V, T], evaluator: Evaluator[T], stopper: Stopper[T], sampler: Sampler[K], instances: Iterable[Instance[K, V, T]]): Node[K, V, T, Unit] = {
     if (times > 0 && stopper.shouldSplit(leaf.target)) {
       implicit val jdSemigroup = splitter.semigroup
 
@@ -46,7 +46,7 @@ object Tree {
           if (edges.count { case (_, _, newInstances) => newInstances.nonEmpty } > 1) {
             Some(SplitNode(edges.map {
               case (pred, target, newInstances) =>
-                (splitFeature, pred, expand[K, V, T](times - 1, treeIndex, LeafNode(0, target), splitter, evaluator, stopper, sampler, newInstances))
+                (splitFeature, pred, expand[K, V, T](times - 1, treeIndex, rootTarget, LeafNode(0, target), splitter, evaluator, stopper, sampler, newInstances))
             }))
           } else {
             None

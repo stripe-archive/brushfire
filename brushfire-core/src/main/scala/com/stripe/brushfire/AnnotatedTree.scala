@@ -27,6 +27,17 @@ object LeafNode {
 }
 
 case class AnnotatedTree[K, V, T, A: Semigroup](root: Node[K, V, T, A]) {
+
+  def sumTargets(implicit monoid: Monoid[T]) = {
+    def recur(node: Node[K, V, T, A]): T = node match {
+      case SplitNode(children) =>
+        monoid.sum(children.map {case (_, _, child) => recur(child)})
+      case LeafNode(index, target, annotation) => target
+    }
+
+    recur(root)
+  }
+
   private def mapSplits[K0, V0](f: (K, Predicate[V]) => (K0, Predicate[V0])): AnnotatedTree[K0, V0, T, A] = {
     def recur(node: Node[K, V, T, A]): Node[K0, V0, T, A] = node match {
       case SplitNode(children) =>
