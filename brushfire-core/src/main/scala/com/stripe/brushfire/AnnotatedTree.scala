@@ -28,6 +28,8 @@ object LeafNode {
 
 case class AnnotatedTree[K, V, T, A: Semigroup](root: Node[K, V, T, A]) {
 
+  private var sumTargetsCache: Option[T] = None
+
   def sumTargets(implicit monoid: Monoid[T]) = {
     def recur(node: Node[K, V, T, A]): T = node match {
       case SplitNode(children) =>
@@ -35,7 +37,10 @@ case class AnnotatedTree[K, V, T, A: Semigroup](root: Node[K, V, T, A]) {
       case LeafNode(index, target, annotation) => target
     }
 
-    recur(root)
+    if(!sumTargetsCache.isDefined)
+      sumTargetsCache = Some(recur(root))
+
+    sumTargetsCache.get
   }
 
   private def mapSplits[K0, V0](f: (K, Predicate[V]) => (K0, Predicate[V0])): AnnotatedTree[K0, V0, T, A] = {

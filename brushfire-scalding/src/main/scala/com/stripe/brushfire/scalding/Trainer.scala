@@ -103,7 +103,7 @@ case class Trainer[K: Ordering, V, T: Monoid](
    * @param splitter the splitter to use to generate candidate splits for each leaf
    * @param evaluator the evaluator to use to decide which split to use for each leaf
    */
-  def expand[S](path: String)(implicit splitter: Splitter[V, T], evaluator: Evaluator[V, T], stopper: Stopper[T], inj: Injection[Tree[K, V, T], String]) = {
+  def expand[S](path: String)(implicit splitter: Splitter[V, T], evaluator: Evaluator[T], stopper: Stopper[T], inj: Injection[Tree[K, V, T], String]) = {
     flatMapTrees {
       case (trainingData, sampler, trees) =>
         implicit val splitSemigroup = new SplitSemigroup[K, V, T]
@@ -128,14 +128,18 @@ case class Trainer[K: Ordering, V, T: Monoid](
             .group
             .sum
             .flatMap {
-              case ((treeIndex, leafIndex, feature), target) =>
-                treeMap(treeIndex).leafAt(leafIndex).toList.flatMap { leaf =>
+              case ((treeIndex, leafIndex, feature), target) => {
+                val tree = treeMap(treeIndex)
+                tree.leafAt(leafIndex).toList.flatMap { leaf =>
                   splitter
                     .split(leaf.target, target)
-                    .map { rawSplit =>
-                      val (split, goodness) = evaluator.evaluate(rawSplit)
-                      treeIndex -> Map(leafIndex -> (feature, split, goodness))
+                    .flatMap { split =>
+                      val leaves = split.predicates.map{_._2}
+                      evaluator
+                        .trainingError(tree.sumTargets, leaves)
+                        .map{s => treeIndex -> Map(leafIndex -> (feature, split, s))}
                     }
+                  }
                 }
             }
 
@@ -257,12 +261,12 @@ case class Trainer[K: Ordering, V, T: Monoid](
   }
 
   /** recursively expand multiple times, writing out the new tree at each step */
-  def expandTimes(base: String, times: Int)(implicit splitter: Splitter[V, T], evaluator: Evaluator[V, T], stopper: Stopper[T], inj: Injection[Tree[K, V, T], String]) = {
+  def expandTimes(base: String, times: Int)(implicit splitter: Splitter[V, T], evaluator: Evaluator[T], stopper: Stopper[T], inj: Injection[Tree[K, V, T], String]) = {
     updateTargets(stepPath(base, 0))
       .expandFrom(base, 1, times)
   }
 
-  def expandFrom(base: String, step: Int, to: Int)(implicit splitter: Splitter[V, T], evaluator: Evaluator[V, T], stopper: Stopper[T], inj: Injection[Tree[K, V, T], String]): Trainer[K, V, T] = {
+  def expandFrom(base: String, step: Int, to: Int)(implicit splitter: Splitter[V, T], evaluator: Evaluator[T], stopper: Stopper[T], inj: Injection[Tree[K, V, T], String]): Trainer[K, V, T] = {
     if (step > to)
       this
     else {
@@ -271,7 +275,7 @@ case class Trainer[K: Ordering, V, T: Monoid](
     }
   }
 
-  def expandInMemory(path: String, times: Int)(implicit splitter: Splitter[V, T], evaluator: Evaluator[V, T], stopper: Stopper[T], inj: Injection[Tree[K, V, T], String]): Trainer[K, V, T] = {
+  def expandInMemory(path: String, times: Int)(implicit splitter: Splitter[V, T], evaluator: Evaluator[T], stopper: Stopper[T], inj: Injection[Tree[K, V, T], String]): Trainer[K, V, T] = {
     flatMapTrees {
       case (trainingData, sampler, trees) =>
 
@@ -293,8 +297,9 @@ case class Trainer[K: Ordering, V, T: Monoid](
             .map {
               case ((treeIndex, leafIndex), instances) =>
                 val target = Monoid.sum(instances.map { _.target })
+                val rootTarget = treeMap(treeIndex).sumTargets
                 val leaf = LeafNode[K, V, T, Unit](0, target)
-                val expanded = Tree.expand(times, treeIndex, leaf, splitter, evaluator, stopper, sampler, instances)
+                val expanded = Tree.expand(times, treeIndex, rootTarget, leaf, splitter, evaluator, stopper, sampler, instances)
                 treeIndex -> List(leafIndex -> expanded)
             }
 
@@ -352,7 +357,7 @@ object Trainer {
 
 class SplitSemigroup[K, V, T] extends Semigroup[(K, Split[V, T], Double)] {
   def plus(a: (K, Split[V, T], Double), b: (K, Split[V, T], Double)) = {
-    if (a._3 > b._3)
+    if (a._3 < b._3)
       a
     else
       b

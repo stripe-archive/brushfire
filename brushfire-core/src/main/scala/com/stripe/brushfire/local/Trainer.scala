@@ -31,10 +31,9 @@ case class Trainer[K: Ordering, V, T: Monoid](
   private def updateLeaves(fn: (Int, T, LeafNode[K, V, T, Unit], Iterable[Instance[K, V, T]]) => Node[K, V, T, Unit]): Trainer[K, V, T] = {
     updateTrees {
       case (tree, treeIndex, byLeaf) =>
-        val rootTarget = tree.sumTargets
         val newNodes = byLeaf.map {
           case (leaf, instances) =>
-            leaf.index -> fn(treeIndex, rootTarget, leaf, instances)
+            leaf.index -> fn(treeIndex, tree.sumTargets, leaf, instances)
         }
 
         tree.updateByLeafIndex(newNodes.lift)
