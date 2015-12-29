@@ -46,3 +46,13 @@ case class ErrorEvaluator[T, P, E](error: Error[T, P, E], voter: Voter[T, P])(fn
       .map{e => fn(e)}
   }
 }
+
+case class ExplanationEvaluator[T](wrapped: Evaluator[T])(implicit val group: Group[T], ord: Ordering[T])
+  extends Evaluator[T] {
+
+  def trainingError(root: T, leaves: Iterable[T]) = {
+    val maxLeaf = leaves.max
+    val remainder = group.minus(root, maxLeaf)
+    wrapped.trainingError(root, List(maxLeaf, remainder))
+  }
+}
