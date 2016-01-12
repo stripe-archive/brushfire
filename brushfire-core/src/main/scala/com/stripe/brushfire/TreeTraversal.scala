@@ -59,30 +59,65 @@ trait TreeTraversal[Tree, K, V, T, A] {
   def searchNode(node: treeOps.Node, row: Map[K, V], id: Option[String]): Stream[LeafLabel[T, A]]
 }
 
+/**
+ * Simple data type that provides rules to order nodes during
+ * traversal.
+ *
+ * In some cases subtypes of Reorder will also wraps RNG state, for
+ * instances that need to randomly select instances. Thus, Reorder is
+ * not guaranteed to be referentially-transparent. Fresh instances
+ * should be used with each traversal.
+ */
 trait Reorder[A] {
-  def apply[N](r: Random, ns: List[N], f: N => A): List[N]
+  def setSeed(seed: Option[String]): Unit
+  def apply[N](n1: N, n2: N, f: N => A): (N, N)
 }
 
 object Reorder {
+
+  // Traverse into the left node first.
   def unchanged[A]: Reorder[A] =
     new Reorder[A] {
-      def apply[N](r: Random, ns: List[N], f: N => A): List[N] = ns
+      def setSeed(seed: Option[String]): Unit = ()
+      def apply[N](n1: N, n2: N, f: N => A): (N, N) =
+        (n1, n2)
     }
 
+  // Traverse into a random node first. Each node has equal
+  // probability of being selected.
   def shuffled[A]: Reorder[A] =
     new Reorder[A] {
-      def apply[N](r: Random, ns: List[N], f: N => A): List[N] = r.shuffle(ns)
+      val r = new Random()
+      def setSeed(seed: Option[String]): Unit =
+        seed.foreach(s => r.setSeed(MurmurHash3.stringHash(s)))
+      def apply[N](n1: N, n2: N, f: N => A): (N, N) =
+        if (r.nextBoolean) (n1, n2) else (n2, n1)
     }
 
+  // Traverse into the node with the higher weight first.
   def weightedDepthFirst[A](implicit ev: Ordering[A]): Reorder[A] =
     new Reorder[A] {
-      def apply[N](r: Random, ns: List[N], f: N => A): List[N] = ns.sortBy(f)(ev.reverse)
+      def setSeed(seed: Option[String]): Unit = ()
+      def apply[N](n1: N, n2: N, f: N => A): (N, N) =
+        if (ev.compare(f(n1), f(n2)) >= 0) (n1, n2) else (n2, n1)
     }
 
+  // Traverse into a random node, but choose the random node based on
+  // the ratio between its weight and the total weight of both nodes.
+  //
+  // If the left node's weight was 10, and the right node's weight was
+  // 5, the left node would be picked 2/3 of the time.
   def probabilisticWeightedDepthFirst[A](conversion: A => Double): Reorder[A] =
     new Reorder[A] {
-      def apply[N](r: Random, ns: List[N], f: N => A): List[N] =
-        TreeTraversal.probabilisticShuffle(r, ns)(n => conversion(f(n)))
+      val r = new Random()
+      def setSeed(seed: Option[String]): Unit =
+        seed.foreach(s => r.setSeed(MurmurHash3.stringHash(s)))
+      def apply[N](n1: N, n2: N, f: N => A): (N, N) = {
+        val w1 = conversion(f(n1))
+        val w2 = conversion(f(n2))
+        val sum = w1 + w2
+        if (r.nextDouble * sum < w1) (n1, n2) else (n2, n1)
+      }
     }
 }
 
@@ -130,67 +165,49 @@ object TreeTraversal {
    */
   def probabilisticWeightedDepthFirst[Tree, K, V, T, A](implicit treeOps: FullBinaryTreeOps[Tree, BranchLabel[K, V, A], LeafLabel[T, A]], conversion: A => Double): TreeTraversal[Tree, K, V, T, A] =
     DepthFirstTreeTraversal(Reorder.probabilisticWeightedDepthFirst(conversion))
-
-  // Given a weighted set `xs`, this creates an ordered list of all the elements
-  // in `xs` by sampling without replacement from the set, but giving each
-  // element a probability of being picked that is equal to its weight / total
-  // weight of all elements remaining in the set.
-  private[brushfire] def probabilisticShuffle[A](rng: Random, xs: List[A])(getWeight: A => Double): List[A] = {
-
-    @tailrec
-    def loop(sum: Double, acc: SortedMap[Double, Int], order: Vector[A], as: List[A]): Vector[A] =
-      as match {
-        case a :: tail =>
-          val sum0 = sum + getWeight(a)
-          val newHead =
-            if (acc.isEmpty) None
-            else acc.from(rng.nextDouble * sum0).headOption
-          newHead match {
-            case Some((k, i)) =>
-              val acc0 = acc + (sum0 -> i) + (k -> order.size)
-              loop(sum0, acc0, order.updated(i, a) :+ order(i), tail)
-            case None =>
-              val acc0 = acc + (sum0 -> order.length)
-              loop(sum0, acc0, order :+ a, tail)
-          }
-
-        case Nil =>
-          order.reverse
-      }
-
-    loop(0D, SortedMap.empty, Vector.empty, xs).toList
-  }
-
-  def mkRandom(id: String): Random =
-   new Random(MurmurHash3.stringHash(id))
 }
 
 case class DepthFirstTreeTraversal[Tree, K, V, T, A](reorder: Reorder[A])(implicit val treeOps: FullBinaryTreeOps[Tree, BranchLabel[K, V, A], LeafLabel[T, A]]) extends TreeTraversal[Tree, K, V, T, A] {
 
-  def searchNode(start: treeOps.Node, row: Map[K, V], id: Option[String]): Stream[LeafLabel[T, A]] = {
+  import treeOps.{Node, foldNode}
 
-    // Lazy to avoid creation in the fast case.
-    lazy val rng: Random = id.fold[Random](Random)(TreeTraversal.mkRandom)
+  def searchNode(start: Node, row: Map[K, V], id: Option[String]): Stream[LeafLabel[T, A]] = {
 
-    val Empty: Stream[LeafLabel[T, A]] = Stream.empty
+    // this will be a noop unless we have an id and our reorder
+    // instance requires randomness.
+    reorder.setSeed(id)
 
-    val getAnnotation: treeOps.Node => A =
-      n => treeOps.foldNode(n)((_, _, bl) => bl._3, _._3)
+    // pull the A value out of a branch or leaf.
+    val getAnnotation: Node => A =
+      n => foldNode(n)((_, _, bl) => bl._3, ll => ll._3)
 
-    def loop(node: treeOps.Node): Stream[LeafLabel[T, A]] =
-      treeOps.foldNode(node)({ case (lc, rc, bl) =>
-        val (k, p, a) = bl
+    // construct a singleton stream from a leaf
+    //val Empty: Stream[LeafLabel[T, A]] = Stream.empty
+    val leafF: LeafLabel[T, A] => Stream[LeafLabel[T, A]] =
+      _ #:: Stream.empty
+
+    // recurse into branch nodes, going left, right, or both,
+    // depending on what our predicate says.
+    lazy val branchF: (Node, Node, BranchLabel[K, V, A]) => Stream[LeafLabel[T, A]] =
+      { case (lc, rc, (k, p, _)) =>
         p(row.get(k)) match {
           case Some(true) =>
-            loop(lc)
+            recurse(lc)
           case Some(false) =>
-            loop(rc)
+            recurse(rc)
           case None =>
-            val cs = reorder(rng, lc :: rc :: Nil, getAnnotation).toStream
-            cs.flatMap(loop)
+            val (c1, c2) = reorder(lc, rc, getAnnotation)
+            recurse(c1) #::: recurse(c2)
         }
-      }, ll => ll #:: Empty)
-    loop(start)
+      }
+
+    // recursively handle each node. the foldNode method decides
+    // whether to handle it as a branch or a leaf.
+    def recurse(node: Node): Stream[LeafLabel[T, A]] =
+      foldNode(node)(branchF, leafF)
+
+    // do it!
+    recurse(start)
   }
 }
 
