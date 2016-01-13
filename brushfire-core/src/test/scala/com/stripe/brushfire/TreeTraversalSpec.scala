@@ -43,9 +43,10 @@ class TreeTraversalSpec extends WordSpec with Matchers with Checkers {
 
     "traverse in order" in {
       check { (tree: TreeSDM[Unit]) =>
-        val leaves: Stream[(Int, Map[String, Long], Unit)] =
+        val traversal =
           TreeTraversal.depthFirst[TreeSDM[Unit], String, Double, Map[String, Long], Unit]
-            .search(tree, Map.empty[String, Double], None)
+        val leaves: Stream[(Int, Map[String, Long], Unit)] =
+          traversal.search(tree, Map.empty[String, Double], None)
 
         leaves
           .map { case (index, _, _) => index }
@@ -103,7 +104,7 @@ class TreeTraversalSpec extends WordSpec with Matchers with Checkers {
 
     val traversal = TreeTraversal.probabilisticWeightedDepthFirst[TreeSDD[Int], String, Double, Double, Int]
 
-    "choose predictable weighted probabilistic node in a split" in {
+    "choose a predictable node from a split" in {
       val split1 = split("f1", LessThan(0D), LeafNode(0, -1D, 2703), LeafNode(1, 1D, 10000 - 2703))
       traversal.search(AnnotatedTree(split1), Map.empty[String, Double], Some("b")) shouldBe
         Seq((1, 1D, 10000 - 2703), (0, -1D, 2703))
@@ -121,7 +122,7 @@ class TreeTraversalSpec extends WordSpec with Matchers with Checkers {
         Seq((0, -1D, 3983), (1, 1D, 10000 - 3983))
     }
 
-    "choose predictable weighted probabilistic path in a tree" in {
+    "choose a predictable path through a tree" in {
       val tree = AnnotatedTree(
         split("f1", LessThan(0D),
           split("f2", LessThan(0D), // 30
@@ -131,10 +132,27 @@ class TreeTraversalSpec extends WordSpec with Matchers with Checkers {
             LeafNode(2, 3D, 24),
             LeafNode(3, 4D, 46))))
 
-      traversal.search(tree, Map.empty[String, Double], Some("c")).headOption shouldBe Some((1, 2D, 21))
-      traversal.search(tree, Map.empty[String, Double], Some("z")).headOption shouldBe Some((2, 3D, 24))
+      traversal.search(tree, Map.empty, Some("c")).headOption shouldBe Some((1, 2D, 21))
+      traversal.search(tree, Map.empty, Some("z")).headOption shouldBe Some((2, 3D, 24))
       traversal.search(tree, Map("f1" -> 1D), Some("z")).headOption shouldBe Some((3, 4D, 46))
       traversal.search(tree, Map("f1" -> -1D), Some("b")).headOption shouldBe Some((0, 1D, 9))
+
+      def stableSearch(t: TreeSDD[Int]): (Int, Double, Int) =
+        traversal.search(tree, Map.empty, Some("x")).head
+
+      def unstableSearch(t: TreeSDD[Int]): (Int, Double, Int) =
+        traversal.search(tree, Map.empty, None).head
+
+      // ensure that parallel traversal have the same results as
+      // sequential traversals.
+      val trees = (1 to 16).map(_ => tree)
+
+      // should never fail
+      trees.par.map(stableSearch) shouldBe trees.map(stableSearch)
+
+      // may fail very occasionally -- but this verifies that without
+      // using a stable seed, we get faster non-stable behavior.
+      trees.par.map(unstableSearch) should not be trees.map(unstableSearch)
     }
   }
 }

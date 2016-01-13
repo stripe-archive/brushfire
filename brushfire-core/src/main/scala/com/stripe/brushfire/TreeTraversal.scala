@@ -69,7 +69,7 @@ trait TreeTraversal[Tree, K, V, T, A] {
  * should be used with each traversal.
  */
 trait Reorder[A] {
-  def setSeed(seed: Option[String]): Unit
+  def setSeed(seed: Option[String]): Reorder[A]
   def apply[N](n1: N, n2: N, f: N => A): (N, N)
 }
 
@@ -77,30 +77,16 @@ object Reorder {
 
   // Traverse into the left node first.
   def unchanged[A]: Reorder[A] =
-    new Reorder[A] {
-      def setSeed(seed: Option[String]): Unit = ()
-      def apply[N](n1: N, n2: N, f: N => A): (N, N) =
-        (n1, n2)
-    }
+    new UnchangedReorder()
 
   // Traverse into a random node first. Each node has equal
   // probability of being selected.
   def shuffled[A]: Reorder[A] =
-    new Reorder[A] {
-      val r = new Random()
-      def setSeed(seed: Option[String]): Unit =
-        seed.foreach(s => r.setSeed(MurmurHash3.stringHash(s)))
-      def apply[N](n1: N, n2: N, f: N => A): (N, N) =
-        if (r.nextBoolean) (n1, n2) else (n2, n1)
-    }
+    new ShuffledReorder(new Random)
 
   // Traverse into the node with the higher weight first.
   def weightedDepthFirst[A](implicit ev: Ordering[A]): Reorder[A] =
-    new Reorder[A] {
-      def setSeed(seed: Option[String]): Unit = ()
-      def apply[N](n1: N, n2: N, f: N => A): (N, N) =
-        if (ev.compare(f(n1), f(n2)) >= 0) (n1, n2) else (n2, n1)
-    }
+    new WeightedReorder()
 
   // Traverse into a random node, but choose the random node based on
   // the ratio between its weight and the total weight of both nodes.
@@ -108,17 +94,49 @@ object Reorder {
   // If the left node's weight was 10, and the right node's weight was
   // 5, the left node would be picked 2/3 of the time.
   def probabilisticWeightedDepthFirst[A](conversion: A => Double): Reorder[A] =
-    new Reorder[A] {
-      val r = new Random()
-      def setSeed(seed: Option[String]): Unit =
-        seed.foreach(s => r.setSeed(MurmurHash3.stringHash(s)))
-      def apply[N](n1: N, n2: N, f: N => A): (N, N) = {
-        val w1 = conversion(f(n1))
-        val w2 = conversion(f(n2))
-        val sum = w1 + w2
-        if (r.nextDouble * sum < w1) (n1, n2) else (n2, n1)
+    new ProbabilisticWeighted(new Random, conversion)
+
+  class UnchangedReorder[A] extends Reorder[A] {
+    def setSeed(seed: Option[String]): Reorder[A] =
+      this
+    def apply[N](n1: N, n2: N, f: N => A): (N, N) =
+      (n1, n2)
+  }
+
+  class ShuffledReorder[A](r: Random) extends Reorder[A] {
+    def setSeed(seed: Option[String]): Reorder[A] =
+      seed match {
+        case Some(s) =>
+          new ShuffledReorder(new Random(MurmurHash3.stringHash(s)))
+        case None =>
+          this
       }
+    def apply[N](n1: N, n2: N, f: N => A): (N, N) =
+      if (r.nextBoolean) (n1, n2) else (n2, n1)
+  }
+
+  class WeightedReorder[A](implicit ev: Ordering[A]) extends Reorder[A] {
+    def setSeed(seed: Option[String]): Reorder[A] =
+      this
+    def apply[N](n1: N, n2: N, f: N => A): (N, N) =
+      if (ev.compare(f(n1), f(n2)) >= 0) (n1, n2) else (n2, n1)
+  }
+
+  class ProbabilisticWeighted[A](r: Random, conversion: A => Double) extends Reorder[A] {
+    def setSeed(seed: Option[String]): Reorder[A] =
+      seed match {
+        case Some(s) =>
+          new ProbabilisticWeighted(new Random(MurmurHash3.stringHash(s)), conversion)
+        case None =>
+          this
+      }
+    def apply[N](n1: N, n2: N, f: N => A): (N, N) = {
+      val w1 = conversion(f(n1))
+      val w2 = conversion(f(n2))
+      val sum = w1 + w2
+      if (r.nextDouble * sum < w1) (n1, n2) else (n2, n1)
     }
+  }
 }
 
 object TreeTraversal {
@@ -174,8 +192,10 @@ case class DepthFirstTreeTraversal[Tree, K, V, T, A](reorder: Reorder[A])(implic
   def searchNode(start: Node, row: Map[K, V], id: Option[String]): Stream[LeafLabel[T, A]] = {
 
     // this will be a noop unless we have an id and our reorder
-    // instance requires randomness.
-    reorder.setSeed(id)
+    // instance requires randomness. it ensures that each searchNode
+    // call has its own independent RNG (in cases where we care about
+    // repeatability, i.e. when `id` is not None).
+    val r = reorder.setSeed(id)
 
     // pull the A value out of a branch or leaf.
     val getAnnotation: Node => A =
@@ -196,7 +216,7 @@ case class DepthFirstTreeTraversal[Tree, K, V, T, A](reorder: Reorder[A])(implic
           case Some(false) =>
             recurse(rc)
           case None =>
-            val (c1, c2) = reorder(lc, rc, getAnnotation)
+            val (c1, c2) = r(lc, rc, getAnnotation)
             recurse(c1) #::: recurse(c2)
         }
       }
