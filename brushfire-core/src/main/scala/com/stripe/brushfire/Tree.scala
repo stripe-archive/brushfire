@@ -3,8 +3,6 @@ package com.stripe.brushfire
 import com.stripe.bonsai.FullBinaryTreeOps
 import com.twitter.algebird._
 
-// type Tree[K, V, T] = AnnotatedTree[K, V, T, Unit]
-
 object Tree {
   def apply[K, V, T](node: Node[K, V, T, Unit]): Tree[K, V, T] =
     AnnotatedTree(node)

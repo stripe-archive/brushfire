@@ -4,7 +4,6 @@ package local
 import com.stripe.brushfire._
 import com.twitter.algebird._
 
-import Types._
 import AnnotatedTree.AnnotatedTreeTraversal
 
 case class Trainer[K: Ordering, V, T: Monoid](

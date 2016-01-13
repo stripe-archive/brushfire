@@ -5,6 +5,7 @@ scalaVersion in ThisBuild := "2.11.5"
 crossScalaVersions in ThisBuild := Seq("2.10.4", "2.11.5")
 
 scalacOptions in ThisBuild ++= Seq(
+  "-Yinline-warnings",
   "-deprecation",
   "-feature",
   "-unchecked",

@@ -2,7 +2,6 @@ package com.stripe.brushfire
 
 import com.twitter.algebird._
 
-import Types._
 import AnnotatedTree.AnnotatedTreeTraversal
 
 /** Combines multiple targets into a single prediction **/

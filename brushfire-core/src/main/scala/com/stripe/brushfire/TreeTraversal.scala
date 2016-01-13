@@ -9,8 +9,6 @@ import scala.util.hashing.MurmurHash3
 import com.twitter.algebird._
 import com.stripe.bonsai._
 
-import Types._
-
 /**
  * A `TreeTraversal` provides a way to find all of the leaves in a tree that
  * some row can evaluate to. Specifically, there may be cases where multiple

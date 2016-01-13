@@ -5,8 +5,6 @@ import com.stripe.bonsai.{ FullBinaryTree, FullBinaryTreeOps }
 
 import java.lang.Math.{abs, max}
 
-import Types._
-
 sealed abstract class Node[K, V, T, A] {
 
   def annotation: A
