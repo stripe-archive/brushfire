@@ -66,8 +66,8 @@ object Reorder {
    * Reorder instance that traverses into a random node first. Each
    * node has equal probability of being selected.
    */
-  def shuffled[A]: Reorder[A] =
-    new ShuffledReorder(new Random)
+  def shuffled[A](seed: Int): Reorder[A] =
+    new ShuffledReorder(new Random(seed))
 
   /**
    * Reorder instance that traverses into a random node, but choose
@@ -77,8 +77,8 @@ object Reorder {
    * If the left node's weight was 10, and the right node's weight was
    * 5, the left node would be picked 2/3 of the time.
    */
-  def probabilisticWeightedDepthFirst[A](conversion: A => Double): Reorder[A] =
-    new ProbabilisticWeighted(new Random, conversion)
+  def probabilisticWeightedDepthFirst[A](seed: Int, conversion: A => Double): Reorder[A] =
+    new ProbabilisticWeighted(new Random(seed), conversion)
 
   class UnchangedReorder[A] extends Reorder[A] {
     def setSeed(seed: Option[String]): Reorder[A] =

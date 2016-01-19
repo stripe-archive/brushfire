@@ -102,7 +102,7 @@ class TreeTraversalSpec extends WordSpec with Matchers with Checkers {
     // seed = "c", 0.28329487121994257, 0.6209168529111834, 0.896329641267321, 0.4295933416724764, 0.28764827423012496
     // seed = "z", 0.3982796920464978, 0.09452393725015651, 0.2645674766831084, 0.45670292528849277, 0.4919659310853626
 
-    val traversal = TreeTraversal.probabilisticWeightedDepthFirst[TreeSDD[Int], String, Double, Double, Int]
+    val traversal = TreeTraversal.probabilisticWeightedDepthFirst[TreeSDD[Int], String, Double, Double, Int]()
 
     "choose a predictable node from a split" in {
       val split1 = split("f1", LessThan(0D), LeafNode(0, -1D, 2703), LeafNode(1, 1D, 10000 - 2703))

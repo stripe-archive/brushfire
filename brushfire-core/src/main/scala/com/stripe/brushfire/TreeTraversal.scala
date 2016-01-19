@@ -65,16 +65,6 @@ object TreeTraversal {
     DepthFirstTreeTraversal(Reorder.unchanged)
 
   /**
-   * A depth first search for matching leaves, randomly choosing the order of
-   * child candidate nodes to traverse at each step. Since it is depth-first,
-   * after a node is chosen to be traversed, all of the matching leafs that
-   * descend from that node are traversed before moving onto the node's
-   * sibling.
-   */
-  def randomDepthFirst[Tree, K, V, T, A](implicit treeOps: FullBinaryTreeOps[Tree, BranchLabel[K, V, A], LeafLabel[T, A]]): TreeTraversal[Tree, K, V, T, A] =
-    DepthFirstTreeTraversal(Reorder.shuffled)
-
-  /**
    * A depth-first search for matching leaves, where the candidate child nodes
    * for a given parent node are traversed in reverse order of their
    * annotations. This means that if we have multiple valid candidate children,
@@ -82,6 +72,16 @@ object TreeTraversal {
    */
   def weightedDepthFirst[Tree, K, V, T, A: Ordering](implicit treeOps: FullBinaryTreeOps[Tree, BranchLabel[K, V, A], LeafLabel[T, A]]): TreeTraversal[Tree, K, V, T, A] =
     DepthFirstTreeTraversal(Reorder.weightedDepthFirst)
+
+  /**
+   * A depth first search for matching leaves, randomly choosing the order of
+   * child candidate nodes to traverse at each step. Since it is depth-first,
+   * after a node is chosen to be traversed, all of the matching leafs that
+   * descend from that node are traversed before moving onto the node's
+   * sibling.
+   */
+  def randomDepthFirst[Tree, K, V, T, A](seed: Option[Int] = None)(implicit treeOps: FullBinaryTreeOps[Tree, BranchLabel[K, V, A], LeafLabel[T, A]]): TreeTraversal[Tree, K, V, T, A] =
+    DepthFirstTreeTraversal(Reorder.shuffled(seed.getOrElse(System.nanoTime.toInt)))
 
   /**
    * A depth-first search for matching leaves, where the candidate child leaves
@@ -94,8 +94,10 @@ object TreeTraversal {
    * proportional to its probability of being sampled, relative to all the
    * other elements still in the set.
    */
-  def probabilisticWeightedDepthFirst[Tree, K, V, T, A](implicit treeOps: FullBinaryTreeOps[Tree, BranchLabel[K, V, A], LeafLabel[T, A]], conversion: A => Double): TreeTraversal[Tree, K, V, T, A] =
-    DepthFirstTreeTraversal(Reorder.probabilisticWeightedDepthFirst(conversion))
+  def probabilisticWeightedDepthFirst[Tree, K, V, T, A](seed: Option[Int] = None)(implicit treeOps: FullBinaryTreeOps[Tree, BranchLabel[K, V, A], LeafLabel[T, A]], conversion: A => Double): TreeTraversal[Tree, K, V, T, A] = {
+    val n = seed.getOrElse(System.nanoTime.toInt)
+    DepthFirstTreeTraversal(Reorder.probabilisticWeightedDepthFirst(n, conversion))
+  }
 }
 
 case class DepthFirstTreeTraversal[Tree, K, V, T, A](reorder: Reorder[A])(implicit val treeOps: FullBinaryTreeOps[Tree, BranchLabel[K, V, A], LeafLabel[T, A]]) extends TreeTraversal[Tree, K, V, T, A] {
