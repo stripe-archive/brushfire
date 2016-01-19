@@ -1,13 +1,8 @@
 package com.stripe.brushfire
 
-import scala.annotation.tailrec
-import scala.collection.SortedMap
 import scala.math.Ordering
-import scala.util.Random
-import scala.util.hashing.MurmurHash3
 
-import com.twitter.algebird._
-import com.stripe.bonsai._
+import com.stripe.bonsai.FullBinaryTreeOps
 
 /**
  * A `TreeTraversal` provides a way to find all of the leaves in a tree that
@@ -55,86 +50,6 @@ trait TreeTraversal[Tree, K, V, T, A] {
    * @return the leaf nodes that match the row
    */
   def searchNode(node: treeOps.Node, row: Map[K, V], id: Option[String]): Stream[LeafLabel[T, A]]
-}
-
-/**
- * Simple data type that provides rules to order nodes during
- * traversal.
- *
- * In some cases subtypes of Reorder will also wraps RNG state, for
- * instances that need to randomly select instances. Thus, Reorder is
- * not guaranteed to be referentially-transparent. Fresh instances
- * should be used with each traversal.
- */
-trait Reorder[A] {
-  def setSeed(seed: Option[String]): Reorder[A]
-  def apply[N](n1: N, n2: N, f: N => A): (N, N)
-}
-
-object Reorder {
-
-  // Traverse into the left node first.
-  def unchanged[A]: Reorder[A] =
-    new UnchangedReorder()
-
-  // Traverse into a random node first. Each node has equal
-  // probability of being selected.
-  def shuffled[A]: Reorder[A] =
-    new ShuffledReorder(new Random)
-
-  // Traverse into the node with the higher weight first.
-  def weightedDepthFirst[A](implicit ev: Ordering[A]): Reorder[A] =
-    new WeightedReorder()
-
-  // Traverse into a random node, but choose the random node based on
-  // the ratio between its weight and the total weight of both nodes.
-  //
-  // If the left node's weight was 10, and the right node's weight was
-  // 5, the left node would be picked 2/3 of the time.
-  def probabilisticWeightedDepthFirst[A](conversion: A => Double): Reorder[A] =
-    new ProbabilisticWeighted(new Random, conversion)
-
-  class UnchangedReorder[A] extends Reorder[A] {
-    def setSeed(seed: Option[String]): Reorder[A] =
-      this
-    def apply[N](n1: N, n2: N, f: N => A): (N, N) =
-      (n1, n2)
-  }
-
-  class ShuffledReorder[A](r: Random) extends Reorder[A] {
-    def setSeed(seed: Option[String]): Reorder[A] =
-      seed match {
-        case Some(s) =>
-          new ShuffledReorder(new Random(MurmurHash3.stringHash(s)))
-        case None =>
-          this
-      }
-    def apply[N](n1: N, n2: N, f: N => A): (N, N) =
-      if (r.nextBoolean) (n1, n2) else (n2, n1)
-  }
-
-  class WeightedReorder[A](implicit ev: Ordering[A]) extends Reorder[A] {
-    def setSeed(seed: Option[String]): Reorder[A] =
-      this
-    def apply[N](n1: N, n2: N, f: N => A): (N, N) =
-      if (ev.compare(f(n1), f(n2)) >= 0) (n1, n2) else (n2, n1)
-  }
-
-  class ProbabilisticWeighted[A](r: Random, conversion: A => Double) extends Reorder[A] {
-    def setSeed(seed: Option[String]): Reorder[A] =
-      seed match {
-        case Some(s) =>
-          new ProbabilisticWeighted(new Random(MurmurHash3.stringHash(s)), conversion)
-        case None =>
-          this
-      }
-    def apply[N](n1: N, n2: N, f: N => A): (N, N) = {
-      val w1 = conversion(f(n1))
-      val w2 = conversion(f(n2))
-      val sum = w1 + w2
-      if (r.nextDouble * sum < w1) (n1, n2) else (n2, n1)
-    }
-  }
 }
 
 object TreeTraversal {
@@ -197,25 +112,23 @@ case class DepthFirstTreeTraversal[Tree, K, V, T, A](reorder: Reorder[A])(implic
 
     // pull the A value out of a branch or leaf.
     val getAnnotation: Node => A =
-      n => foldNode(n)((_, _, bl) => bl._3, ll => ll._3)
+      node => foldNode(node)((_, _, bl) => bl._3, ll => ll._3)
 
     // construct a singleton stream from a leaf
-    //val Empty: Stream[LeafLabel[T, A]] = Stream.empty
     val leafF: LeafLabel[T, A] => Stream[LeafLabel[T, A]] =
       _ #:: Stream.empty
+
+    lazy val reorderF: (Node, Node) => Stream[LeafLabel[T, A]] =
+      (n1, n2) => recurse(n1) #::: recurse(n2)
 
     // recurse into branch nodes, going left, right, or both,
     // depending on what our predicate says.
     lazy val branchF: (Node, Node, BranchLabel[K, V, A]) => Stream[LeafLabel[T, A]] =
       { case (lc, rc, (k, p, _)) =>
         p(row.get(k)) match {
-          case Some(true) =>
-            recurse(lc)
-          case Some(false) =>
-            recurse(rc)
-          case None =>
-            val (c1, c2) = r(lc, rc, getAnnotation)
-            recurse(c1) #::: recurse(c2)
+          case Some(true) => recurse(lc)
+          case Some(false) => recurse(rc)
+          case None => r(lc, rc, getAnnotation, reorderF)
         }
       }
 

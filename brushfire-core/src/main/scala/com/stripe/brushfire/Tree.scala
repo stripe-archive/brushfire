@@ -31,12 +31,12 @@ object Tree {
 
         if (splits.isEmpty) None else {
           val (splitFeature, (Split(pred, left, right), _)) = splits.maxBy { case (f, (x, s)) => s }
-          def ex(dist: T): Node[K, V, T, Unit] = {
-            val newInstances = instances.filter { inst => pred.run(inst.features.get(splitFeature)) }
+          def expandChild(dist: T): Node[K, V, T, Unit] = {
+            val newInstances = instances.filter(inst => pred.run(inst.features.get(splitFeature)))
             val target = Monoid.sum(newInstances.map(_.target))
             expand(times - 1, treeIndex, LeafNode(0, target), splitter, evaluator, stopper, sampler, newInstances)
           }
-          Some(SplitNode(splitFeature, pred, ex(left), ex(right)))
+          Some(SplitNode(splitFeature, pred, expandChild(left), expandChild(right)))
         }
       }.getOrElse(leaf)
     } else {
