@@ -15,6 +15,13 @@ import scala.util.hashing.MurmurHash3
  *
  * Reorder will also continue to recurse into a given structure using
  * a provided callback method.
+ *
+ * The reason that the node type is provided to `apply` (instead of
+ * `Reorder`) has to do with how generic trees are specified. Since
+ * TreeOps uses path-dependent types to specify node types, the
+ * current design is a bit of a kludge that makes it easy to get the
+ * types right when handling a Reorder instance to a TreeTraversal
+ * instance (which is parameterized on a generic tree type).
  */
 trait Reorder[A] {
 
