@@ -10,14 +10,15 @@ object Example extends Defaults {
   import JsonInjections._
 
   def main(args: Array[String]) {
-    val cols = args.toList
+    val path = args.head
+    val cols = args.tail.toList
 
-    val trainingData = io.Source.stdin.getLines.map { line =>
+    val trainingData = Lines(path).map { line =>
       val parts = line.split(",").reverse.toList
       val label = parts.head
       val values = parts.tail.map { s => s.toDouble }
       Instance(line, 0L, Map(cols.zip(values): _*), Map(label -> 1L))
-    }.toList
+    }.toIterable
 
     var trainer =
       Trainer(trainingData, KFoldSampler(4))
@@ -28,7 +29,7 @@ object Example extends Defaults {
 
     1.to(10).foreach { i =>
       trainer = trainer.expand
-      printTrees(trainer.trees)
+//      printTrees(trainer.trees)
       println(trainer.validate(AccuracyError()))
       println(trainer.validate(BrierScoreError()))
     }
