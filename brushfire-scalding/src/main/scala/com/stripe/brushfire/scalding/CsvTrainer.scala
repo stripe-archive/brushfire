@@ -14,7 +14,7 @@ class CsvTrainerJob(args: Args) extends TrainerJob(args) {
 
   val error = BrierScoreError[String, Long]
 
-  def splitRow(row: String): CsvRow = row.split(",")
+  def splitRow(row: String): CsvRow = row.split(",").map(_.trim)
 
   val header: CsvRow = splitRow(args("features"))
   val labelFeature: String = args("label")
