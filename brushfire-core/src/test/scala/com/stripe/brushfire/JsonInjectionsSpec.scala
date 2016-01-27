@@ -15,7 +15,8 @@ class JsonInjectionsSpec extends WordSpec with Matchers with Checkers {
   "treeJsonInjection" should {
     "round-trip" in {
       check { (tree: Tree[String, Double, Map[String, Long]]) =>
-        val haggard = fromJsonNode[Tree[String, Double, Map[String, Long]]](toJsonNode(tree))
+        val json = toJsonNode(tree)
+        val haggard = fromJsonNode[Tree[String, Double, Map[String, Long]]](json)
         Try(tree) == haggard
       }
     }

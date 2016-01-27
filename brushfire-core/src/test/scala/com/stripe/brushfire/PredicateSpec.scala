@@ -10,15 +10,15 @@ class PredicateSpec extends WordSpec with Matchers with Checkers {
     "allow missing values in all but IsPresent" in {
       check { (pred: Predicate[Int]) =>
         pred match {
-          case IsPresent(_) => pred(None) == false
-          case _ => pred(None) == true
+          case IsPresent(_) => pred.run(None) == false
+          case _ => pred.run(None) == true
         }
       }
     }
 
     "Not negates the predicate" in {
       check { (pred: Predicate[Int], value: Int) =>
-        !pred(Some(value)) == Not(pred)(Some(value))
+        !pred.run(Some(value)) == Not(pred).run(Some(value))
       }
     }
 
