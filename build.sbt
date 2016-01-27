@@ -34,3 +34,7 @@ lazy val brushfireScalding = project.
 lazy val brushfireFinatra = project.
   in(file("brushfire-finatra")).
   dependsOn(brushfireCore)
+
+lazy val brushfireFeatures = project.
+  in(file("brushfire-features")).
+  dependsOn(brushfireCore)
