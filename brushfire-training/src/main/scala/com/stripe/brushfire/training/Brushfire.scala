@@ -43,14 +43,31 @@ trait Splitter[V, T] {
 }
 
 /** Candidate split for a tree node */
-trait Split[V, T] {
-  def predicates: Iterable[(Predicate[V], T)]
+case class Split[V, T](predicate: Predicate[V], leftDistribution: T, rightDistribution: T) {
+
+  /**
+   * Given a feature key, create a SplitNode from this Split.
+   *
+   * Note that the leaves of this node will likely need to be
+   * renumbered if this node is put into a larger tree.
+   */
+  def createSplitNode[K](feature: K): SplitNode[K, V, T, Unit] =
+    SplitNode(feature, predicate, LeafNode(0, leftDistribution), LeafNode(1, rightDistribution))
 }
+
 
 /** Evaluates the goodness of a candidate split */
 trait Evaluator[V, T] {
-  /** returns a (possibly transformed) version of the input split, and a numeric goodness score */
-  def evaluate(split: Split[V, T]): (Split[V, T], Double)
+
+  /**
+   * Evaluate the fitness of a candidate split.
+   *
+   * This method may transform the split, in which case the score
+   * applies to the split that is returned. The result is optional to
+   * handle cases where a split is not valid (for example, if one side
+   * of a split is "empty" in some sense).
+   */
+  def evaluate(split: Split[V, T]): Option[(Split[V, T], Double)]
 }
 
 /** Provides stopping conditions which guide when splits will be attempted */

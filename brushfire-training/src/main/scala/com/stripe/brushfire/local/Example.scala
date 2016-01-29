@@ -1,9 +1,12 @@
 package com.stripe.brushfire.local
 
+import com.stripe.bonsai._
 import com.stripe.brushfire._
 import com.stripe.brushfire.training._
 import com.twitter.algebird._
 import com.twitter.bijection._
+
+import AnnotatedTree.{AnnotatedTreeTraversal, fullBinaryTreeOpsForAnnotatedTree}
 
 object Example extends Defaults {
 

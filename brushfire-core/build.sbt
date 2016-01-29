@@ -5,6 +5,7 @@ libraryDependencies ++= {
   Seq(
     algebirdCore,
     bijectionJson,
+    bonsai,
     chillBijection,
     jacksonMapper,
     jacksonXC,

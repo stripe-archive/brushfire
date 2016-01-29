@@ -120,9 +120,9 @@ case class Trainer[K: Ordering, V, T: Monoid](
               for (
                 (treeIndex, tree) <- treeMap;
                 i <- 1.to(sampler.timesInTrainingSet(instance.id, instance.timestamp, treeIndex)).toList;
-                leaf <- tree.leafFor(instance.features).toList if stopper.shouldSplit(leaf.target) && stopper.shouldSplitDistributed(leaf.target);
-                (feature, stats) <- features if (sampler.includeFeature(feature, treeIndex, leaf.index))
-              ) yield (treeIndex, leaf.index, feature) -> stats
+                (index, target, annotation) <- tree.leafFor(instance.features).toList if stopper.shouldSplit(target) && stopper.shouldSplitDistributed(target);
+                (feature, stats) <- features if (sampler.includeFeature(feature, treeIndex, index))
+              ) yield (treeIndex, index, feature) -> stats
             }
 
         val splits =
@@ -132,12 +132,11 @@ case class Trainer[K: Ordering, V, T: Monoid](
             .flatMap {
               case ((treeIndex, leafIndex, feature), target) =>
                 treeMap(treeIndex).leafAt(leafIndex).toList.flatMap { leaf =>
-                  splitter
-                    .split(leaf.target, target)
-                    .map { rawSplit =>
-                      val (split, goodness) = evaluator.evaluate(rawSplit)
+                  splitter.split(leaf.target, target).flatMap { rawSplit =>
+                    evaluator.evaluate(rawSplit).map { case (split, goodness) =>
                       treeIndex -> Map(leafIndex -> (feature, split, goodness))
                     }
+                  }
                 }
             }
 
@@ -148,18 +147,15 @@ case class Trainer[K: Ordering, V, T: Monoid](
           .group
           .withReducers(reducers)
           .sum
-          .map {
-            case (treeIndex, map) =>
-              val newTree =
-                treeMap(treeIndex)
-                  .growByLeafIndex { index =>
-                    for (
-                      (feature, split, _) <- map.get(index).toList;
-                      (predicate, target) <- split.predicates
-                    ) yield (feature, predicate, target, ())
-                  }
+          .map { case (treeIndex, map) =>
+            val newTree =
+              treeMap(treeIndex).growByLeafIndex { index =>
+                map.get(index).map { case (feature, split, _) =>
+                  split.createSplitNode(feature)
+                }
+              }
 
-              treeIndex -> newTree
+            treeIndex -> newTree.renumberLeaves
           }.writeThrough(TreeSource(path))
     }
   }
@@ -286,8 +282,8 @@ case class Trainer[K: Ordering, V, T: Monoid](
               for (
                 (treeIndex, tree) <- treeMap;
                 i <- 1.to(sampler.timesInTrainingSet(instance.id, instance.timestamp, treeIndex)).toList;
-                leaf <- tree.leafFor(instance.features).toList if stopper.shouldSplit(leaf.target) && (r.nextDouble < stopper.samplingRateToSplitLocally(leaf.target))
-              ) yield (treeIndex, leaf.index) -> instance
+                (index, target, _) <- tree.leafFor(instance.features).toList if stopper.shouldSplit(target) && (r.nextDouble < stopper.samplingRateToSplitLocally(target))
+              ) yield (treeIndex, index) -> instance
             }
             .group
             .forceToReducers
