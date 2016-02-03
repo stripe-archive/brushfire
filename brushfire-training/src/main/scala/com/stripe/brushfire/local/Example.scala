@@ -37,7 +37,7 @@ object Example extends Defaults {
       println(trainer.validate(BrierScoreError()))
     }
 
-    def printTrees[K,V,T](trees: List[Tree[K,V,T]])(implicit inj: Injection[Tree[K, V, T], String]) {
+    def printTrees[K,V,T](trees: List[com.stripe.brushfire.Tree[K,V,T]])(implicit inj: Injection[com.stripe.brushfire.Tree[K, V, T], String]) {
       trees.foreach{tree => println(inj(tree))}
     }
 /*

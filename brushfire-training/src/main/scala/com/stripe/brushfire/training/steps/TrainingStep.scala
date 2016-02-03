@@ -57,28 +57,28 @@ case class Expand[K,V,T](sampler: Sampler[K], stopper: Stopper[T], splitter: Spl
     for
       ((treeIndex, tree) <- trees.toList;
       i <- 1.to(sampler.timesInTrainingSet(instance.id, instance.timestamp, treeIndex)).toList;
-      leaf <- tree.leafFor(instance.features).toList if stopper.shouldSplit(leaf.target);
-      (feature, stats) <- features if (sampler.includeFeature(feature, treeIndex, leaf.index)))
-        yield (treeIndex, leaf.index, feature) -> stats
+      (index, target, annotation) <- tree.leafFor(instance.features).toList if stopper.shouldSplit(target);
+      (feature, stats) <- features if (sampler.includeFeature(feature, treeIndex, index)))
+        yield (treeIndex, index, feature) -> stats
   }
 
   def lift(tree: Tree[K,V,T], leafIndex: Int, key: K, v1: V1) = {
     tree.leafAt(leafIndex).toList.flatMap { leaf =>
       splitter
         .split(leaf.target, v1)
-        .map { rawSplit =>
-          val (split, goodness) = evaluator.evaluate(rawSplit)
-          (key, split, goodness)
+        .flatMap { rawSplit =>
+          evaluator.evaluate(rawSplit).map { case (split, goodness) =>
+            (key, split, goodness)
+          }
         }
     }
   }
 
   def update(tree: Tree[K,V,T], map: Map[Int,V2]) = {
     tree.growByLeafIndex { index =>
-      for (
-        (feature, split, _) <- map.get(index).toList;
-        (predicate, target) <- split.predicates
-      ) yield (feature, predicate, target, ())
+      map.get(index).map { case (feature, split, _) =>
+          split.createSplitNode(feature)
+      }
     }
   }
 

@@ -38,13 +38,6 @@ case class DispatchedSplitter[A: Ordering, B, C: Ordering, D, T](
 }
 
 object DispatchedSplitter {
-  def wrapSplits[X, T, A: Ordering, B, C: Ordering, D](splits: Iterable[Split[X, T]])(fn: X => Dispatched[A, B, C, D]) = {
-    splits.map { split =>
-      new Split[Dispatched[A, B, C, D], T] {
-        def predicates = split.predicates.map {
-          case (pred, p) => (pred.map(fn), p)
-        }
-      }
-    }
-  }
+   def wrapSplits[X, T, A: Ordering, B, C: Ordering, D](splits: Iterable[Split[X, T]])(fn: X => Dispatched[A, B, C, D]) =
+    splits.map { case Split(p, left, right) => Split(p.map(fn), left, right) }
 }
