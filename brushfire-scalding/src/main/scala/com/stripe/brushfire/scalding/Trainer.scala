@@ -1,6 +1,8 @@
 package com.stripe.brushfire.scalding
 
 import com.stripe.brushfire._
+import com.stripe.brushfire.training._
+import com.stripe.brushfire.training.steps._
 import com.twitter.scalding._
 import com.twitter.algebird._
 import com.twitter.bijection._
@@ -186,7 +188,7 @@ case class Trainer[K: Ordering, V, T: Monoid](
    * Construct a Map[Int,T] from the trainingData for each tree, and then transform the trees using the prune method.
    *
    */
-  def prune[P, E](path: String, error: Error[T, P, E])(implicit voter: Voter[T, P], inj: Injection[Tree[K, V, T], String], ord: Ordering[E]): Trainer[K, V, T] = {
+  /*def prune[P, E](path: String, error: Error[T, P, E])(implicit voter: Voter[T, P], inj: Injection[Tree[K, V, T], String], ord: Ordering[E]): Trainer[K, V, T] = {
     flatMapTrees {
       case (trainingData, sampler, trees) =>
         lazy val treeMap = trees.toMap
@@ -209,7 +211,7 @@ case class Trainer[K: Ordering, V, T: Monoid](
         newEx
     }
   }
-
+*/
   /**
    *  featureImportance should: shuffle data randomly (group on something random then sort on something random?),
    * then stream through and have each instance pick one feature value at random to pass on to the following instance.
@@ -266,7 +268,7 @@ case class Trainer[K: Ordering, V, T: Monoid](
         .expandFrom(base, step + 1, to)
     }
   }
-
+/*
   def expandInMemory(path: String, times: Int)(implicit splitter: Splitter[V, T], evaluator: Evaluator[V, T], stopper: Stopper[T], inj: Injection[Tree[K, V, T], String]): Trainer[K, V, T] = {
     flatMapTrees {
       case (trainingData, sampler, trees) =>
@@ -314,7 +316,7 @@ case class Trainer[K: Ordering, V, T: Monoid](
           }.writeThrough(TreeSource(path))
     }
   }
-
+*/
   /** add out of time validation */
   def outOfTime(quantile: Double = 0.8) = {
     flatMapSampler {
