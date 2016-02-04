@@ -60,7 +60,7 @@ case class Trainer[K: Ordering, V, T: Monoid](
   def updateTargets =
     trainingStep(UpdateTargets(sampler))
 
-  def expand(implicit splitter: Splitter[V, T], evaluator: Evaluator[V, T], stopper: Stopper[T]) =
+  def expand(implicit splitter: Splitter[V, T], evaluator: Evaluator[T], stopper: Stopper[T]) =
     trainingStep(Expand(sampler, stopper, splitter, evaluator))
 
   def validate[P, E](error: Error[T, P, E])(implicit voter: Voter[T, P]): Option[E] =

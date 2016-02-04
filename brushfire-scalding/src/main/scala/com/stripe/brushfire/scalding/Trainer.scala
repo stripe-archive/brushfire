@@ -135,7 +135,7 @@ case class Trainer[K: Ordering, V, T: Monoid](
                   splitter.split(leaf.target, target).flatMap { split =>
                     val leaves = List(split.leftDistribution, split.rightDistribution)
                     evaluator
-                      .trainingError(tree.sumTargets, leaves)
+                      .trainingError(leaves)
                       .map { goodness =>
                         treeIndex -> Map(leafIndex -> (feature, split, goodness))
                     }
@@ -271,13 +271,8 @@ case class Trainer[K: Ordering, V, T: Monoid](
         .expandFrom(base, step + 1, to)
     }
   }
-<<<<<<< HEAD
-
-  def expandInMemory(path: String, times: Int)(implicit splitter: Splitter[V, T], evaluator: Evaluator[T], stopper: Stopper[T], inj: Injection[Tree[K, V, T], String]): Trainer[K, V, T] = {
-=======
 /*
   def expandInMemory(path: String, times: Int)(implicit splitter: Splitter[V, T], evaluator: Evaluator[V, T], stopper: Stopper[T], inj: Injection[Tree[K, V, T], String]): Trainer[K, V, T] = {
->>>>>>> avi-training-step
     flatMapTrees {
       case (trainingData, sampler, trees) =>
 

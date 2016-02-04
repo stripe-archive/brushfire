@@ -53,21 +53,6 @@ object LeafNode {
 
 case class AnnotatedTree[K, V, T, A: Semigroup](root: Node[K, V, T, A]) {
 
-  private var sumTargetsCache: Option[T] = None
-
-  def sumTargets(implicit monoid: Monoid[T]) = {
-    def recur(node: Node[K, V, T, A]): T = node match {
-      case SplitNode(children) =>
-        monoid.sum(children.map {case (_, _, child) => recur(child)})
-      case LeafNode(index, target, annotation) => target
-    }
-
-    if(!sumTargetsCache.isDefined)
-      sumTargetsCache = Some(recur(root))
-
-    sumTargetsCache.get
-  }
-
   import AnnotatedTree.AnnotatedTreeTraversal
 
   /**

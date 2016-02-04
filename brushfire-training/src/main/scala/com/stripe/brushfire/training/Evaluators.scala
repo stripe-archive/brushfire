@@ -5,7 +5,7 @@ import com.twitter.algebird._
 
 case class ChiSquaredEvaluator[L, W](implicit weightMonoid: Monoid[W], weightDouble: W => Double)
     extends Evaluator[Map[L, W]] {
-  def trainingError(root: Map[L, W], leaves: Iterable[Map[L,W]]) = {
+  def trainingError(leaves: Iterable[Map[L,W]]) = {
     val rows = leaves.filter { _.nonEmpty }
     if (rows.size > 1) {
       val n = weightMonoid.sum(rows.flatMap { _.values })
@@ -28,9 +28,9 @@ case class ChiSquaredEvaluator[L, W](implicit weightMonoid: Monoid[W], weightDou
 
 case class MinWeightEvaluator[L, W: Monoid](minWeight: W => Boolean, wrapped: Evaluator[Map[L, W]])
     extends Evaluator[Map[L, W]] {
-  def trainingError(root: Map[L, W], leaves: Iterable[Map[L,W]]) = {
+  def trainingError(leaves: Iterable[Map[L,W]]) = {
     if (leaves.forall {freq => minWeight(Monoid.sum(freq.values))})
-      wrapped.trainingError(root, leaves)
+      wrapped.trainingError(leaves)
     else
       None
   }
@@ -38,7 +38,7 @@ case class MinWeightEvaluator[L, W: Monoid](minWeight: W => Boolean, wrapped: Ev
 
 case class ErrorEvaluator[T, P, E](error: Error[T, P, E], voter: Voter[T, P])(fn: E => Double)
     extends Evaluator[T] {
-  def trainingError(root: T, leaves: Iterable[T]) = {
+  def trainingError(leaves: Iterable[T]) = {
     val errors = leaves.map { target => error.create(target, voter.combine(Some(target)))}
 
     error

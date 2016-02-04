@@ -44,7 +44,7 @@ case class UpdateTargets[K,V,T](sampler: Sampler[K])(implicit val semigroup1: Se
   }
 }
 
-case class Expand[K,V,T](sampler: Sampler[K], stopper: Stopper[T], splitter: Splitter[V, T], evaluator: Evaluator[V, T])(implicit val ordering: Ordering[K])
+case class Expand[K,V,T](sampler: Sampler[K], stopper: Stopper[T], splitter: Splitter[V, T], evaluator: Evaluator[T])(implicit val ordering: Ordering[K])
   extends TrainingStep[K,V,T] {
 
   type K1 = K
@@ -66,8 +66,9 @@ case class Expand[K,V,T](sampler: Sampler[K], stopper: Stopper[T], splitter: Spl
     tree.leafAt(leafIndex).toList.flatMap { leaf =>
       splitter
         .split(leaf.target, v1)
-        .flatMap { rawSplit =>
-          evaluator.evaluate(rawSplit).map { case (split, goodness) =>
+        .flatMap { split =>
+          val leaves = List(split.leftDistribution, split.rightDistribution)
+          evaluator.trainingError(leaves).map { goodness =>
             (key, split, goodness)
           }
         }

@@ -57,7 +57,7 @@ case class Split[V, T](predicate: Predicate[V], leftDistribution: T, rightDistri
 
 trait Evaluator[T] {
   /** returns an overall numeric training error for a tree or split, or None for infinite/unacceptable error */
-  def trainingError(root: T, leaves: Iterable[T]): Option[Double]
+  def trainingError(leaves: Iterable[T]): Option[Double]
 }
 
 /** Provides stopping conditions which guide when splits will be attempted */
