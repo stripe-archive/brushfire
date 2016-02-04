@@ -1,5 +1,6 @@
-package com.stripe.brushfire
+package com.stripe.brushfire.training
 
+import com.stripe.brushfire._
 import com.twitter.algebird._
 
 object SingleTreeSampler extends Sampler[Any] {

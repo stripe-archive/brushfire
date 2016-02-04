@@ -18,12 +18,12 @@ class VoterSpec extends WordSpec with Matchers with Checkers {
 
     "return mean of counts" in {
       val targets = Seq(
-        Map("a" -> 1, "b" -> 2, "c" -> 3),
-        Map("a" -> 2, "c" -> 5))
+        Map(("a", 1), ("b", 2), ("c", 3)),
+        Map(("a", 2), ("c", 5)))
       val expected = Map(
-        "a" -> ((1D / 6D + 2D / 7D) / 2D),
-        "b" -> ((2D / 6D) / 2D),
-        "c" -> ((3D / 6D + 5D / 7D) / 2D))
+        ("a", ((1D / 6D + 2D / 7D) / 2D)),
+        ("b", ((2D / 6D) / 2D)),
+        ("c", ((3D / 6D + 5D / 7D) / 2D)))
       Voter.soft[String, Int].combine(targets) shouldBe expected
     }
   }
@@ -39,8 +39,8 @@ class VoterSpec extends WordSpec with Matchers with Checkers {
         Map("a" -> 2, "c" -> 5), // c
         Map("b" -> 3, "c" -> 4)) // c
       val expected = Map(
-        "b" -> 1D / 3D,
-        "c" -> 2D / 3D)
+        ("b", 1D / 3D),
+        ("c", 2D / 3D))
       Voter.mode[String, Int].combine(targets) shouldBe expected
     }
   }

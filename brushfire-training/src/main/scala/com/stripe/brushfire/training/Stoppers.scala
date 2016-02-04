@@ -1,4 +1,6 @@
-package com.stripe.brushfire
+package com.stripe.brushfire.training
+
+import com.stripe.brushfire._
 
 case class FrequencyStopper[L](maxInMemorySize: Long, minSize: Long) extends Stopper[Map[L, Long]] {
   def shouldSplit(target: Map[L, Long]) = target.size > 1 && target.values.sum > minSize

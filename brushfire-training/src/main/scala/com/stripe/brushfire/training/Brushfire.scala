@@ -1,5 +1,6 @@
-package com.stripe.brushfire
+package com.stripe.brushfire.training
 
+import com.stripe.brushfire._
 import com.twitter.algebird._
 
 /**
@@ -42,8 +43,16 @@ trait Splitter[V, T] {
 }
 
 /** Candidate split for a tree node */
-trait Split[V, T] {
-  def predicates: Iterable[(Predicate[V], T)]
+case class Split[V, T](predicate: Predicate[V], leftDistribution: T, rightDistribution: T) {
+
+  /**
+   * Given a feature key, create a SplitNode from this Split.
+   *
+   * Note that the leaves of this node will likely need to be
+   * renumbered if this node is put into a larger tree.
+   */
+  def createSplitNode[K](feature: K): SplitNode[K, V, T, Unit] =
+    SplitNode(feature, predicate, LeafNode(0, leftDistribution), LeafNode(1, rightDistribution))
 }
 
 trait Evaluator[T] {

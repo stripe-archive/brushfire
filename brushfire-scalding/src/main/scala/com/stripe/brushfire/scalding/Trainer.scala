@@ -1,6 +1,8 @@
 package com.stripe.brushfire.scalding
 
 import com.stripe.brushfire._
+import com.stripe.brushfire.training._
+import com.stripe.brushfire.training.steps._
 import com.twitter.scalding._
 import com.twitter.algebird._
 import com.twitter.bijection._
@@ -118,9 +120,9 @@ case class Trainer[K: Ordering, V, T: Monoid](
               for (
                 (treeIndex, tree) <- treeMap;
                 i <- 1.to(sampler.timesInTrainingSet(instance.id, instance.timestamp, treeIndex)).toList;
-                leaf <- tree.leafFor(instance.features).toList if stopper.shouldSplit(leaf.target) && stopper.shouldSplitDistributed(leaf.target);
-                (feature, stats) <- features if (sampler.includeFeature(feature, treeIndex, leaf.index))
-              ) yield (treeIndex, leaf.index, feature) -> stats
+                (index, target, annotation) <- tree.leafFor(instance.features).toList if stopper.shouldSplit(target) && stopper.shouldSplitDistributed(target);
+                (feature, stats) <- features if (sampler.includeFeature(feature, treeIndex, index))
+              ) yield (treeIndex, index, feature) -> stats
             }
 
         val splits =
@@ -128,16 +130,14 @@ case class Trainer[K: Ordering, V, T: Monoid](
             .group
             .sum
             .flatMap {
-              case ((treeIndex, leafIndex, feature), target) => {
-                val tree = treeMap(treeIndex)
-                tree.leafAt(leafIndex).toList.flatMap { leaf =>
-                  splitter
-                    .split(leaf.target, target)
-                    .flatMap { split =>
-                      val leaves = split.predicates.map{_._2}
-                      evaluator
-                        .trainingError(tree.sumTargets, leaves)
-                        .map{s => treeIndex -> Map(leafIndex -> (feature, split, s))}
+              case ((treeIndex, leafIndex, feature), target) =>
+                treeMap(treeIndex).leafAt(leafIndex).toList.flatMap { leaf =>
+                  splitter.split(leaf.target, target).flatMap { split =>
+                    val leaves = List(split.leftDistribution, split.rightDistribution)
+                    evaluator
+                      .trainingError(tree.sumTargets, leaves)
+                      .map { goodness =>
+                        treeIndex -> Map(leafIndex -> (feature, split, goodness))
                     }
                   }
                 }
@@ -150,18 +150,15 @@ case class Trainer[K: Ordering, V, T: Monoid](
           .group
           .withReducers(reducers)
           .sum
-          .map {
-            case (treeIndex, map) =>
-              val newTree =
-                treeMap(treeIndex)
-                  .growByLeafIndex { index =>
-                    for (
-                      (feature, split, _) <- map.get(index).toList;
-                      (predicate, target) <- split.predicates
-                    ) yield (feature, predicate, target, ())
-                  }
+          .map { case (treeIndex, map) =>
+            val newTree =
+              treeMap(treeIndex).growByLeafIndex { index =>
+                map.get(index).map { case (feature, split, _) =>
+                  split.createSplitNode(feature)
+                }
+              }
 
-              treeIndex -> newTree
+            treeIndex -> newTree.renumberLeaves
           }.writeThrough(TreeSource(path))
     }
   }
@@ -194,7 +191,7 @@ case class Trainer[K: Ordering, V, T: Monoid](
    * Construct a Map[Int,T] from the trainingData for each tree, and then transform the trees using the prune method.
    *
    */
-  def prune[P, E](path: String, error: Error[T, P, E])(implicit voter: Voter[T, P], inj: Injection[Tree[K, V, T], String], ord: Ordering[E]): Trainer[K, V, T] = {
+  /*def prune[P, E](path: String, error: Error[T, P, E])(implicit voter: Voter[T, P], inj: Injection[Tree[K, V, T], String], ord: Ordering[E]): Trainer[K, V, T] = {
     flatMapTrees {
       case (trainingData, sampler, trees) =>
         lazy val treeMap = trees.toMap
@@ -217,7 +214,7 @@ case class Trainer[K: Ordering, V, T: Monoid](
         newEx
     }
   }
-
+*/
   /**
    *  featureImportance should: shuffle data randomly (group on something random then sort on something random?),
    * then stream through and have each instance pick one feature value at random to pass on to the following instance.
@@ -274,8 +271,13 @@ case class Trainer[K: Ordering, V, T: Monoid](
         .expandFrom(base, step + 1, to)
     }
   }
+<<<<<<< HEAD
 
   def expandInMemory(path: String, times: Int)(implicit splitter: Splitter[V, T], evaluator: Evaluator[T], stopper: Stopper[T], inj: Injection[Tree[K, V, T], String]): Trainer[K, V, T] = {
+=======
+/*
+  def expandInMemory(path: String, times: Int)(implicit splitter: Splitter[V, T], evaluator: Evaluator[V, T], stopper: Stopper[T], inj: Injection[Tree[K, V, T], String]): Trainer[K, V, T] = {
+>>>>>>> avi-training-step
     flatMapTrees {
       case (trainingData, sampler, trees) =>
 
@@ -288,8 +290,8 @@ case class Trainer[K: Ordering, V, T: Monoid](
               for (
                 (treeIndex, tree) <- treeMap;
                 i <- 1.to(sampler.timesInTrainingSet(instance.id, instance.timestamp, treeIndex)).toList;
-                leaf <- tree.leafFor(instance.features).toList if stopper.shouldSplit(leaf.target) && (r.nextDouble < stopper.samplingRateToSplitLocally(leaf.target))
-              ) yield (treeIndex, leaf.index) -> instance
+                (index, target, _) <- tree.leafFor(instance.features).toList if stopper.shouldSplit(target) && (r.nextDouble < stopper.samplingRateToSplitLocally(target))
+              ) yield (treeIndex, index) -> instance
             }
             .group
             .forceToReducers
@@ -323,7 +325,7 @@ case class Trainer[K: Ordering, V, T: Monoid](
           }.writeThrough(TreeSource(path))
     }
   }
-
+*/
   /** add out of time validation */
   def outOfTime(quantile: Double = 0.8) = {
     flatMapSampler {

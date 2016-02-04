@@ -1,5 +1,6 @@
-package com.stripe.brushfire
+package com.stripe.brushfire.training
 
+import com.stripe.brushfire._
 import com.tdunning.math.stats.TDigest
 import com.twitter.algebird.{Monoid, Semigroup}
 
@@ -79,7 +80,7 @@ case class TDigestSplitter[L](k: Int = 25, compression: Double = 100.0) extends 
       // and so they can be discarded immediately
       if left.nonEmpty || right.nonEmpty
     } yield {
-      BinarySplit(LessThan(q), left, right)
+      Split(LessThan(q), left, right)
     }
 
     // if the input is not continuous or has too few examples we will end up

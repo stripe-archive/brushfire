@@ -1,5 +1,6 @@
-package com.stripe.brushfire
+package com.stripe.brushfire.training
 
+import com.stripe.brushfire._
 import com.twitter.algebird._
 
 case class ChiSquaredEvaluator[L, W](implicit weightMonoid: Monoid[W], weightDouble: W => Double)

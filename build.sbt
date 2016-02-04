@@ -5,6 +5,7 @@ scalaVersion in ThisBuild := "2.11.5"
 crossScalaVersions in ThisBuild := Seq("2.10.4", "2.11.5")
 
 scalacOptions in ThisBuild ++= Seq(
+  "-Yinline-warnings",
   "-deprecation",
   "-feature",
   "-unchecked",
@@ -27,9 +28,13 @@ lazy val brushfireCore = project.
   in(file("brushfire-core")).
   disablePlugins(sbtassembly.AssemblyPlugin)
 
+lazy val brushfireTraining = project.
+  in(file("brushfire-training")).
+  dependsOn(brushfireCore)
+
 lazy val brushfireScalding = project.
   in(file("brushfire-scalding")).
-  dependsOn(brushfireCore)
+  dependsOn(brushfireTraining)
 
 lazy val brushfireFinatra = project.
   in(file("brushfire-finatra")).
