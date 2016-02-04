@@ -1,6 +1,8 @@
 package com.stripe.brushfire.scalding
 
 import com.stripe.brushfire._
+import com.stripe.brushfire.training._
+import com.stripe.brushfire.training.steps._
 import com.twitter.scalding._
 import com.twitter.algebird._
 import com.twitter.bijection._
@@ -103,7 +105,7 @@ case class Trainer[K: Ordering, V, T: Monoid](
    * @param splitter the splitter to use to generate candidate splits for each leaf
    * @param evaluator the evaluator to use to decide which split to use for each leaf
    */
-  def expand[S](path: String)(implicit splitter: Splitter[V, T], evaluator: Evaluator[V, T], stopper: Stopper[T], inj: Injection[Tree[K, V, T], String]) = {
+  def expand[S](path: String)(implicit splitter: Splitter[V, T], evaluator: Evaluator[T], stopper: Stopper[T], inj: Injection[Tree[K, V, T], String]) = {
     flatMapTrees {
       case (trainingData, sampler, trees) =>
         implicit val splitSemigroup = new SplitSemigroup[K, V, T]
@@ -130,9 +132,12 @@ case class Trainer[K: Ordering, V, T: Monoid](
             .flatMap {
               case ((treeIndex, leafIndex, feature), target) =>
                 treeMap(treeIndex).leafAt(leafIndex).toList.flatMap { leaf =>
-                  splitter.split(leaf.target, target).flatMap { rawSplit =>
-                    evaluator.evaluate(rawSplit).map { case (split, goodness) =>
-                      treeIndex -> Map(leafIndex -> (feature, split, goodness))
+                  splitter.split(leaf.target, target).flatMap { split =>
+                    val leaves = List(split.leftDistribution, split.rightDistribution)
+                    evaluator
+                      .trainingError(leaves)
+                      .map { goodness =>
+                        treeIndex -> Map(leafIndex -> (feature, split, goodness))
                     }
                   }
                 }
@@ -186,7 +191,7 @@ case class Trainer[K: Ordering, V, T: Monoid](
    * Construct a Map[Int,T] from the trainingData for each tree, and then transform the trees using the prune method.
    *
    */
-  def prune[P, E](path: String, error: Error[T, P, E])(implicit voter: Voter[T, P], inj: Injection[Tree[K, V, T], String], ord: Ordering[E]): Trainer[K, V, T] = {
+  /*def prune[P, E](path: String, error: Error[T, P, E])(implicit voter: Voter[T, P], inj: Injection[Tree[K, V, T], String], ord: Ordering[E]): Trainer[K, V, T] = {
     flatMapTrees {
       case (trainingData, sampler, trees) =>
         lazy val treeMap = trees.toMap
@@ -209,7 +214,7 @@ case class Trainer[K: Ordering, V, T: Monoid](
         newEx
     }
   }
-
+*/
   /**
    *  featureImportance should: shuffle data randomly (group on something random then sort on something random?),
    * then stream through and have each instance pick one feature value at random to pass on to the following instance.
@@ -253,12 +258,12 @@ case class Trainer[K: Ordering, V, T: Monoid](
   }
 
   /** recursively expand multiple times, writing out the new tree at each step */
-  def expandTimes(base: String, times: Int)(implicit splitter: Splitter[V, T], evaluator: Evaluator[V, T], stopper: Stopper[T], inj: Injection[Tree[K, V, T], String]) = {
+  def expandTimes(base: String, times: Int)(implicit splitter: Splitter[V, T], evaluator: Evaluator[T], stopper: Stopper[T], inj: Injection[Tree[K, V, T], String]) = {
     updateTargets(stepPath(base, 0))
       .expandFrom(base, 1, times)
   }
 
-  def expandFrom(base: String, step: Int, to: Int)(implicit splitter: Splitter[V, T], evaluator: Evaluator[V, T], stopper: Stopper[T], inj: Injection[Tree[K, V, T], String]): Trainer[K, V, T] = {
+  def expandFrom(base: String, step: Int, to: Int)(implicit splitter: Splitter[V, T], evaluator: Evaluator[T], stopper: Stopper[T], inj: Injection[Tree[K, V, T], String]): Trainer[K, V, T] = {
     if (step > to)
       this
     else {
@@ -266,7 +271,7 @@ case class Trainer[K: Ordering, V, T: Monoid](
         .expandFrom(base, step + 1, to)
     }
   }
-
+/*
   def expandInMemory(path: String, times: Int)(implicit splitter: Splitter[V, T], evaluator: Evaluator[V, T], stopper: Stopper[T], inj: Injection[Tree[K, V, T], String]): Trainer[K, V, T] = {
     flatMapTrees {
       case (trainingData, sampler, trees) =>
@@ -289,8 +294,9 @@ case class Trainer[K: Ordering, V, T: Monoid](
             .map {
               case ((treeIndex, leafIndex), instances) =>
                 val target = Monoid.sum(instances.map { _.target })
+                val rootTarget = treeMap(treeIndex).sumTargets
                 val leaf = LeafNode[K, V, T, Unit](0, target)
-                val expanded = Tree.expand(times, treeIndex, leaf, splitter, evaluator, stopper, sampler, instances)
+                val expanded = Tree.expand(times, treeIndex, rootTarget, leaf, splitter, evaluator, stopper, sampler, instances)
                 treeIndex -> List(leafIndex -> expanded)
             }
 
@@ -314,7 +320,7 @@ case class Trainer[K: Ordering, V, T: Monoid](
           }.writeThrough(TreeSource(path))
     }
   }
-
+*/
   /** add out of time validation */
   def outOfTime(quantile: Double = 0.8) = {
     flatMapSampler {
@@ -348,7 +354,7 @@ object Trainer {
 
 class SplitSemigroup[K, V, T] extends Semigroup[(K, Split[V, T], Double)] {
   def plus(a: (K, Split[V, T], Double), b: (K, Split[V, T], Double)) = {
-    if (a._3 > b._3)
+    if (a._3 < b._3)
       a
     else
       b

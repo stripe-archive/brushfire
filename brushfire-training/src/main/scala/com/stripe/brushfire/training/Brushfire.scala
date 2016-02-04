@@ -1,5 +1,6 @@
-package com.stripe.brushfire
+package com.stripe.brushfire.training
 
+import com.stripe.brushfire._
 import com.twitter.algebird._
 
 /**
@@ -54,19 +55,9 @@ case class Split[V, T](predicate: Predicate[V], leftDistribution: T, rightDistri
     SplitNode(feature, predicate, LeafNode(0, leftDistribution), LeafNode(1, rightDistribution))
 }
 
-
-/** Evaluates the goodness of a candidate split */
-trait Evaluator[V, T] {
-
-  /**
-   * Evaluate the fitness of a candidate split.
-   *
-   * This method may transform the split, in which case the score
-   * applies to the split that is returned. The result is optional to
-   * handle cases where a split is not valid (for example, if one side
-   * of a split is "empty" in some sense).
-   */
-  def evaluate(split: Split[V, T]): Option[(Split[V, T], Double)]
+trait Evaluator[T] {
+  /** returns an overall numeric training error for a tree or split, or None for infinite/unacceptable error */
+  def trainingError(leaves: Iterable[T]): Option[Double]
 }
 
 /** Provides stopping conditions which guide when splits will be attempted */
