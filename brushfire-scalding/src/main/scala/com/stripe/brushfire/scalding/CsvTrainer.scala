@@ -16,10 +16,10 @@ class CsvTrainerJob(args: Args) extends TrainerJob(args) {
 
   def splitRow(row: String): CsvRow = row.split(",").map(_.trim)
 
-  val header: CsvRow = splitRow(args("features"))
+  val columns: CsvRow = splitRow(args("columns"))
   val labelFeature: String = args("label")
-  val labelIndex: Int = header.indexOf(labelFeature)
-  val features: CsvRow = header.filter(_ != labelFeature)
+  val labelIndex: Int = columns.indexOf(labelFeature)
+  val features: CsvRow = columns.filter(_ != labelFeature)
 
   val rows: TypedPipe[CsvRow] =
     TypedPipe
@@ -33,7 +33,7 @@ class CsvTrainerJob(args: Args) extends TrainerJob(args) {
       .map(_.head)
 
   val trainingData: Execution[TypedPipe[Instance[String, FeatureValue, Map[String, Long]]]] =
-    guessFeatureMapping(header, rows).map { mapping =>
+    guessFeatureMapping(columns, rows).map { mapping =>
       rows.map { row =>
         val label: String = row(labelIndex)
         val fv: Map[String, FeatureValue] = features.map { key =>

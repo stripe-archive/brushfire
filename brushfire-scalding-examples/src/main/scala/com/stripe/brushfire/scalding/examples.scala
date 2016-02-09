@@ -1,4 +1,5 @@
 package com.stripe.brushfire.scalding
+package examples
 
 import com.stripe.brushfire._
 import com.twitter.scalding._

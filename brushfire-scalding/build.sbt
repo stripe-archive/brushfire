@@ -3,13 +3,8 @@ name := "brushfire-scalding"
 resolvers += Resolvers.conjars
 
 libraryDependencies ++= Seq(
-  Deps.hadoopClient,
+  Deps.hadoopClient % "provided",
   Deps.scaldingCore
 )
 
-mainClass := Some("com.twitter.scalding.Tool")
-
 Publish.settings
-
-MakeJar.settings
-
