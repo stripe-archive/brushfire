@@ -2,6 +2,7 @@ package com.stripe.brushfire
 package scalding
 
 import com.stripe.brushfire.features._
+import com.stripe.brushfire.scalding.features._
 
 import com.twitter.scalding._
 import com.twitter.algebird.AveragedValue
@@ -17,30 +18,42 @@ class CsvTrainerJob(args: Args) extends TrainerJob(args) {
   def splitRow(row: String): CsvRow = row.split(",").map(_.trim)
 
   val columns: CsvRow = splitRow(args("columns"))
-  val labelFeature: String = args("label")
-  val labelIndex: Int = columns.indexOf(labelFeature)
-  val features: CsvRow = columns.filter(_ != labelFeature)
+  val label: String = args("label")
+  val timestamp: Option[String] = args.optional("timestamp")
+  val id: Seq[String] = args.optional("id")
+    .map(splitRow)
+    .getOrElse(Nil)
+  val features: Set[String] = args.optional("features")
+    .map(splitRow)
+    .map(_.toSet)
+    .getOrElse(columns.toSet - label)
+
+  val trainingDataParser: TrainingDataParser[CsvRow, Map[String, Long]] =
+    CsvRowTrainingDataParser(columns, timestamp, id, label)
 
   val rows: TypedPipe[CsvRow] =
     TypedPipe
       .from(TextLine(args("input")))
       .map(splitRow)
 
-  def guessFeatureMapping(header: CsvRow, rows: TypedPipe[CsvRow]): Execution[FeatureMapping[CsvRow]] =
-    rows
-      .aggregate(CsvRowFeatureMapping.aggregator(header))
-      .toIterableExecution
-      .map(_.head)
+  val featureEncoding: Execution[DispatchedFeatureEncoding[String]] =
+    DispatchedFeatureEncoding
+      .trainer[String](ScaldingTrainingPlatform)
+      .contramap[CsvRow](trainingDataParser.featureParser.parse(_))
+      .run(ScaldingTrainingPlatform.TypedPipeExecutor(rows))
 
   val trainingData: Execution[TypedPipe[Instance[String, FeatureValue, Map[String, Long]]]] =
-    guessFeatureMapping(columns, rows).map { mapping =>
-      rows.map { row =>
-        val label: String = row(labelIndex)
-        val fv: Map[String, FeatureValue] = features.map { key =>
-          key -> mapping.extract(key, row)
-        } (collection.breakOut)
-
-        Instance(row.mkString(","), 0L, fv, Map(label -> 1L))
+    featureEncoding.map { encoding =>
+      rows.flatMap { row =>
+        val rawFeatures = trainingDataParser.featureParser.parse(row)
+        for {
+          features <- encoding.encoder.encode(rawFeatures.filterKeys(features)).toOption
+        } yield {
+          val target    = trainingDataParser.parseTarget(row)
+          val id        = trainingDataParser.parseId(row)
+          val timestamp = trainingDataParser.parseTimestamp(row)
+          Instance(id, timestamp, features, target)
+        }
       }
     }
 
