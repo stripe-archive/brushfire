@@ -7,7 +7,7 @@ import com.stripe.brushfire.scalding.features._
 import com.twitter.scalding._
 import com.twitter.algebird.AveragedValue
 
-class CsvTrainerJob(args: Args) extends TrainerJob(args) {
+class CsvTrainerJob(args: Args) extends ExecutionJob[Unit](args) with Defaults {
   import JsonInjections._
 
   implicit val stopper = FrequencyStopper[String](10, 3)
@@ -67,7 +67,11 @@ class CsvTrainerJob(args: Args) extends TrainerJob(args) {
     fn
   }
 
-  def train(trainingData: Execution[TypedPipe[Instance[String, FeatureValue, Map[String, Long]]]]): Trainer[String, FeatureValue, Map[String, Long]] = {
+  def train(
+    trainingData: Execution[TypedPipe[Instance[String, FeatureValue, Map[String, Long]]]]
+  )(implicit
+    splitter: Splitter[FeatureValue, Map[String, Long]]
+  ): Trainer[String, FeatureValue, Map[String, Long]] = {
     Trainer.fromExecution(trainingData, KFoldSampler(4))
       .expandTimes(args("output"), 3)
       .expandInMemory(args("output") + "/mem", 10)
@@ -78,10 +82,8 @@ class CsvTrainerJob(args: Args) extends TrainerJob(args) {
       .featureImportance(error) { writeTsvExecution(args("output") + "/pruned-fi") }
   }
 
-  def trainer() = {
-    args.optional("load") match {
-      case Some(path) => Trainer.fromExecution(trainingData, KFoldSampler(4)).load(path).prune(args("output") + "/pruned", error = error)
-      case None => train(trainingData)
-    }
-  }
+  def execution: Execution[Unit] = for {
+    encoding <- featureEncoding
+    _ <- train(trainingData)(encoding.splitter).execution
+  } yield ()
 }
