@@ -113,6 +113,11 @@ object JsonInjections {
     implicit kInj: JsonNodeInjection[K],
     pInj: JsonNodeInjection[T],
     vInj: JsonNodeInjection[V],
+    // A common case is that A is unit, so we special case it here and avoid
+    // serializing a whole bunch of units (and finding a sane serialization for
+    // it). We do this by using `WithFallback`. If A is a unit, then we don't
+    // need an injection. OTOH, if A isn't Unit, then we get an injection and
+    // use that to serialize the annotation.
     maybeAInj: (Unit =:= A) WithFallback JsonNodeInjection[A],
     mon: Monoid[T],
     ord: Ordering[V] = null): JsonNodeInjection[AnnotatedTree[K, V, T, A]] = {
@@ -124,6 +129,7 @@ object JsonInjections {
             val obj = JsonNodeFactory.instance.objectNode
             obj.put("leaf", toJsonNode(index))
             obj.put("distribution", toJsonNode(target))
+            // Don't serialize the annotation if we *know* it is Unit.
             maybeAInj.withFallback { aInj =>
               obj.put("annotation", aInj(annotation))
             }
@@ -135,6 +141,7 @@ object JsonInjections {
             obj.put("predicate", toJsonNode(p)(predicateJsonInjection))
             obj.put("left", toJsonNode(lc)(nodeJsonNodeInjection))
             obj.put("right", toJsonNode(rc)(nodeJsonNodeInjection))
+            // Don't serialize the annotation if we *know* it is Unit.
             maybeAInj.withFallback { aInj =>
               obj.put("annotation", aInj(annotation))
             }
