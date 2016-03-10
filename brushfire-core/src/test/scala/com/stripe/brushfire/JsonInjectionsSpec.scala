@@ -13,10 +13,18 @@ class JsonInjectionsSpec extends WordSpec with Matchers with Checkers {
   import JsonNodeInjection._
 
   "treeJsonInjection" should {
-    "round-trip" in {
+    "round-trip without annotations" in {
       check { (tree: Tree[String, Double, Map[String, Long]]) =>
         val json = toJsonNode(tree)
         val haggard = fromJsonNode[Tree[String, Double, Map[String, Long]]](json)
+        Try(tree) == haggard
+      }
+    }
+
+    "round-trip with annotations" in {
+      check { (tree: AnnotatedTree[String, Double, Map[String, Long], Int]) =>
+        val json = toJsonNode(tree)
+        val haggard = fromJsonNode[AnnotatedTree[String, Double, Map[String, Long], Int]](json)
         Try(tree) == haggard
       }
     }

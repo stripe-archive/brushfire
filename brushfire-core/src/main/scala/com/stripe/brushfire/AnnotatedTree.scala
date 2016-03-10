@@ -51,7 +51,7 @@ object LeafNode {
     LeafNode(index, target, Monoid.zero)
 }
 
-case class AnnotatedTree[K, V, T, A: Semigroup](root: Node[K, V, T, A]) {
+case class AnnotatedTree[K, V, T, A](root: Node[K, V, T, A]) {
 
   import AnnotatedTree.AnnotatedTreeTraversal
 
@@ -62,9 +62,9 @@ case class AnnotatedTree[K, V, T, A: Semigroup](root: Node[K, V, T, A]) {
   private def mapSplits[K0, V0](f: (K, Predicate[V]) => (K0, Predicate[V0])): AnnotatedTree[K0, V0, T, A] = {
     def recur(node: Node[K, V, T, A]): Node[K0, V0, T, A] = {
       node match {
-        case SplitNode(k, p, lc, rc, _) =>
+        case SplitNode(k, p, lc, rc, a) =>
           val (key, pred) = f(k, p)
-          SplitNode(key, pred, recur(lc), recur(rc))
+          SplitNode(key, pred, recur(lc), recur(rc), a)
         case LeafNode(index, target, a) =>
           LeafNode(index, target, a)
       }
@@ -151,7 +151,7 @@ case class AnnotatedTree[K, V, T, A: Semigroup](root: Node[K, V, T, A]) {
    * @param error to calculate an error statistic given observations (validation) and predictions (training).
    * @return The new, pruned tree.
    */
-  def prune[P, E: Ordering](validationData: Map[Int, T], voter: Voter[T, P], error: Error[T, P, E])(implicit m: Monoid[T]): AnnotatedTree[K, V, T, A] =
+  def prune[P, E: Ordering](validationData: Map[Int, T], voter: Voter[T, P], error: Error[T, P, E])(implicit m: Monoid[T], s: Semigroup[A]): AnnotatedTree[K, V, T, A] =
     AnnotatedTree(pruneNode(validationData, root, voter, error)._2)
 
   /**
@@ -167,7 +167,7 @@ case class AnnotatedTree[K, V, T, A: Semigroup](root: Node[K, V, T, A]) {
    * @param start The root node of the tree.
    * @return A node at the root of the new, pruned tree.
    */
-  def pruneNode[P, E: Ordering](validationData: Map[Int, T], start: Node[K, V, T, A], voter: Voter[T, P], error: Error[T, P, E])(implicit m: Monoid[T]): (Map[Int, T], Node[K, V, T, A]) = {
+  def pruneNode[P, E: Ordering](validationData: Map[Int, T], start: Node[K, V, T, A], voter: Voter[T, P], error: Error[T, P, E])(implicit m: Monoid[T], aSemigroup: Semigroup[A]): (Map[Int, T], Node[K, V, T, A]) = {
     start match {
       case leaf @ LeafNode(_, _, _) =>
         // Bounce at the bottom and start back up the tree.
@@ -255,7 +255,7 @@ case class AnnotatedTree[K, V, T, A: Semigroup](root: Node[K, V, T, A]) {
    * have the target distribution returned by calling `fn` with the leaf's
    * index. If `fn` returns an empty `Seq`, then the leaf is left as-is.
    */
-  def growByLeafIndex(fn: Int => Option[SplitNode[K, V, T, A]]): AnnotatedTree[K, V, T, A] = {
+  def growByLeafIndex(fn: Int => Option[SplitNode[K, V, T, A]])(implicit s: Semigroup[A]): AnnotatedTree[K, V, T, A] = {
     def growFrom(nextIndex: Int, start: Node[K, V, T, A]): (Int, Node[K, V, T, A]) = {
       start match {
         case LeafNode(index, target, annotation) =>
@@ -279,7 +279,7 @@ case class AnnotatedTree[K, V, T, A: Semigroup](root: Node[K, V, T, A]) {
    * `Some` node. Otherwise, if `fn` returns `None`, then the leaf node is
    * left as-is.
    */
-  def updateByLeafIndex(fn: Int => Option[Node[K, V, T, A]]): AnnotatedTree[K, V, T, A] = {
+  def updateByLeafIndex(fn: Int => Option[Node[K, V, T, A]])(implicit s: Semigroup[A]): AnnotatedTree[K, V, T, A] = {
     def updateFrom(start: Node[K, V, T, A]): Node[K, V, T, A] = {
       start match {
         case LeafNode(index, _, _) =>

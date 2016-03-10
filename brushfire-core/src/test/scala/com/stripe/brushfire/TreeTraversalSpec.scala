@@ -22,7 +22,7 @@ class TreeTraversalSpec extends WordSpec with Matchers with Checkers {
   "depthFirst" should {
     "always choose the left side of a split in a binary tree" in {
       val simpleTreeGen: Gen[TreeSDM[Unit]] =
-        genBinaryTree(arbitrary[String], arbitrary[Double], arbitrary[Map[String, Long]], 2)
+        genBinaryTree(arbitrary[String], arbitrary[Double], arbitrary[Map[String, Long]], arbitrary[Unit], 2)
           .filter(_.root match {
             case SplitNode(_, p, _, _, _) =>
               p match {
