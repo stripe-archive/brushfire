@@ -109,28 +109,42 @@ object JsonInjections {
     }
   }
 
-  implicit def treeJsonInjection[K, V, T](
+  implicit def treeJsonInjection[K, V, T, A](
     implicit kInj: JsonNodeInjection[K],
     pInj: JsonNodeInjection[T],
     vInj: JsonNodeInjection[V],
+    // A common case is that A is unit, so we special case it here and avoid
+    // serializing a whole bunch of units (and finding a sane serialization for
+    // it). We do this by using `WithFallback`. If A is a unit, then we don't
+    // need an injection. OTOH, if A isn't Unit, then we get an injection and
+    // use that to serialize the annotation.
+    maybeAInj: (Unit =:= A) WithFallback JsonNodeInjection[A],
     mon: Monoid[T],
-    ord: Ordering[V] = null): JsonNodeInjection[Tree[K, V, T]] = {
+    ord: Ordering[V] = null): JsonNodeInjection[AnnotatedTree[K, V, T, A]] = {
 
-    implicit def nodeJsonNodeInjection: JsonNodeInjection[Node[K, V, T, Unit]] =
-      new AbstractJsonNodeInjection[Node[K, V, T, Unit]] {
-        def apply(node: Node[K, V, T, Unit]) = node match {
-          case LeafNode(index, target, _) =>
+    implicit def nodeJsonNodeInjection: JsonNodeInjection[Node[K, V, T, A]] =
+      new AbstractJsonNodeInjection[Node[K, V, T, A]] {
+        def apply(node: Node[K, V, T, A]) = node match {
+          case LeafNode(index, target, annotation) =>
             val obj = JsonNodeFactory.instance.objectNode
             obj.put("leaf", toJsonNode(index))
             obj.put("distribution", toJsonNode(target))
+            // Don't serialize the annotation if we *know* it is Unit.
+            maybeAInj.withFallback { aInj =>
+              obj.put("annotation", aInj(annotation))
+            }
             obj
 
-          case SplitNode(k, p, lc, rc, _) =>
+          case SplitNode(k, p, lc, rc, annotation) =>
             val obj = JsonNodeFactory.instance.objectNode
             obj.put("key", toJsonNode(k))
             obj.put("predicate", toJsonNode(p)(predicateJsonInjection))
             obj.put("left", toJsonNode(lc)(nodeJsonNodeInjection))
             obj.put("right", toJsonNode(rc)(nodeJsonNodeInjection))
+            // Don't serialize the annotation if we *know* it is Unit.
+            maybeAInj.withFallback { aInj =>
+              obj.put("annotation", aInj(annotation))
+            }
             obj
         }
 
@@ -146,27 +160,34 @@ object JsonInjections {
           else fromJsonNode[T](child)
         }
 
-        override def invert(n: JsonNode): Try[Node[K, V, T, Unit]] =
+        def getAnnotation(node: JsonNode): Try[A] = maybeAInj match {
+          case Preferred(unitToA) => Success(unitToA(()))
+          case Fallback(aInj) => tryLoad[A](node, "annotation")(aInj)
+        }
+
+        override def invert(n: JsonNode): Try[Node[K, V, T, A]] =
           if (n.has("leaf")) {
             for {
               index <- tryLoad[Int](n, "leaf")
               target <- tryLoad[T](n, "distribution")
-            } yield LeafNode(index, target)
+              annotation <- getAnnotation(n)
+            } yield LeafNode(index, target, annotation)
           } else {
             for {
               k <- tryLoad[K](n, "key")
               p <- tryLoad[Predicate[V]](n, "predicate")
-              left <- tryLoad[Node[K, V, T, Unit]](n, "left")(nodeJsonNodeInjection)
-              right <- tryLoad[Node[K, V, T, Unit]](n, "right")(nodeJsonNodeInjection)
-            } yield SplitNode(k, p, left, right)
+              left <- tryLoad[Node[K, V, T, A]](n, "left")(nodeJsonNodeInjection)
+              right <- tryLoad[Node[K, V, T, A]](n, "right")(nodeJsonNodeInjection)
+              annotation <- getAnnotation(n)
+            } yield SplitNode(k, p, left, right, annotation)
           }
       }
 
-    new AbstractJsonNodeInjection[Tree[K, V, T]] {
-      def apply(tree: Tree[K, V, T]): JsonNode =
+    new AbstractJsonNodeInjection[AnnotatedTree[K, V, T, A]] {
+      def apply(tree: AnnotatedTree[K, V, T, A]): JsonNode =
         toJsonNode(tree.root)
-      override def invert(n: JsonNode): Try[Tree[K, V, T]] =
-        fromJsonNode[Node[K, V, T, Unit]](n).map(root => Tree(root))
+      override def invert(n: JsonNode): Try[AnnotatedTree[K, V, T, A]] =
+        fromJsonNode[Node[K, V, T, A]](n).map(root => AnnotatedTree(root))
     }
   }
 
