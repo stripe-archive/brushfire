@@ -193,8 +193,8 @@ object JsonInjections {
     }
   }
 
-  implicit def treeJsonStringInjection[K, V, T](implicit jsonInj: JsonNodeInjection[Tree[K, V, T]]): Injection[Tree[K, V, T], String] =
-    JsonInjection.toString[Tree[K, V, T]]
+  implicit def treeJsonStringInjection[K, V, T, A](implicit jsonInj: JsonNodeInjection[AnnotatedTree[K, V, T, A]]): Injection[AnnotatedTree[K, V, T, A], String] =
+    JsonInjection.toString[AnnotatedTree[K, V, T, A]]
 }
 
 object KryoInjections {
