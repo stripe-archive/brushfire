@@ -6,7 +6,7 @@ import com.twitter.algebird._
 
 import AnnotatedTree.AnnotatedTreeTraversal
 
-case class Trainer[K: Ordering, V, T: Monoid](
+case class Trainer[K: Ordering, V: Ordering, T: Monoid](
     trainingData: Iterable[Instance[K, V, T]],
     sampler: Sampler[K],
     trees: List[Tree[K, V, T]])(implicit traversal: AnnotatedTreeTraversal[K, V, T, Unit]) {
@@ -54,7 +54,7 @@ case class Trainer[K: Ordering, V, T: Monoid](
   def expand(times: Int)(implicit splitter: Splitter[V, T], evaluator: Evaluator[V, T], stopper: Stopper[T]): Trainer[K, V, T] =
     updateLeaves {
       case (treeIndex, (index, target, annotation), instances) =>
-        Tree.expand(times, treeIndex, LeafNode(index, target, annotation), splitter, evaluator, stopper, sampler, instances)
+        Tree.expand(times, treeIndex, LeafNode[K, V, T, Unit](index, target, annotation), splitter, evaluator, stopper, sampler, instances)
     }
 
   def prune[P, E](error: Error[T, P, E])(implicit voter: Voter[T, P], ord: Ordering[E]): Trainer[K, V, T] =
@@ -85,7 +85,7 @@ case class Trainer[K: Ordering, V, T: Monoid](
 }
 
 object Trainer {
-  def apply[K: Ordering, V, T: Monoid](trainingData: Iterable[Instance[K, V, T]], sampler: Sampler[K])(implicit traversal: AnnotatedTreeTraversal[K, V, T, Unit]): Trainer[K, V, T] = {
+  def apply[K: Ordering, V: Ordering, T: Monoid](trainingData: Iterable[Instance[K, V, T]], sampler: Sampler[K])(implicit traversal: AnnotatedTreeTraversal[K, V, T, Unit]): Trainer[K, V, T] = {
     val empty = 0.until(sampler.numTrees).toList.map { i => Tree.singleton[K, V, T](Monoid.zero) }
     Trainer(trainingData, sampler, empty)
   }

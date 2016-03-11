@@ -31,7 +31,8 @@ case class ChiSquaredEvaluator[V, L, W](implicit weightMonoid: Monoid[W], weight
 case class MinWeightEvaluator[V, L, W: Monoid](minWeight: W => Boolean, wrapped: Evaluator[V, Map[L, W]])
     extends Evaluator[V, Map[L, W]] {
 
-  private[this] def test(dist: Map[L, W]): Boolean = minWeight(Monoid.sum(dist.values))
+  private[this] def test(dist: Map[L, W]): Boolean =
+    minWeight(Monoid.sum(dist.values))
 
   def evaluate(split: Split[V, Map[L, W]]): Option[(Split[V, Map[L, W]], Double)] =
     wrapped.evaluate(split).filter { case (Split(_, left, right), _) =>

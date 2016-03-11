@@ -44,6 +44,9 @@ trait Splitter[V, T] {
 /** Candidate split for a tree node */
 case class Split[V, T](predicate: Predicate[V], leftDistribution: T, rightDistribution: T) {
 
+  def map[U](f: V => U): Split[U, T] =
+    Split(predicate.map(f), leftDistribution, rightDistribution)
+
   /**
    * Given a feature key, create a SplitNode from this Split.
    *

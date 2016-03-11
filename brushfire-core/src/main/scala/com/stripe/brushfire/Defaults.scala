@@ -2,23 +2,16 @@ package com.stripe.brushfire
 
 import com.twitter.algebird._
 
-trait LowPriorityDefaults {
-  implicit def dispatchedSplitterWithSparseBoolean[A: Ordering, B, C: Ordering, T](
-      implicit ordinal: Splitter[A, T],
-      nominal: Splitter[B, T],
-      continuous: Splitter[C, T],
-      sparse: Splitter[Boolean, T]): Splitter[Dispatched[A, B, C, Boolean], T] =
-    DispatchedSplitter(ordinal, nominal, continuous, sparse)
-}
+trait Defaults {
+  import Predicate.{ Lt, IsEq }
 
-trait Defaults extends LowPriorityDefaults {
   implicit def chiSquaredEvaluator[V, L, W](implicit weightMonoid: Monoid[W], weightDouble: W => Double): Evaluator[V, Map[L, W]] = ChiSquaredEvaluator[V, L, W]
   implicit def frequencyStopper[L]: Stopper[Map[L, Long]] = FrequencyStopper(10000, 10)
 
-  implicit def intSplitter[T: Monoid]: Splitter[Int, T] = BinarySplitter[Int, T](LessThan(_))
-  implicit def stringSplitter[T: Monoid]: Splitter[String, T] = BinarySplitter[String, T](EqualTo(_))
-  implicit def doubleSplitter[T: Monoid]: Splitter[Double, T] = BinnedSplitter(BinarySplitter[Double, T](LessThan(_))) { d => downRez(d, 2, 100) }
-  implicit def booleanSplitter[T: Group]: Splitter[Boolean, T] = SparseSplitter[Boolean, T]()
+  implicit def intSplitter[T: Monoid]: Splitter[Int, T] = BinarySplitter[Int, T](Lt(_))
+  implicit def stringSplitter[T: Monoid]: Splitter[String, T] = BinarySplitter[String, T](IsEq(_))
+  implicit def doubleSplitter[T: Monoid]: Splitter[Double, T] = BinnedSplitter(BinarySplitter[Double, T](Lt(_))) { d => downRez(d, 2, 100) }
+  implicit def booleanSplitter[T: Group]: Splitter[Boolean, T] = BinarySplitter[Boolean, T](IsEq(_))
 
   implicit def dispatchedSplitterWithSpaceSaver[A: Ordering, B, C: Ordering, D, L](
       implicit ordinal: Splitter[A, Map[L, Long]],

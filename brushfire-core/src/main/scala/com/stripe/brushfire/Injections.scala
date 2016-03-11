@@ -73,39 +73,31 @@ object JsonInjections {
 
   implicit def predicateJsonInjection[V](implicit vInj: JsonNodeInjection[V], ord: Ordering[V] = null): JsonNodeInjection[Predicate[V]] = {
     new AbstractJsonNodeInjection[Predicate[V]] {
+      import Predicate._
+
       def apply(pred: Predicate[V]) = {
         val obj = JsonNodeFactory.instance.objectNode
         pred match {
-          case IsPresent(None) => obj.put("exists", JsonNodeFactory.instance.nullNode)
-          case IsPresent(Some(pred)) => obj.put("exists", toJsonNode(pred)(predicateJsonInjection))
-          case EqualTo(v) => obj.put("eq", toJsonNode(v))
-          case LessThan(v) => obj.put("lt", toJsonNode(v))
-          case Not(pred) => obj.put("not", toJsonNode(pred)(predicateJsonInjection))
-          case AnyOf(preds) =>
-            val ary = JsonNodeFactory.instance.arrayNode
-            preds.foreach { pred => ary.add(toJsonNode(pred)(predicateJsonInjection)) }
-            obj.put("or", ary)
+          case IsEq(v) => obj.put("iseq", toJsonNode(v))
+          case NotEq(v) => obj.put("noteq", toJsonNode(v))
+          case Lt(v) => obj.put("lt", toJsonNode(v))
+          case LtEq(v) => obj.put("lteq", toJsonNode(v))
+          case Gt(v) => obj.put("gt", toJsonNode(v))
+          case GtEq(v) => obj.put("gteq", toJsonNode(v))
         }
         obj
       }
 
-      override def invert(n: JsonNode) = {
+      override def invert(n: JsonNode) =
         n.getFieldNames.asScala.toList.headOption match {
-          case Some("eq") => fromJsonNode[V](n.get("eq")).map { EqualTo(_) }
-          case Some("lt") =>
-            if (ord == null)
-              sys.error("No Ordering[V] supplied but less than used")
-            else
-              fromJsonNode[V](n.get("lt")).map { LessThan(_) }
-          case Some("not") => fromJsonNode[Predicate[V]](n.get("not")).map { Not(_) }
-          case Some("or") => fromJsonNode[List[Predicate[V]]](n.get("or")).map { AnyOf(_) }
-          case Some("exists") =>
-            val predNode = n.get("exists")
-            if (predNode.isNull) Success(IsPresent[V](None))
-            else fromJsonNode[Predicate[V]](predNode).map(p => IsPresent(Some(p)))
-          case _ => sys.error("Not a predicate node: " + n)
+          case Some("iseq") => fromJsonNode[V](n.get("iseq")).map(IsEq(_))
+          case Some("noteq") => fromJsonNode[V](n.get("noteq")).map(NotEq(_))
+          case Some("lt") => fromJsonNode[V](n.get("lt")).map(Lt(_))
+          case Some("lteq") => fromJsonNode[V](n.get("lteq")).map(LtEq(_))
+          case Some("gt") => fromJsonNode[V](n.get("gt")).map(Gt(_))
+          case Some("gteq") => fromJsonNode[V](n.get("gteq")).map(GtEq(_))
+          case _ => sys.error("not a predicate node: " + n)
         }
-      }
     }
   }
 

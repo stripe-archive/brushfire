@@ -27,11 +27,12 @@ sealed abstract class Node[K, V, T, A] {
 }
 
 case class SplitNode[K, V, T, A](key: K, predicate: Predicate[V], leftChild: Node[K, V, T, A], rightChild: Node[K, V, T, A], annotation: A) extends Node[K, V, T, A] {
-  def evaluate(row: Map[K, V]): List[Node[K, V, T, A]] =
-    predicate(row.get(key)) match {
-      case Some(true) => leftChild :: Nil
-      case Some(false) => rightChild :: Nil
-      case None => leftChild :: rightChild :: Nil
+  def evaluate(row: Map[K, V])(implicit ord: Ordering[V]): List[Node[K, V, T, A]] =
+    row.get(key) match {
+      case Some(v) =>
+        (if (predicate(v)) leftChild else rightChild) :: Nil
+      case None =>
+        leftChild :: rightChild :: Nil
     }
 
   def splitLabel: (K, Predicate[V], A) = (key, predicate, annotation)

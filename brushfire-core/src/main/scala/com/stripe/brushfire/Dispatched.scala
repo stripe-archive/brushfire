@@ -57,6 +57,5 @@ object Dispatched {
   def continuous[C](c: C) = Continuous(c)
   def sparse[D](d: D) = Sparse(d)
 
-  def wrapSplits[X, T, A: Ordering, B, C: Ordering, D](splits: Iterable[Split[X, T]])(fn: X => Dispatched[A, B, C, D]) =
-    splits.map { case Split(p, left, right) => Split(p.map(fn), left, right) }
+  def wrapSplits[X, T, A: Ordering, B, C: Ordering, D](splits: Iterable[Split[X, T]])(fn: X => Dispatched[A, B, C, D]) = splits.map(_.map(fn))
 }

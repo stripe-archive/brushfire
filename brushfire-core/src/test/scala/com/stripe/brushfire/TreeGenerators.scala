@@ -5,23 +5,16 @@ import com.twitter.algebird.Semigroup
 import org.scalacheck.{ Gen, Arbitrary }
 import org.scalacheck.Arbitrary.arbitrary
 
+import Predicate.{ isEq, notEq, lt, ltEq, gt, gtEq }
+
 object PredicateGenerators {
   val MaxPredicateDepth = 2
 
-  implicit def arbPredicate[V: Arbitrary: Ordering]: Arbitrary[Predicate[V]] =
+  implicit def arbPredicate[V: Arbitrary]: Arbitrary[Predicate[V]] =
     Arbitrary(genPredicate(arbitrary[V]))
 
-  def genPredicate[V: Ordering](genV: Gen[V], depth: Int = 1): Gen[Predicate[V]] =
-    if (depth >= MaxPredicateDepth) {
-      Gen.oneOf(genV.map(EqualTo(_)), genV.map(LessThan(_)))
-    } else {
-      Gen.oneOf[Predicate[V]](
-        genV.map(EqualTo(_)),
-        genV.map(LessThan(_)),
-        genPredicate(genV, depth + 1).map(Not(_)),
-        Gen.nonEmptyListOf(genPredicate(genV, depth + 1)).map(AnyOf(_)),
-        Gen.option(genPredicate(genV, depth + 1)).map(IsPresent(_)))
-    }
+  def genPredicate[V](g: Gen[V]): Gen[Predicate[V]] =
+    Gen.oneOf(g.map(isEq), g.map(notEq), g.map(lt), g.map(ltEq), g.map(gt), g.map(gtEq))
 }
 
 object TreeGenerators {
