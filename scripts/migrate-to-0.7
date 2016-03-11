@@ -1,0 +1,57 @@
+#!/usr/bin/env python
+from __future__ import print_function
+import argparse
+import json
+import sys
+
+
+class MigrationFailed(Exception):
+    def __init__(self, msg):
+        super(MigrationFailed, self).__init__(msg)
+
+
+def migrate_node(node):
+    """
+    Migrate a JSON node to from our old format to the new format. This will
+    only migrate the node to the new format if it is naively compatible - that
+    is the old version was just encoding a single feature, single predicate
+    binary split.
+    """
+    if type(node) == list:
+        if len(node) != 2:
+            raise MigrationFailed('split node is not binary')
+        left, right = node
+        key = left['feature']
+        if right['feature'] != key:
+            raise MigrationFailed('predicates use different feature')
+        predicate = left['predicate']
+        if right['predicate'].get('not') != predicate:
+            raise MigrationFailed('predicates are not unifiable')
+        left_child = migrate_node(left['children'])
+        right_child = migrate_node(right['children'])
+        return {
+            'key': key, 'predicate': predicate,
+            'left': left_child, 'right': right_child
+        }
+    else:
+        return node
+
+
+parser = argparse.ArgumentParser(
+    description='migrate older models to format used in 0.7.0+')
+parser.add_argument('model', type=argparse.FileType('r'),
+                    nargs='?', default=sys.stdin,
+                    help='old model file to migrate (defaults to stdin)')
+
+
+if __name__ == "__main__":
+    try:
+        args = parser.parse_args()
+        for line in args.model:
+            tree_index, tree_json = line.split('\t', 1)
+            old_tree = json.loads(tree_json)
+            new_tree = migrate_node(old_tree)
+            print("{}\t{}".format(tree_index, json.dumps(new_tree)))
+    except MigrationFailed as e:
+        print('migration failed:', e.message, file=sys.stderr)
+        sys.exit(1)
