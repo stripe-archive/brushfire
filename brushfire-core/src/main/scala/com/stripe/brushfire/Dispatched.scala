@@ -2,6 +2,17 @@ package com.stripe.brushfire
 
 import com.twitter.algebird._
 
+/**
+ * This is basically a split between 2 axes - # of unique values and the
+ * comparison operator we expect to use. Refer to this lovely diagram:
+ *
+ *            | Uniques | Comparison
+ * -----------.---------+------------
+ * Ordinal    | Few     | <=
+ * Nominal    | Few     | ==
+ * Continuous | Lots    | <=
+ * Sparse     | Lots    | ==
+ */
 sealed trait Dispatched[+A, +B, +C, +D]
 
 case class Ordinal[A](ordinal: A) extends Dispatched[A, Nothing, Nothing, Nothing]

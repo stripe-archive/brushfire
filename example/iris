@@ -1,7 +1,10 @@
 #!/bin/sh
-java -Xmx2G -cp ../brushfire-scalding/target/scala-2.10/brushfire-scalding-0.6.0-SNAPSHOT-jar-with-dependencies.jar \
-com.twitter.scalding.Tool \
-com.stripe.brushfire.scalding.IrisJob \
---local \
---input iris.data \
---output iris.output
+
+java -Xmx2G -cp ../brushfire-scalding-examples/target/scala-2.11/brushfire-scalding-examples-0.6.4-SNAPSHOT-jar-with-dependencies.jar \
+  com.twitter.scalding.Tool \
+  com.stripe.brushfire.scalding.CsvTrainerJob \
+  --local \
+  --input iris.data \
+  --columns sepal-length,sepal-width,petal-length,petal-width,species \
+  --label species \
+  --output iris.output

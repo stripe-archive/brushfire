@@ -335,15 +335,21 @@ case class Trainer[K: Ordering, V, T: Monoid](
 object Trainer {
   val MaxReducers = 20
 
-  def apply[K: Ordering, V, T: Monoid](trainingData: TypedPipe[Instance[K, V, T]], sampler: Sampler[K]): Trainer[K, V, T] = {
+  def fromExecution[K: Ordering, V, T: Monoid](
+    trainingData: Execution[TypedPipe[Instance[K, V, T]]],
+    sampler: Sampler[K]
+  ): Trainer[K, V, T] = {
     val empty = 0.until(sampler.numTrees).map { treeIndex => (treeIndex, Tree.singleton[K, V, T](Monoid.zero)) }
     Trainer(
-      Execution.from(trainingData),
+      trainingData,
       Execution.from(sampler),
       Execution.from(TypedPipe.from(empty)),
       Execution.from(()),
       sampler.numTrees.min(MaxReducers))
   }
+
+  def apply[K: Ordering, V, T: Monoid](trainingData: TypedPipe[Instance[K, V, T]], sampler: Sampler[K]): Trainer[K, V, T] =
+    fromExecution(Execution.from(trainingData), sampler)
 }
 
 class SplitSemigroup[K, V, T] extends Semigroup[(K, Split[V, T], Double)] {
