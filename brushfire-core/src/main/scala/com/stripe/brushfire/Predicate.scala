@@ -4,10 +4,7 @@ package com.stripe.brushfire
  * A `Predicate` is a function which accepts or rejects feature values.
  *
  * Given a value of type `V`, `apply()` will return a Boolean
- * indicating whether the predicate matches or not. Given a
- * possibly-missing value of type `Option[V]`, `run()` will return a
- * Boolean indicating whether the predicate matches or not -- when a
- * feature is missing the predicate will return true.
+ * indicating whether the predicate matches or not.
  *
  * There are six types of predicates:
  *
@@ -21,7 +18,7 @@ package com.stripe.brushfire
  * Predicates can be negated using `!`, and can be transformed using
  * `map`. Evaluating a predicate requires an Ordering, but this
  * constraint is not enforced during construction, only when `apply()`
- * or `run()` are invoked.
+ * is invoked.
  */
 sealed abstract class Predicate[V] extends Product with Serializable {
 
@@ -39,29 +36,6 @@ sealed abstract class Predicate[V] extends Product with Serializable {
       case Gt(x) => ord.gt(v, x)
       case GtEq(x) => ord.gteq(v, x)
     }
-
-  def xyz(value: Option[V], default: Option[V])(implicit ord: Ordering[V]): Boolean =
-    value match {
-      case Some(v) =>
-        this(v)
-      case None =>
-        default match {
-          case Some(v) => apply(v)
-          case None => true
-        }
-    }
-
-  // /**
-  //  * Evaluate this predicate for a possibly missing feature.
-  //  *
-  //  * If the feature is definitely present, prefer `apply()` to this
-  //  * method.
-  //  */
-  // def run(o: Option[V])(implicit ord: Ordering[V]): Boolean =
-  //   o match {
-  //     case Some(v) => this(v)
-  //     case None => true
-  //   }
 
   /**
    * Negate this predicate.
