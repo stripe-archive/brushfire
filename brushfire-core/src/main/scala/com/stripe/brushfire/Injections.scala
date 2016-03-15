@@ -8,12 +8,14 @@ import com.twitter.bijection.Inversion.{ attempt, attemptWhen }
 import com.twitter.bijection.InversionFailure.{ failedAttempt, partialFailure }
 import JsonNodeInjection._
 import org.codehaus.jackson.JsonNode
+import org.codehaus.jackson.map.JsonMappingException
 import org.codehaus.jackson.node.JsonNodeFactory
 import scala.util._
 import scala.collection.JavaConverters._
 import scala.util.control.NonFatal
 
 object JsonInjections {
+
   implicit def mapInjection[L, W](implicit labelInj: Injection[L, String], weightInj: JsonNodeInjection[W]): JsonNodeInjection[Map[L, W]] =
     new AbstractJsonNodeInjection[Map[L, W]] {
       def apply(frequencies: Map[L, W]) =
@@ -28,7 +30,8 @@ object JsonInjections {
     }
 
   implicit def dispatchJsonNodeInjection[A: JsonNodeInjection, B: JsonNodeInjection, C: JsonNodeInjection, D: JsonNodeInjection]: JsonNodeInjection[Dispatched[A, B, C, D]] = new AbstractJsonNodeInjection[Dispatched[A, B, C, D]] {
-    def apply(dispatched: Dispatched[A, B, C, D]) = {
+
+    def apply(dispatched: Dispatched[A, B, C, D]): JsonNode = {
       val obj = JsonNodeFactory.instance.objectNode
       dispatched match {
         case Ordinal(v) => obj.put("ordinal", toJsonNode(v))
@@ -39,13 +42,14 @@ object JsonInjections {
       obj
     }
 
-    override def invert(n: JsonNode) = n.getFieldNames.asScala.toList.headOption match {
-      case Some("ordinal") => fromJsonNode[A](n.get("ordinal")).map { Ordinal(_) }
-      case Some("nominal") => fromJsonNode[B](n.get("nominal")).map { Nominal(_) }
-      case Some("continuous") => fromJsonNode[C](n.get("continuous")).map { Continuous(_) }
-      case Some("sparse") => fromJsonNode[D](n.get("sparse")).map { Sparse(_) }
-      case _ => sys.error("Not a dispatched node: " + n)
-    }
+    override def invert(n: JsonNode): Try[Dispatched[A, B, C, D]] =
+      n.getFieldNames.asScala.toList.headOption match {
+        case Some("ordinal") => fromJsonNode[A](n.get("ordinal")).map { Ordinal(_) }
+        case Some("nominal") => fromJsonNode[B](n.get("nominal")).map { Nominal(_) }
+        case Some("continuous") => fromJsonNode[C](n.get("continuous")).map { Continuous(_) }
+        case Some("sparse") => fromJsonNode[D](n.get("sparse")).map { Sparse(_) }
+        case _ => failedAttempt("Not a dispatched node: " + n)
+      }
   }
 
   implicit def optionJsonNodeInjection[T: JsonNodeInjection] = new AbstractJsonNodeInjection[Option[T]] {
@@ -75,28 +79,34 @@ object JsonInjections {
     new AbstractJsonNodeInjection[Predicate[V]] {
       import Predicate._
 
-      def apply(pred: Predicate[V]) = {
+      def apply(pred: Predicate[V]): JsonNode = {
         val obj = JsonNodeFactory.instance.objectNode
         pred match {
-          case IsEq(v) => obj.put("iseq", toJsonNode(v))
-          case NotEq(v) => obj.put("noteq", toJsonNode(v))
+          case IsEq(v) => obj.put("isEq", toJsonNode(v))
+          case NotEq(v) => obj.put("notEq", toJsonNode(v))
           case Lt(v) => obj.put("lt", toJsonNode(v))
-          case LtEq(v) => obj.put("lteq", toJsonNode(v))
+          case LtEq(v) => obj.put("ltEq", toJsonNode(v))
           case Gt(v) => obj.put("gt", toJsonNode(v))
-          case GtEq(v) => obj.put("gteq", toJsonNode(v))
+          case GtEq(v) => obj.put("gtEq", toJsonNode(v))
         }
         obj
       }
 
-      override def invert(n: JsonNode) =
-        n.getFieldNames.asScala.toList.headOption match {
-          case Some("iseq") => fromJsonNode[V](n.get("iseq")).map(IsEq(_))
-          case Some("noteq") => fromJsonNode[V](n.get("noteq")).map(NotEq(_))
-          case Some("lt") => fromJsonNode[V](n.get("lt")).map(Lt(_))
-          case Some("lteq") => fromJsonNode[V](n.get("lteq")).map(LtEq(_))
-          case Some("gt") => fromJsonNode[V](n.get("gt")).map(Gt(_))
-          case Some("gteq") => fromJsonNode[V](n.get("gteq")).map(GtEq(_))
-          case _ => sys.error("not a predicate node: " + n)
+      override def invert(n: JsonNode): Try[Predicate[V]] =
+        n.getFields.asScala.toList match {
+          case entry :: Nil =>
+            val t: Try[V] = fromJsonNode[V](entry.getValue)
+            entry.getKey match {
+              case "isEq" => t.map(IsEq(_))
+              case "notEq" => t.map(NotEq(_))
+              case "lt" => t.map(Lt(_))
+              case "ltEq" => t.map(LtEq(_))
+              case "gt" => t.map(Gt(_))
+              case "gtEq" => t.map(GtEq(_))
+              case k => failedAttempt(s"unknown predicate type: $k")
+            }
+          case _ =>
+            failedAttempt(s"invalid predicate json: $n")
         }
     }
   }
