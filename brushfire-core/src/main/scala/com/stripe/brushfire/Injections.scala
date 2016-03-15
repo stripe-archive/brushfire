@@ -8,12 +8,14 @@ import com.twitter.bijection.Inversion.{ attempt, attemptWhen }
 import com.twitter.bijection.InversionFailure.{ failedAttempt, partialFailure }
 import JsonNodeInjection._
 import org.codehaus.jackson.JsonNode
+import org.codehaus.jackson.map.JsonMappingException
 import org.codehaus.jackson.node.JsonNodeFactory
 import scala.util._
 import scala.collection.JavaConverters._
 import scala.util.control.NonFatal
 
 object JsonInjections {
+
   implicit def mapInjection[L, W](implicit labelInj: Injection[L, String], weightInj: JsonNodeInjection[W]): JsonNodeInjection[Map[L, W]] =
     new AbstractJsonNodeInjection[Map[L, W]] {
       def apply(frequencies: Map[L, W]) =
@@ -28,7 +30,8 @@ object JsonInjections {
     }
 
   implicit def dispatchJsonNodeInjection[A: JsonNodeInjection, B: JsonNodeInjection, C: JsonNodeInjection, D: JsonNodeInjection]: JsonNodeInjection[Dispatched[A, B, C, D]] = new AbstractJsonNodeInjection[Dispatched[A, B, C, D]] {
-    def apply(dispatched: Dispatched[A, B, C, D]) = {
+
+    def apply(dispatched: Dispatched[A, B, C, D]): JsonNode = {
       val obj = JsonNodeFactory.instance.objectNode
       dispatched match {
         case Ordinal(v) => obj.put("ordinal", toJsonNode(v))
@@ -39,13 +42,14 @@ object JsonInjections {
       obj
     }
 
-    override def invert(n: JsonNode) = n.getFieldNames.asScala.toList.headOption match {
-      case Some("ordinal") => fromJsonNode[A](n.get("ordinal")).map { Ordinal(_) }
-      case Some("nominal") => fromJsonNode[B](n.get("nominal")).map { Nominal(_) }
-      case Some("continuous") => fromJsonNode[C](n.get("continuous")).map { Continuous(_) }
-      case Some("sparse") => fromJsonNode[D](n.get("sparse")).map { Sparse(_) }
-      case _ => sys.error("Not a dispatched node: " + n)
-    }
+    override def invert(n: JsonNode): Try[Dispatched[A, B, C, D]] =
+      n.getFieldNames.asScala.toList.headOption match {
+        case Some("ordinal") => fromJsonNode[A](n.get("ordinal")).map { Ordinal(_) }
+        case Some("nominal") => fromJsonNode[B](n.get("nominal")).map { Nominal(_) }
+        case Some("continuous") => fromJsonNode[C](n.get("continuous")).map { Continuous(_) }
+        case Some("sparse") => fromJsonNode[D](n.get("sparse")).map { Sparse(_) }
+        case _ => failedAttempt("Not a dispatched node: " + n)
+      }
   }
 
   implicit def optionJsonNodeInjection[T: JsonNodeInjection] = new AbstractJsonNodeInjection[Option[T]] {
@@ -73,39 +77,37 @@ object JsonInjections {
 
   implicit def predicateJsonInjection[V](implicit vInj: JsonNodeInjection[V], ord: Ordering[V] = null): JsonNodeInjection[Predicate[V]] = {
     new AbstractJsonNodeInjection[Predicate[V]] {
-      def apply(pred: Predicate[V]) = {
+      import Predicate._
+
+      def apply(pred: Predicate[V]): JsonNode = {
         val obj = JsonNodeFactory.instance.objectNode
         pred match {
-          case IsPresent(None) => obj.put("exists", JsonNodeFactory.instance.nullNode)
-          case IsPresent(Some(pred)) => obj.put("exists", toJsonNode(pred)(predicateJsonInjection))
-          case EqualTo(v) => obj.put("eq", toJsonNode(v))
-          case LessThan(v) => obj.put("lt", toJsonNode(v))
-          case Not(pred) => obj.put("not", toJsonNode(pred)(predicateJsonInjection))
-          case AnyOf(preds) =>
-            val ary = JsonNodeFactory.instance.arrayNode
-            preds.foreach { pred => ary.add(toJsonNode(pred)(predicateJsonInjection)) }
-            obj.put("or", ary)
+          case IsEq(v) => obj.put("isEq", toJsonNode(v))
+          case NotEq(v) => obj.put("notEq", toJsonNode(v))
+          case Lt(v) => obj.put("lt", toJsonNode(v))
+          case LtEq(v) => obj.put("ltEq", toJsonNode(v))
+          case Gt(v) => obj.put("gt", toJsonNode(v))
+          case GtEq(v) => obj.put("gtEq", toJsonNode(v))
         }
         obj
       }
 
-      override def invert(n: JsonNode) = {
-        n.getFieldNames.asScala.toList.headOption match {
-          case Some("eq") => fromJsonNode[V](n.get("eq")).map { EqualTo(_) }
-          case Some("lt") =>
-            if (ord == null)
-              sys.error("No Ordering[V] supplied but less than used")
-            else
-              fromJsonNode[V](n.get("lt")).map { LessThan(_) }
-          case Some("not") => fromJsonNode[Predicate[V]](n.get("not")).map { Not(_) }
-          case Some("or") => fromJsonNode[List[Predicate[V]]](n.get("or")).map { AnyOf(_) }
-          case Some("exists") =>
-            val predNode = n.get("exists")
-            if (predNode.isNull) Success(IsPresent[V](None))
-            else fromJsonNode[Predicate[V]](predNode).map(p => IsPresent(Some(p)))
-          case _ => sys.error("Not a predicate node: " + n)
+      override def invert(n: JsonNode): Try[Predicate[V]] =
+        n.getFields.asScala.toList match {
+          case entry :: Nil =>
+            val t: Try[V] = fromJsonNode[V](entry.getValue)
+            entry.getKey match {
+              case "isEq" => t.map(IsEq(_))
+              case "notEq" => t.map(NotEq(_))
+              case "lt" => t.map(Lt(_))
+              case "ltEq" => t.map(LtEq(_))
+              case "gt" => t.map(Gt(_))
+              case "gtEq" => t.map(GtEq(_))
+              case k => failedAttempt(s"unknown predicate type: $k")
+            }
+          case _ =>
+            failedAttempt(s"invalid predicate json: $n")
         }
-      }
     }
   }
 

@@ -10,7 +10,7 @@ object Tree {
   def singleton[K, V, T](t: T): Tree[K, V, T] =
     AnnotatedTree(LeafNode(0, t, ()))
 
-  def expand[K, V, T: Monoid](times: Int, treeIndex: Int, leaf: LeafNode[K, V, T, Unit], splitter: Splitter[V, T], evaluator: Evaluator[V, T], stopper: Stopper[T], sampler: Sampler[K], instances: Iterable[Instance[K, V, T]]): Node[K, V, T, Unit] = {
+  def expand[K, V: Ordering, T: Monoid](times: Int, treeIndex: Int, leaf: LeafNode[K, V, T, Unit], splitter: Splitter[V, T], evaluator: Evaluator[V, T], stopper: Stopper[T], sampler: Sampler[K], instances: Iterable[Instance[K, V, T]]): Node[K, V, T, Unit] = {
     if (times > 0 && stopper.shouldSplit(leaf.target)) {
       implicit val jdSemigroup = splitter.semigroup
 
@@ -32,7 +32,12 @@ object Tree {
         if (splits.isEmpty) None else {
           val (splitFeature, (Split(pred, left, right), _)) = splits.maxBy { case (f, (x, s)) => s }
           def expandChild(dist: T): Node[K, V, T, Unit] = {
-            val newInstances = instances.filter(inst => pred.run(inst.features.get(splitFeature)))
+            val newInstances = instances.filter { inst =>
+              inst.features.get(splitFeature) match {
+                case Some(v) => pred(v)
+                case None => true
+              }
+            }
             val target = Monoid.sum(newInstances.map(_.target))
             expand(times - 1, treeIndex, LeafNode(0, target), splitter, evaluator, stopper, sampler, newInstances)
           }

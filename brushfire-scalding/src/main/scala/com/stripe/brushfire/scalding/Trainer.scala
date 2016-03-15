@@ -21,7 +21,7 @@ object TreeSource {
   }
 }
 
-case class Trainer[K: Ordering, V, T: Monoid](
+case class Trainer[K: Ordering, V: Ordering, T: Monoid](
     @transient trainingDataExecution: Execution[TypedPipe[Instance[K, V, T]]],
     @transient samplerExecution: Execution[Sampler[K]],
     @transient treeExecution: Execution[TypedPipe[(Int, Tree[K, V, T])]],
@@ -335,7 +335,7 @@ case class Trainer[K: Ordering, V, T: Monoid](
 object Trainer {
   val MaxReducers = 20
 
-  def apply[K: Ordering, V, T: Monoid](trainingData: TypedPipe[Instance[K, V, T]], sampler: Sampler[K]): Trainer[K, V, T] = {
+  def apply[K: Ordering, V: Ordering, T: Monoid](trainingData: TypedPipe[Instance[K, V, T]], sampler: Sampler[K]): Trainer[K, V, T] = {
     val empty = 0.until(sampler.numTrees).map { treeIndex => (treeIndex, Tree.singleton[K, V, T](Monoid.zero)) }
     Trainer(
       Execution.from(trainingData),

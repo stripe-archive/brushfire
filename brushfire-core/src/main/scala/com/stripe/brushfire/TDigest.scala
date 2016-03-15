@@ -3,6 +3,8 @@ package com.stripe.brushfire
 import com.tdunning.math.stats.TDigest
 import com.twitter.algebird.{Monoid, Semigroup}
 
+import Predicate.Lt
+
 private [this] case object TDigestSemigroup extends Semigroup[TDigest] {
   override def plus(l: TDigest, r: TDigest): TDigest = {
     val td = TDigest.createDigest(math.max(l.compression(), r.compression()))
@@ -79,7 +81,7 @@ case class TDigestSplitter[L](k: Int = 25, compression: Double = 100.0) extends 
       // and so they can be discarded immediately
       if left.nonEmpty || right.nonEmpty
     } yield {
-      Split(LessThan(q), left, right)
+      Split(Lt(q), left, right)
     }
 
     // if the input is not continuous or has too few examples we will end up
