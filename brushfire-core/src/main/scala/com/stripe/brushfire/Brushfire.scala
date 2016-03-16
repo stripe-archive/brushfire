@@ -31,14 +31,17 @@ trait Splitter[V, T] {
   /** the type of a representation of a joint distribution of feature values and predictions */
   type S
 
-  /** return a new joint distribution from a value and a target distribution */
-  def create(value: V, target: T): S
+  /** the type of a key representing a region of the feature value space */
+  type R
+
+  /** return new joint distributions/regions from a value and a target distribution */
+  def create(value: V, target: T): Iterable[(R,S)]
 
   /** semigroup to sum up joint distributions */
   def semigroup: Semigroup[S]
 
-  /** return candidate splits given a joint distribution and the parent node's target distrubution */
-  def split(parent: T, stats: S): Iterable[Split[V, T]]
+  /** return candidate splits given a joint distribution, region, and the parent node's target distrubution */
+  def split(parent: T, region: R, stats: S): Iterable[Split[V, T]]
 }
 
 /** Candidate split for a tree node */
