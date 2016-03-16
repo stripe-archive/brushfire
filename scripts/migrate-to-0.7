@@ -10,6 +10,85 @@ class MigrationFailed(Exception):
         super(MigrationFailed, self).__init__(msg)
 
 
+PREDICATE_NEGATIONS = {
+    'isEq': 'notEq', 'notEq': 'isEq',
+    'lt': 'gtEq', 'ltEq': 'gt',
+    'gt': 'ltEq', 'gtEq': 'lt'
+}
+
+
+PREDICATE_UNIONS = {
+    ('lt', 'lt'): 'lt',
+    ('lt', 'ltEq'): 'ltEq',
+    ('lt', 'isEq'): 'ltEq',
+    ('ltEq', 'lt'): 'ltEq',
+    ('ltEq', 'ltEq'): 'ltEq',
+    ('ltEq', 'isEq'): 'ltEq',
+    ('gt', 'gt'): 'gt',
+    ('gt', 'gtEq'): 'gtEq',
+    ('gt', 'isEq'): 'gtEq',
+    ('gtEq', 'gt'): 'gtEq',
+    ('gtEq', 'gtEq'): 'gtEq',
+    ('gtEq', 'isEq'): 'gtEq',
+    ('isEq', 'isEq'): 'isEq',
+    ('notEq', 'notEq'): 'notEq',
+}
+
+
+def union_predicate(lhs, rhs):
+    """
+    Returns a new predicate representing the union of the new predicates lhs
+    and rhs. This will fail for a large number of otherwise valid cases. This
+    requires that both predicates have the same value, and either have the
+    exact same op (ie the predicate was duplicated by accident), span the same
+    open halfspace (ie lt and ltEq or gt and gtEq), or or one is an isEq.
+    """
+    l_op, = lhs.keys()
+    r_op, = rhs.keys()
+    op = PREDICATE_UNIONS.get((l_op, r_op))
+    if op is not None and lhs.value == rhs.value:
+        return {op: lhs[l_op]}
+    else:
+        raise MigrationFailed("can't migrate complex predicate")
+
+
+def negate_predicate(pred):
+    """
+    Returns the negation of a new predicate.
+    """
+    op, = pred.keys()
+    neg_op = PREDICATE_NEGATIONS[op]
+    return {neg_op: pred[op]}
+
+
+def is_negation(l_pred, r_pred):
+    """
+    Returns true iff l_pred and r_pred are each other's complement.
+    """
+    l_op, = l_pred.keys()
+    r_op, = r_pred.keys()
+    return PREDICATE_NEGATIONS[l_op] == r_op
+
+
+def migrate_predicate(pred):
+    """
+    Convert an old style style predicate to a new style predicate if possible.
+    """
+    op, = pred.keys()
+    if op == 'eq':
+        return {'isEq': pred[op]}
+    elif op == 'lt':
+        return {'lt': pred[op]}
+    elif op == 'not':
+        return negate_predicate(migrate_predicate(pred[op]))
+    elif op == 'or':
+        return reduce(union_predicate, map(migrate_predicate, pred[op]))
+    elif op == 'exists':
+        raise MigrationFailed("can't migrate exists predicate")
+    else:
+        raise MigrationFailed("invalid predicate: {}".format(op))
+
+
 def migrate_node(node):
     """
     Migrate a JSON node to from our old format to the new format. This will
@@ -24,8 +103,8 @@ def migrate_node(node):
         key = left['feature']
         if right['feature'] != key:
             raise MigrationFailed('predicates use different feature')
-        predicate = left['predicate']
-        if right['predicate'].get('not') != predicate:
+        predicate = migrate_predicate(left['predicate'])
+        if not is_negation(predicate, migrate_predicate(right['predicate'])):
             raise MigrationFailed('predicates are not unifiable')
         left_child = migrate_node(left['children'])
         right_child = migrate_node(right['children'])
@@ -38,7 +117,8 @@ def migrate_node(node):
 
 
 parser = argparse.ArgumentParser(
-    description='migrate older models to format used in 0.7.0+')
+    description='migrate older brushfire models produced by the scalding ' +
+                'trainer to format used in 0.7.0+')
 parser.add_argument('model', type=argparse.FileType('r'),
                     nargs='?', default=sys.stdin,
                     help='old model file to migrate (defaults to stdin)')
