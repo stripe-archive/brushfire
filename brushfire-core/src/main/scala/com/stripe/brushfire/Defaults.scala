@@ -2,7 +2,16 @@ package com.stripe.brushfire
 
 import com.twitter.algebird._
 
-trait Defaults {
+trait LowPriorityDefaults {
+  implicit def dispatchedSplitterWithSparseBoolean[A: Ordering, B, C: Ordering, T](
+      implicit ordinal: Splitter[A, T],
+      nominal: Splitter[B, T],
+      continuous: Splitter[C, T],
+      sparse: Splitter[Boolean, T]): Splitter[Dispatched[A, B, C, Boolean], T] =
+    DispatchedSplitter(ordinal, nominal, continuous, sparse)
+}
+
+trait Defaults extends LowPriorityDefaults {
   import Predicate.{ Lt, IsEq }
 
   implicit def chiSquaredEvaluator[V, L, W](implicit weightMonoid: Monoid[W], weightDouble: W => Double): Evaluator[V, Map[L, W]] = ChiSquaredEvaluator[V, L, W]
