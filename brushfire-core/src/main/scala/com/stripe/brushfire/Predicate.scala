@@ -25,6 +25,11 @@ sealed abstract class Predicate[V] extends Product with Serializable {
   import Predicate._
 
   /**
+   * Returns the right-hand side of the predicate's comparison.
+   */
+  def value: V
+
+  /**
    * Evaluate this predicate for the feature value `v`.
    */
   def apply(v: V)(implicit ord: Ordering[V]): Boolean =
@@ -42,9 +47,6 @@ sealed abstract class Predicate[V] extends Product with Serializable {
    *
    * The resulting predicate will return true in cases where this
    * predicate returns false.
-   *
-   * (Since all predicates return true for missing features, that
-   * behavior is not negated by this method.)
    */
   def unary_!(): Predicate[V] =
     this match {
