@@ -44,10 +44,17 @@ case class DispatchedSplitter[A: Ordering, B, C: Ordering, D, T](
 }
 
 object Dispatched {
-  implicit def ordering[A, B, C, D](implicit ordinalOrdering: Ordering[A], continuousOrdering: Ordering[C]): Ordering[Dispatched[A, B, C, D]] = new Ordering[Dispatched[A, B, C, D]] {
+  implicit def ordering[A, B, C, D](implicit
+    ordinalOrdering: Ordering[A],
+    nominalOrdering: Ordering[B],
+    continuousOrdering: Ordering[C],
+    sparseOrdering: Ordering[D]
+  ): Ordering[Dispatched[A, B, C, D]] = new Ordering[Dispatched[A, B, C, D]] {
     def compare(left: Dispatched[A, B, C, D], right: Dispatched[A, B, C, D]) = (left, right) match {
       case (Ordinal(l), Ordinal(r)) => ordinalOrdering.compare(l, r)
+      case (Nominal(l), Nominal(r)) => nominalOrdering.compare(l, r)
       case (Continuous(l), Continuous(r)) => continuousOrdering.compare(l, r)
+      case (Sparse(l), Sparse(r)) => sparseOrdering.compare(l, r)
       case _ => sys.error("Values cannot be compared: " + (left, right))
     }
   }
