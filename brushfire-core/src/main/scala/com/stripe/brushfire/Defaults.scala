@@ -1,6 +1,7 @@
 package com.stripe.brushfire
 
 import com.twitter.algebird._
+import spire.algebra.PartialOrder
 
 trait Defaults {
   import Predicate.{ Lt, IsEq }

@@ -1,8 +1,9 @@
 package com.stripe.brushfire
 
 import com.twitter.algebird._
+import spire.algebra.PartialOrder
 
-case class BinarySplitter[V: Ordering, T: Monoid](partition: V => Predicate[V]) extends Splitter[V, T] {
+case class BinarySplitter[V: PartialOrder, T: Monoid](partition: V => Predicate[V]) extends Splitter[V, T] {
 
   type S = Map[V, T]
   def create(value: V, target: T) = Map(value -> target)

@@ -11,6 +11,7 @@ object Deps {
     val bijection = "0.7.0"
     val bonsai = "0.1.3"
     val tDigest = "3.1"
+    val spire = "0.11.0"
 
     val hadoopClient = "2.5.2"
     val scalding = "0.13.1"
@@ -30,6 +31,7 @@ object Deps {
   val jacksonXC      = "org.codehaus.jackson" % "jackson-xc"         % V.jackson
   val jacksonJAXRS   = "org.codehaus.jackson" % "jackson-jaxrs"      % V.jackson
   val tDigest        = "com.tdunning"         % "t-digest"           % V.tDigest
+  val spire          = "org.spire-math"      %% "spire"              % V.spire
 
   val hadoopClient   = "org.apache.hadoop"    % "hadoop-client"      % V.hadoopClient   % "provided"
   val scaldingCore   = "com.twitter"         %% "scalding-core"      % V.scalding

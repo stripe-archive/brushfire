@@ -3,6 +3,7 @@ package com.stripe.brushfire.local
 import com.stripe.bonsai._
 import com.stripe.brushfire._
 import com.twitter.algebird._
+import spire.algebra.PartialOrder
 
 import AnnotatedTree.{AnnotatedTreeTraversal, fullBinaryTreeOpsForAnnotatedTree}
 

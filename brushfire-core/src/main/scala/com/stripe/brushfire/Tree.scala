@@ -2,6 +2,7 @@ package com.stripe.brushfire
 
 import com.stripe.bonsai.FullBinaryTreeOps
 import com.twitter.algebird._
+import spire.algebra.PartialOrder
 
 object Tree {
   def apply[K, V, T](node: Node[K, V, T, Unit]): Tree[K, V, T] =
@@ -10,7 +11,7 @@ object Tree {
   def singleton[K, V, T](t: T): Tree[K, V, T] =
     AnnotatedTree(LeafNode(0, t, ()))
 
-  def expand[K, V: Ordering, T: Monoid](times: Int, treeIndex: Int, leaf: LeafNode[K, V, T, Unit], splitter: Splitter[V, T], evaluator: Evaluator[V, T], stopper: Stopper[T], sampler: Sampler[K], instances: Iterable[Instance[K, V, T]]): Node[K, V, T, Unit] = {
+  def expand[K, V: PartialOrder, T: Monoid](times: Int, treeIndex: Int, leaf: LeafNode[K, V, T, Unit], splitter: Splitter[V, T], evaluator: Evaluator[V, T], stopper: Stopper[T], sampler: Sampler[K], instances: Iterable[Instance[K, V, T]]): Node[K, V, T, Unit] = {
     if (times > 0 && stopper.shouldSplit(leaf.target)) {
       implicit val jdSemigroup = splitter.semigroup
 

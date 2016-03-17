@@ -3,10 +3,11 @@ package local
 
 import com.stripe.brushfire._
 import com.twitter.algebird._
+import spire.algebra.PartialOrder
 
 import AnnotatedTree.AnnotatedTreeTraversal
 
-case class Trainer[K: Ordering, V: Ordering, T: Monoid](
+case class Trainer[K: Ordering, V: PartialOrder, T: Monoid](
     trainingData: Iterable[Instance[K, V, T]],
     sampler: Sampler[K],
     trees: List[Tree[K, V, T]])(implicit traversal: AnnotatedTreeTraversal[K, V, T, Unit]) {
@@ -85,7 +86,7 @@ case class Trainer[K: Ordering, V: Ordering, T: Monoid](
 }
 
 object Trainer {
-  def apply[K: Ordering, V: Ordering, T: Monoid](trainingData: Iterable[Instance[K, V, T]], sampler: Sampler[K])(implicit traversal: AnnotatedTreeTraversal[K, V, T, Unit]): Trainer[K, V, T] = {
+  def apply[K: Ordering, V: PartialOrder, T: Monoid](trainingData: Iterable[Instance[K, V, T]], sampler: Sampler[K])(implicit traversal: AnnotatedTreeTraversal[K, V, T, Unit]): Trainer[K, V, T] = {
     val empty = 0.until(sampler.numTrees).toList.map { i => Tree.singleton[K, V, T](Monoid.zero) }
     Trainer(trainingData, sampler, empty)
   }
