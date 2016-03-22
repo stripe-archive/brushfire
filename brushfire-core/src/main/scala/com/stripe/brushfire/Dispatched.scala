@@ -1,6 +1,7 @@
 package com.stripe.brushfire
 
 import com.twitter.algebird._
+import spire.algebra.Order
 
 sealed trait Dispatched[+A, +B, +C, +D]
 
@@ -9,7 +10,7 @@ case class Nominal[B](nominal: B) extends Dispatched[Nothing, B, Nothing, Nothin
 case class Continuous[C](continuous: C) extends Dispatched[Nothing, Nothing, C, Nothing]
 case class Sparse[D](sparse: D) extends Dispatched[Nothing, Nothing, Nothing, D]
 
-case class DispatchedSplitter[A: Ordering, B, C: Ordering, D, T](
+case class DispatchedSplitter[A, B, C, D, T](
   ordinal: Splitter[A, T],
   nominal: Splitter[B, T],
   continuous: Splitter[C, T],
@@ -44,18 +45,21 @@ case class DispatchedSplitter[A: Ordering, B, C: Ordering, D, T](
 }
 
 object Dispatched {
-  implicit def ordering[A, B, C, D](implicit ordinalOrdering: Ordering[A], continuousOrdering: Ordering[C]): Ordering[Dispatched[A, B, C, D]] = new Ordering[Dispatched[A, B, C, D]] {
-    def compare(left: Dispatched[A, B, C, D], right: Dispatched[A, B, C, D]) = (left, right) match {
-      case (Ordinal(l), Ordinal(r)) => ordinalOrdering.compare(l, r)
-      case (Continuous(l), Continuous(r)) => continuousOrdering.compare(l, r)
-      case _ => sys.error("Values cannot be compared: " + (left, right))
+  implicit def ordering[A, B, C, D](implicit orderA: Order[A], orderC: Order[C]): Order[Dispatched[A, B, C, D]] =
+    new Order[Dispatched[A, B, C, D]] {
+      def compare(left: Dispatched[A, B, C, D], right: Dispatched[A, B, C, D]) =
+        (left, right) match {
+          case (Ordinal(l), Ordinal(r)) => orderA.compare(l, r)
+          case (Continuous(l), Continuous(r)) => orderC.compare(l, r)
+          case _ => sys.error("Values cannot be compared: " + (left, right))
+        }
     }
-  }
 
   def ordinal[A](a: A) = Ordinal(a)
   def nominal[B](b: B) = Nominal(b)
   def continuous[C](c: C) = Continuous(c)
   def sparse[D](d: D) = Sparse(d)
 
-  def wrapSplits[X, T, A: Ordering, B, C: Ordering, D](splits: Iterable[Split[X, T]])(fn: X => Dispatched[A, B, C, D]) = splits.map(_.map(fn))
+  def wrapSplits[X, T, A, B, C, D](splits: Iterable[Split[X, T]])(fn: X => Dispatched[A, B, C, D]) =
+    splits.map(_.map(fn))
 }

@@ -3,11 +3,11 @@ package local
 
 import com.stripe.brushfire._
 import com.twitter.algebird._
-import spire.algebra.PartialOrder
+import spire.algebra.{ Order, PartialOrder }
 
 import AnnotatedTree.AnnotatedTreeTraversal
 
-case class Trainer[K: Ordering, V: PartialOrder, T: Monoid](
+case class Trainer[K: Order, V: PartialOrder, T: Monoid](
     trainingData: Iterable[Instance[K, V, T]],
     sampler: Sampler[K],
     trees: List[Tree[K, V, T]])(implicit traversal: AnnotatedTreeTraversal[K, V, T, Unit]) {
@@ -58,7 +58,7 @@ case class Trainer[K: Ordering, V: PartialOrder, T: Monoid](
         Tree.expand(times, treeIndex, LeafNode[K, V, T, Unit](index, target, annotation), splitter, evaluator, stopper, sampler, instances)
     }
 
-  def prune[P, E](error: Error[T, P, E])(implicit voter: Voter[T, P], ord: Ordering[E]): Trainer[K, V, T] =
+  def prune[P, E](error: Error[T, P, E])(implicit voter: Voter[T, P], ord: Order[E]): Trainer[K, V, T] =
     updateTrees {
       case (tree, treeIndex, byLeaf) =>
         val byLeafIndex = byLeaf.map {
@@ -86,8 +86,10 @@ case class Trainer[K: Ordering, V: PartialOrder, T: Monoid](
 }
 
 object Trainer {
-  def apply[K: Ordering, V: PartialOrder, T: Monoid](trainingData: Iterable[Instance[K, V, T]], sampler: Sampler[K])(implicit traversal: AnnotatedTreeTraversal[K, V, T, Unit]): Trainer[K, V, T] = {
-    val empty = 0.until(sampler.numTrees).toList.map { i => Tree.singleton[K, V, T](Monoid.zero) }
-    Trainer(trainingData, sampler, empty)
+  def apply[K: Order, V: PartialOrder, T: Monoid](trainingData: Iterable[Instance[K, V, T]], sampler: Sampler[K])(implicit traversal: AnnotatedTreeTraversal[K, V, T, Unit]): Trainer[K, V, T] = {
+    val emptyTrees = (0 until sampler.numTrees).toList.map { i =>
+      Tree.singleton[K, V, T](Monoid.zero)
+    }
+    Trainer(trainingData, sampler, emptyTrees)
   }
 }

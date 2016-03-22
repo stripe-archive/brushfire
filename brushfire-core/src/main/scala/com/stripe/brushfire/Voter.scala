@@ -1,6 +1,8 @@
 package com.stripe.brushfire
 
 import com.twitter.algebird._
+import spire.algebra.Order
+import spire.syntax.all._
 
 import AnnotatedTree.AnnotatedTreeTraversal
 
@@ -61,10 +63,12 @@ object Voter {
       .contramap[Map[L, M]](normalize(_) -> 1)
       .map { case (m, cnt) => m.mapValues(_ / cnt) }
 
-  def mode[L, M: Ordering]: FrequencyVoter[L, M] =
+  def mode[L, M](implicit ev: Order[M]): FrequencyVoter[L, M] = {
+    val byFreq: Order[(L, M)] = ev.on(_._2)
     fromMonoid[Map[L, Double]]
-      .contramap[Map[L, M]](m => Map(mode(m) -> 1.0))
+      .contramap[Map[L, M]](m => Map(m.qmax(byFreq)._1 -> 1.0))
       .map(normalize(_))
+  }
 
   def threshold[M](threshold: Double, voter: FrequencyVoter[Boolean, M]): Voter[Map[Boolean, M], Boolean] =
     voter.map(m => m.getOrElse(true, 0D) > threshold)
@@ -77,6 +81,4 @@ object Voter {
     val total = math.max(nonNeg.values.sum, 1.0)
     nonNeg.mapValues { _ / total }
   }
-
-  private def mode[L, M: Ordering](m: Map[L, M]): L = m.maxBy { _._2 }._1
 }

@@ -1,7 +1,7 @@
 package com.stripe.brushfire
 
 import com.stripe.bonsai.FullBinaryTreeOps
-import spire.algebra.PartialOrder
+import spire.algebra.{ Order, PartialOrder }
 
 /**
  * A `TreeTraversal` provides a way to find all of the leaves in a tree that
@@ -69,7 +69,7 @@ object TreeTraversal {
    * annotations. This means that if we have multiple valid candidate children,
    * we will traverse the child with the largest annotation first.
    */
-  def weightedDepthFirst[Tree, K, V: PartialOrder, T, A: Ordering](implicit treeOps: FullBinaryTreeOps[Tree, BranchLabel[K, V, A], LeafLabel[T, A]]): TreeTraversal[Tree, K, V, T, A] =
+  def weightedDepthFirst[Tree, K, V: PartialOrder, T, A: Order](implicit treeOps: FullBinaryTreeOps[Tree, BranchLabel[K, V, A], LeafLabel[T, A]]): TreeTraversal[Tree, K, V, T, A] =
     DepthFirstTreeTraversal[Tree, K, V, T, A](Reorder.weightedDepthFirst)
 
   /**

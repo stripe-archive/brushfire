@@ -4,7 +4,7 @@ import com.stripe.brushfire._
 import com.twitter.scalding._
 import com.twitter.algebird._
 import com.twitter.bijection._
-import spire.algebra.PartialOrder
+import spire.algebra.{ Order, PartialOrder }
 import scala.util.Random
 
 abstract class TrainerJob(args: Args) extends ExecutionJob[Unit](args) with Defaults {
@@ -187,6 +187,7 @@ case class Trainer[K: Ordering, V: PartialOrder, T: Monoid](
    *
    */
   def prune[P, E](path: String, error: Error[T, P, E])(implicit voter: Voter[T, P], inj: Injection[Tree[K, V, T], String], ord: Ordering[E]): Trainer[K, V, T] = {
+    implicit val order: Order[E] = Order.from(ord.compare)
     flatMapTrees {
       case (trainingData, sampler, trees) =>
         lazy val treeMap = trees.toMap
