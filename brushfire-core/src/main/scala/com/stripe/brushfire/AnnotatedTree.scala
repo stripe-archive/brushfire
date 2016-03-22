@@ -38,6 +38,9 @@ case class SplitNode[K, V, T, A](key: K, predicate: Predicate[V], leftChild: Nod
     }
 
   def splitLabel: (K, Predicate[V], A) = (key, predicate, annotation)
+
+  override def toString: String =
+    s"SplitNode($key,${predicate.display(key.toString)},$leftChild,$rightChild)"
 }
 
 object SplitNode {

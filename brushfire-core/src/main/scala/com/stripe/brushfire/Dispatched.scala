@@ -18,6 +18,7 @@ case class DispatchedSplitter[A, B, C, D, T](
     extends Splitter[Dispatched[A, B, C, D], T] {
 
   type S = Dispatched[ordinal.S, nominal.S, continuous.S, sparse.S]
+
   val semigroup =
     Semigroup.from[S] {
       case (Ordinal(l), Ordinal(r)) => Ordinal(ordinal.semigroup.plus(l, r))
@@ -45,14 +46,20 @@ case class DispatchedSplitter[A, B, C, D, T](
 }
 
 object Dispatched {
-  implicit def ordering[A, B, C, D](implicit orderA: Order[A], orderC: Order[C]): Order[Dispatched[A, B, C, D]] =
+  implicit def dispatchedOrder[A, B, C, D](implicit
+    ordinalOrder: Order[A],
+    nominalOrder: Order[B],
+    continuousOrder: Order[C],
+    sparseOrder: Order[D]
+  ): Order[Dispatched[A, B, C, D]] =
     new Order[Dispatched[A, B, C, D]] {
-      def compare(left: Dispatched[A, B, C, D], right: Dispatched[A, B, C, D]) =
-        (left, right) match {
-          case (Ordinal(l), Ordinal(r)) => orderA.compare(l, r)
-          case (Continuous(l), Continuous(r)) => orderC.compare(l, r)
-          case _ => sys.error("Values cannot be compared: " + (left, right))
-        }
+      def compare(left: Dispatched[A, B, C, D], right: Dispatched[A, B, C, D]) = (left, right) match {
+        case (Ordinal(l), Ordinal(r)) => ordinalOrder.compare(l, r)
+        case (Nominal(l), Nominal(r)) => nominalOrder.compare(l, r)
+        case (Continuous(l), Continuous(r)) => continuousOrder.compare(l, r)
+        case (Sparse(l), Sparse(r)) => sparseOrder.compare(l, r)
+        case _ => sys.error("Values cannot be compared: " + (left, right))
+      }
     }
 
   def ordinal[A](a: A) = Ordinal(a)

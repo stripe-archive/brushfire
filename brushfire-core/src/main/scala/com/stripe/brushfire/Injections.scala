@@ -16,17 +16,25 @@ import scala.util.control.NonFatal
 
 object JsonInjections {
 
+  def fromSingletonObject[A](n: JsonNode)(f: (String, JsonNode) => Try[A]): Try[A] =
+    n.getFields.asScala.toList match {
+      case entry :: Nil => f(entry.getKey, entry.getValue)
+      case Nil => failedAttempt("no elements: " + n)
+      case _ => failedAttempt("too many elements: " + n)
+    }
+
   implicit def mapInjection[L, W](implicit labelInj: Injection[L, String], weightInj: JsonNodeInjection[W]): JsonNodeInjection[Map[L, W]] =
     new AbstractJsonNodeInjection[Map[L, W]] {
-      def apply(frequencies: Map[L, W]) =
-        toJsonNode(frequencies.map { case (k, v) => labelInj(k) -> toJsonNode(v) })
 
-      override def invert(n: JsonNode) =
-        fromJsonNode[Map[String, W]](n).flatMap { map =>
-          attempt(map) { m =>
-            m.map { case (str, v) => labelInj.invert(str).toOption.get -> v }
-          }
-        }
+      def apply(frequencies: Map[L, W]): JsonNode =
+        toJsonNode(frequencies.map { case (k, v) => (labelInj(k), toJsonNode(v)) })
+
+      override def invert(n: JsonNode): Try[Map[L, W]] =
+        Try {
+          n.getFields.asScala.map { e =>
+            (labelInj.invert(e.getKey).get, weightInj.invert(e.getValue).get)
+          }.toMap
+        }.recoverWith(partialFailure(n))
     }
 
   implicit def dispatchJsonNodeInjection[A: JsonNodeInjection, B: JsonNodeInjection, C: JsonNodeInjection, D: JsonNodeInjection]: JsonNodeInjection[Dispatched[A, B, C, D]] = new AbstractJsonNodeInjection[Dispatched[A, B, C, D]] {
@@ -43,36 +51,39 @@ object JsonInjections {
     }
 
     override def invert(n: JsonNode): Try[Dispatched[A, B, C, D]] =
-      n.getFieldNames.asScala.toList.headOption match {
-        case Some("ordinal") => fromJsonNode[A](n.get("ordinal")).map { Ordinal(_) }
-        case Some("nominal") => fromJsonNode[B](n.get("nominal")).map { Nominal(_) }
-        case Some("continuous") => fromJsonNode[C](n.get("continuous")).map { Continuous(_) }
-        case Some("sparse") => fromJsonNode[D](n.get("sparse")).map { Sparse(_) }
+      fromSingletonObject(n) {
+        case ("ordinal", v) => fromJsonNode[A](v).map(Ordinal(_))
+        case ("nominal", v) => fromJsonNode[B](v).map(Nominal(_))
+        case ("continuous", v) => fromJsonNode[C](v).map(Continuous(_))
+        case ("sparse", v) => fromJsonNode[D](v).map(Sparse(_))
         case _ => failedAttempt("Not a dispatched node: " + n)
       }
   }
 
   implicit def optionJsonNodeInjection[T: JsonNodeInjection] = new AbstractJsonNodeInjection[Option[T]] {
-    def apply(opt: Option[T]) = {
+    def apply(opt: Option[T]): JsonNode = {
       val ary = JsonNodeFactory.instance.arrayNode
       opt.foreach { t => ary.add(toJsonNode(t)) }
       ary
     }
 
-    def invert(n: JsonNode) =
-      n.getElements.asScala.toList.headOption match {
-        case Some(c) => fromJsonNode[T](c).map { t => Some(t) }
-        case None => Success(None: Option[T])
+    def invert(n: JsonNode): Try[Option[T]] =
+      n.getElements.asScala.toList match {
+        case c :: Nil => fromJsonNode[T](c).map(Some(_))
+        case Nil => Success(Option.empty[T])
+        case _ => failedAttempt("Not an option: " + n)
       }
   }
 
   implicit val bool2String: Injection[Boolean, String] = new AbstractInjection[Boolean, String] {
-    def apply(b: Boolean) = b.toString
-    override def invert(s: String) = s match {
-      case "true" => Success(true)
-      case "false" => Success(false)
-      case _ => failedAttempt(s)
-    }
+    def apply(b: Boolean): String =
+      b.toString
+    override def invert(s: String): Try[Boolean] =
+      s match {
+        case "true" => Success(true)
+        case "false" => Success(false)
+        case _ => failedAttempt(s)
+      }
   }
 
   implicit def predicateJsonInjection[V](implicit vInj: JsonNodeInjection[V]): JsonNodeInjection[Predicate[V]] = {
@@ -93,20 +104,17 @@ object JsonInjections {
       }
 
       override def invert(n: JsonNode): Try[Predicate[V]] =
-        n.getFields.asScala.toList match {
-          case entry :: Nil =>
-            val t: Try[V] = fromJsonNode[V](entry.getValue)
-            entry.getKey match {
-              case "isEq" => t.map(IsEq(_))
-              case "notEq" => t.map(NotEq(_))
-              case "lt" => t.map(Lt(_))
-              case "ltEq" => t.map(LtEq(_))
-              case "gt" => t.map(Gt(_))
-              case "gtEq" => t.map(GtEq(_))
-              case k => failedAttempt(s"unknown predicate type: $k")
-            }
-          case _ =>
-            failedAttempt(s"invalid predicate json: $n")
+        fromSingletonObject(n) { (k, v) =>
+          val t: Try[V] = fromJsonNode[V](v)
+          k match {
+            case "isEq" => t.map(IsEq(_))
+            case "notEq" => t.map(NotEq(_))
+            case "lt" => t.map(Lt(_))
+            case "ltEq" => t.map(LtEq(_))
+            case "gt" => t.map(Gt(_))
+            case "gtEq" => t.map(GtEq(_))
+            case k => failedAttempt(s"unknown predicate type: $k")
+          }
         }
     }
   }
@@ -125,46 +133,43 @@ object JsonInjections {
 
     implicit def nodeJsonNodeInjection: JsonNodeInjection[Node[K, V, T, A]] =
       new AbstractJsonNodeInjection[Node[K, V, T, A]] {
-        def apply(node: Node[K, V, T, A]) = node match {
-          case LeafNode(index, target, annotation) =>
-            val obj = JsonNodeFactory.instance.objectNode
-            obj.put("leaf", toJsonNode(index))
-            obj.put("distribution", toJsonNode(target))
-            // Don't serialize the annotation if we *know* it is Unit.
-            maybeAInj.withFallback { aInj =>
-              obj.put("annotation", aInj(annotation))
-            }
-            obj
 
-          case SplitNode(k, p, lc, rc, annotation) =>
-            val obj = JsonNodeFactory.instance.objectNode
-            obj.put("key", toJsonNode(k))
-            obj.put("predicate", toJsonNode(p)(predicateJsonInjection))
-            obj.put("left", toJsonNode(lc)(nodeJsonNodeInjection))
-            obj.put("right", toJsonNode(rc)(nodeJsonNodeInjection))
-            // Don't serialize the annotation if we *know* it is Unit.
-            maybeAInj.withFallback { aInj =>
-              obj.put("annotation", aInj(annotation))
-            }
-            obj
-        }
+        def apply(node: Node[K, V, T, A]): JsonNode =
+          node match {
+            case LeafNode(index, target, annotation) =>
+              val obj = JsonNodeFactory.instance.objectNode
+              obj.put("leaf", toJsonNode(index))
+              obj.put("distribution", toJsonNode(target))
+              // Don't serialize the annotation if we *know* it is Unit.
+              maybeAInj.withFallback { aInj =>
+                obj.put("annotation", aInj(annotation))
+              }
+              obj
 
-        def tryChild(node: JsonNode, property: String): Try[JsonNode] = {
-          val child = node.get(property)
-          if (child == null) Failure(new IllegalArgumentException(property + " != null"))
-          else Success(child)
-        }
+            case SplitNode(k, p, lc, rc, annotation) =>
+              val obj = JsonNodeFactory.instance.objectNode
+              obj.put("key", toJsonNode(k))
+              obj.put("predicate", toJsonNode(p)(predicateJsonInjection))
+              obj.put("left", toJsonNode(lc)(nodeJsonNodeInjection))
+              obj.put("right", toJsonNode(rc)(nodeJsonNodeInjection))
+              // Don't serialize the annotation if we *know* it is Unit.
+              maybeAInj.withFallback { aInj =>
+                obj.put("annotation", aInj(annotation))
+              }
+              obj
+          }
 
-        def tryLoad[T: JsonNodeInjection](node: JsonNode, property: String): Try[T] = {
-          val child = node.get(property)
-          if (child == null) Failure(new IllegalArgumentException(property + " != null"))
-          else fromJsonNode[T](child)
-        }
+        def tryLoad[T: JsonNodeInjection](node: JsonNode, property: String): Try[T] =
+          node.get(property) match {
+            case null => Failure(new IllegalArgumentException(property + " != null"))
+            case c => fromJsonNode[T](c)
+          }
 
-        def getAnnotation(node: JsonNode): Try[A] = maybeAInj match {
-          case Preferred(unitToA) => Success(unitToA(()))
-          case Fallback(aInj) => tryLoad[A](node, "annotation")(aInj)
-        }
+        def getAnnotation(node: JsonNode): Try[A] =
+          maybeAInj match {
+            case Preferred(unitToA) => Success(unitToA(()))
+            case Fallback(aInj) => tryLoad[A](node, "annotation")(aInj)
+          }
 
         override def invert(n: JsonNode): Try[Node[K, V, T, A]] =
           if (n.has("leaf")) {
@@ -192,15 +197,19 @@ object JsonInjections {
     }
   }
 
-  implicit def treeJsonStringInjection[K, V, T](implicit jsonInj: JsonNodeInjection[Tree[K, V, T]]): Injection[Tree[K, V, T], String] =
-    JsonInjection.toString[Tree[K, V, T]]
+  implicit def treeJsonStringInjection[K, V, T, A](implicit jsonInj: JsonNodeInjection[AnnotatedTree[K, V, T, A]]): Injection[AnnotatedTree[K, V, T, A], String] =
+    JsonInjection.toString[AnnotatedTree[K, V, T, A]]
 }
 
 object KryoInjections {
   implicit def tree2Bytes[K, V, T]: Injection[Tree[K, V, T], Array[Byte]] = new AbstractInjection[Tree[K, V, T], Array[Byte]] {
-    override def apply(a: Tree[K, V, T]) = KryoInjection(a)
-    override def invert(b: Array[Byte]) = KryoInjection.invert(b).asInstanceOf[util.Try[Tree[K, V, T]]]
+    override def apply(a: Tree[K, V, T]): Array[Byte] =
+      KryoInjection(a)
+    // we cast here because KryoInjection only works with Any. :/
+    override def invert(b: Array[Byte]): Try[Tree[K, V, T]] =
+      KryoInjection.invert(b).asInstanceOf[Try[Tree[K, V, T]]]
   }
 
-  implicit def tree2String[K, V, T]: Injection[Tree[K, V, T], String] = Injection.connect[Tree[K, V, T], Array[Byte], Base64String, String]
+  implicit def tree2String[K, V, T]: Injection[Tree[K, V, T], String] =
+    Injection.connect[Tree[K, V, T], Array[Byte], Base64String, String]
 }
