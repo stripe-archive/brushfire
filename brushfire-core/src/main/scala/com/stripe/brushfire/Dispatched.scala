@@ -53,7 +53,7 @@ object Dispatched {
     sparseOrder: PartialOrder[D]
   ): PartialOrder[Dispatched[A, B, C, D]] =
     new PartialOrder[Dispatched[A, B, C, D]] {
-      def partialCompare(left: Dispatched[A, B, C, D], right: Dispatched[A, B, C, D]) =
+      def partialCompare(left: Dispatched[A, B, C, D], right: Dispatched[A, B, C, D]): Double =
         (left, right) match {
           case (Ordinal(l), Ordinal(r)) => ordinalOrder.partialCompare(l, r)
           case (Nominal(l), Nominal(r)) => nominalOrder.partialCompare(l, r)
@@ -63,10 +63,10 @@ object Dispatched {
         }
     }
 
-  def ordinal[A](a: A) = Ordinal(a)
-  def nominal[B](b: B) = Nominal(b)
-  def continuous[C](c: C) = Continuous(c)
-  def sparse[D](d: D) = Sparse(d)
+  def ordinal[A](a: A): Dispatched[A, Nothing, Nothing, Nothing] = Ordinal(a)
+  def nominal[B](b: B): Dispatched[Nothing, B, Nothing, Nothing] = Nominal(b)
+  def continuous[C](c: C): Dispatched[Nothing, Nothing, C, Nothing] = Continuous(c)
+  def sparse[D](d: D): Dispatched[Nothing, Nothing, Nothing, D] = Sparse(d)
 
   def wrapSplits[X, T, A, B, C, D](splits: Iterable[Split[X, T]])(fn: X => Dispatched[A, B, C, D]) =
     splits.map(_.map(fn))
