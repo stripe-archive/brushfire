@@ -1,7 +1,7 @@
 package com.stripe.brushfire
 
 import com.twitter.algebird._
-import spire.algebra.Order
+import spire.algebra.PartialOrder
 
 sealed trait Dispatched[+A, +B, +C, +D]
 
@@ -46,20 +46,21 @@ case class DispatchedSplitter[A, B, C, D, T](
 }
 
 object Dispatched {
-  implicit def dispatchedOrder[A, B, C, D](implicit
-    ordinalOrder: Order[A],
-    nominalOrder: Order[B],
-    continuousOrder: Order[C],
-    sparseOrder: Order[D]
-  ): Order[Dispatched[A, B, C, D]] =
-    new Order[Dispatched[A, B, C, D]] {
-      def compare(left: Dispatched[A, B, C, D], right: Dispatched[A, B, C, D]) = (left, right) match {
-        case (Ordinal(l), Ordinal(r)) => ordinalOrder.compare(l, r)
-        case (Nominal(l), Nominal(r)) => nominalOrder.compare(l, r)
-        case (Continuous(l), Continuous(r)) => continuousOrder.compare(l, r)
-        case (Sparse(l), Sparse(r)) => sparseOrder.compare(l, r)
-        case _ => sys.error("Values cannot be compared: " + (left, right))
-      }
+  implicit def dispatchedPartialOrder[A, B, C, D](implicit
+    ordinalOrder: PartialOrder[A],
+    nominalOrder: PartialOrder[B],
+    continuousOrder: PartialOrder[C],
+    sparseOrder: PartialOrder[D]
+  ): PartialOrder[Dispatched[A, B, C, D]] =
+    new PartialOrder[Dispatched[A, B, C, D]] {
+      def partialCompare(left: Dispatched[A, B, C, D], right: Dispatched[A, B, C, D]) =
+        (left, right) match {
+          case (Ordinal(l), Ordinal(r)) => ordinalOrder.partialCompare(l, r)
+          case (Nominal(l), Nominal(r)) => nominalOrder.partialCompare(l, r)
+          case (Continuous(l), Continuous(r)) => continuousOrder.partialCompare(l, r)
+          case (Sparse(l), Sparse(r)) => sparseOrder.partialCompare(l, r)
+          case _ => Double.NaN
+        }
     }
 
   def ordinal[A](a: A) = Ordinal(a)
