@@ -57,30 +57,26 @@ case class Trainer[K: Ordering, V: Ordering, T: Monoid](
         Tree.expand(times, treeIndex, LeafNode[K, V, T, Unit](index, target, annotation), splitter, evaluator, stopper, sampler, instances)
     }
 
-  def prune[P, E](error: Error[T, P, E])(implicit voter: Voter[T, P], ord: Ordering[E]): Trainer[K, V, T] =
-    updateTrees {
-      case (tree, treeIndex, byLeaf) =>
-        val byLeafIndex = byLeaf.map {
-          case ((index, _, _), instances) =>
-            index -> implicitly[Monoid[T]].sum(instances.map { _.target })
-        }
-        tree.prune(byLeafIndex, voter, error)
-    }
-
   def validate[P, E](error: Error[T, P, E])(implicit voter: Voter[T, P]): Option[E] = {
-    val errors = trainingData.flatMap { instance =>
-      val useTrees = trees.zipWithIndex.filter {
-        case (tree, i) =>
-          sampler.includeInValidationSet(instance.id, instance.timestamp, i)
-      }.map { _._1 }
-      if(useTrees.isEmpty)
-        None
-      else {
-        val prediction = voter.predict(useTrees, instance.features)
-        Some(error.create(instance.target, prediction))
+    val treeMap = trees.zipWithIndex.map{case (t,i) => i->t}.toMap
+    var output: Option[E] = None
+    trainingData.foreach{instance =>
+      val predictions =
+        for (
+          (treeIndex, tree) <- treeMap
+            if sampler.includeInValidationSet(instance.id, instance.timestamp, treeIndex);
+          target <- tree.targetFor(instance.features).toList
+        ) yield target
+
+      if(!predictions.isEmpty) {
+        val newError = error.create(instance.target, voter.combine(predictions))
+        output = output
+                    .map{old => error.semigroup.plus(old, newError)}
+                    .orElse(Some(newError))
       }
     }
-    error.semigroup.sumOption(errors)
+
+    output
   }
 }
 

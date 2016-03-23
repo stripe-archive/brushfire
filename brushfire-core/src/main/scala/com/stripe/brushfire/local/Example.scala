@@ -31,10 +31,5 @@ object Example extends Defaults {
       println(trainer.validate(AccuracyError()))
       println(trainer.validate(BrierScoreError()))
     }
-
-    implicit val ord = Ordering.by[AveragedValue, Double] { _.value }
-    trainer = trainer.prune(BrierScoreError())
-    println(trainer.validate(AccuracyError()))
-    println(trainer.validate(BrierScoreError()))
   }
 }
