@@ -11,6 +11,8 @@ case class Trainer[K: Ordering, V: Ordering, T: Monoid](
     sampler: Sampler[K],
     trees: List[Tree[K, V, T]])(implicit traversal: AnnotatedTreeTraversal[K, V, T, Unit]) {
 
+  val treeMap = trees.zipWithIndex.map{case (t,i) => i->t}.toMap
+
   private def updateTrees(fn: (Tree[K, V, T], Int, Map[(Int, T, Unit), Iterable[Instance[K, V, T]]]) => Tree[K, V, T]): Trainer[K, V, T] = {
     val newTrees = trees.zipWithIndex.par.map {
       case (tree, index) =>
@@ -44,21 +46,38 @@ case class Trainer[K: Ordering, V: Ordering, T: Monoid](
     }
   }
 
-  def updateTargets: Trainer[K, V, T] =
-    updateLeaves {
-      case (treeIndex, (index, _, annotation), instances) =>
-        val target = implicitly[Monoid[T]].sum(instances.map { _.target })
-        LeafNode(index, target, annotation)
-    }
-
   def expand(times: Int)(implicit splitter: Splitter[V, T], evaluator: Evaluator[V, T], stopper: Stopper[T]): Trainer[K, V, T] =
     updateLeaves {
       case (treeIndex, (index, target, annotation), instances) =>
         Tree.expand(times, treeIndex, LeafNode[K, V, T, Unit](index, target, annotation), splitter, evaluator, stopper, sampler, instances)
     }
 
+  def updateTargets: Trainer[K, V, T] = {
+    var targets = treeMap.mapValues{tree => Map[Int, T]()}
+    trainingData.foreach{instance =>
+      for (
+        (treeIndex, tree) <- treeMap.toList;
+        i <- 1.to(sampler.timesInTrainingSet(instance.id, instance.timestamp, treeIndex)).toList;
+        leafIndex <- tree.leafIndexFor(instance.features).toList
+      ) {
+        val treeTargets = targets(treeIndex)
+        val old = treeTargets.getOrElse(leafIndex, Monoid.zero[T])
+        val combined = Monoid.plus(instance.target, old)
+        targets += treeIndex -> (treeTargets + (leafIndex -> combined))
+      }
+    }
+
+    val newTrees = trees.zipWithIndex.map{case (tree, index) =>
+      tree.updateByLeafIndex{leafIndex =>
+        val target = targets(index).getOrElse(leafIndex, Monoid.zero[T])
+        Some(LeafNode(leafIndex, target, ()))
+      }
+    }
+
+    copy(trees = newTrees)
+  }
+
   def validate[P, E](error: Error[T, P, E])(implicit voter: Voter[T, P]): Option[E] = {
-    val treeMap = trees.zipWithIndex.map{case (t,i) => i->t}.toMap
     var output: Option[E] = None
     trainingData.foreach{instance =>
       val predictions =
