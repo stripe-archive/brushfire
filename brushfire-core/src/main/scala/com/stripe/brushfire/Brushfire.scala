@@ -35,10 +35,13 @@ trait Splitter[V, T] {
   type R
 
   /** return new joint distributions/regions from a value and a target distribution */
-  def create(value: V, target: T): Iterable[(R,S)]
+  def createRegions(value: V, target: T): Iterable[(R,S)]
 
   /** semigroup to sum up joint distributions */
   def semigroup: Semigroup[S]
+
+  /** ordering for regions */
+  def ordering: Ordering[R]
 
   /** return candidate splits given a joint distribution, region, and the parent node's target distrubution */
   def split(parent: T, region: R, stats: S): Iterable[Split[V, T]]

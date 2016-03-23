@@ -2,7 +2,16 @@ package com.stripe.brushfire
 
 import com.twitter.algebird._
 
-case class BinarySplitter[V: Ordering, T: Monoid](partition: V => Predicate[V]) extends Splitter[V, T] {
+trait SingleRegionSplitter[V,T] extends Splitter[V,T] {
+  type R = Unit
+  def ordering = implicitly[Ordering[Unit]]
+
+  def createRegions(value: V, target: T) = List(() -> create(value, target))
+  def create(value: V, target: T): S
+}
+
+case class BinarySplitter[V: Ordering, T: Monoid](partition: V => Predicate[V])
+ extends SingleRegionSplitter[V, T] {
 
   type S = Map[V, T]
   def create(value: V, target: T) = Map(value -> target)
@@ -19,7 +28,7 @@ case class BinarySplitter[V: Ordering, T: Monoid](partition: V => Predicate[V]) 
 }
 
 case class RandomSplitter[V, T](original: Splitter[V, T])
-    extends Splitter[V, T] {
+    extends SingleRegionSplitter[V, T] {
   type S = original.S
   val semigroup = original.semigroup
   def create(value: V, target: T) = original.create(value, target)
@@ -28,7 +37,7 @@ case class RandomSplitter[V, T](original: Splitter[V, T])
 }
 
 case class BinnedSplitter[V, T](original: Splitter[V, T])(fn: V => V)
-    extends Splitter[V, T] {
+    extends SingleRegionSplitter[V, T] {
   type S = original.S
   def create(value: V, target: T) = original.create(fn(value), target)
   val semigroup = original.semigroup
@@ -37,7 +46,7 @@ case class BinnedSplitter[V, T](original: Splitter[V, T])(fn: V => V)
 }
 
 case class QTreeSplitter[T: Monoid](k: Int)
-    extends Splitter[Double, T] {
+    extends SingleRegionSplitter[Double, T] {
 
   type S = QTree[T]
 
@@ -66,7 +75,7 @@ case class QTreeSplitter[T: Monoid](k: Int)
 }
 
 case class SpaceSaverSplitter[V, L](capacity: Int = 1000)
-    extends Splitter[V, Map[L, Long]] {
+    extends SingleRegionSplitter[V, Map[L, Long]] {
 
   type S = Map[L, SpaceSaver[V]]
   val semigroup = implicitly[Semigroup[S]]
