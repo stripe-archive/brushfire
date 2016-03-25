@@ -118,23 +118,25 @@ case class DepthFirstTreeTraversal[Tree, K, V, T, A](reorder: Reorder[A])(implic
     val leafF: LeafLabel[T, A] => Stream[LeafLabel[T, A]] =
       _ #:: Stream.empty
 
-    lazy val reorderF: (Node, Node) => Stream[LeafLabel[T, A]] =
-      (n1, n2) => recurse(n1) #::: recurse(n2)
+    var reorderF: (Node, Node) => Stream[LeafLabel[T, A]] = null
 
     // recurse into branch nodes, going left, right, or both,
     // depending on what our predicate says.
-    lazy val branchF: (Node, Node, BranchLabel[K, V, A]) => Stream[LeafLabel[T, A]] = {
-      case (lc, rc, (k, p, _)) =>
-        row.get(k) match {
-          case Some(v) => if (p(v)) recurse(lc) else recurse(rc)
-          case None => r(lc, rc, getAnnotation, reorderF)
-        }
-    }
+    var branchF: (Node, Node, BranchLabel[K, V, A]) => Stream[LeafLabel[T, A]] = null
 
     // recursively handle each node. the foldNode method decides
     // whether to handle it as a branch or a leaf.
     def recurse(node: Node): Stream[LeafLabel[T, A]] =
       foldNode(node)(branchF, leafF)
+
+    reorderF = (n1, n2) => recurse(n1) #::: recurse(n2)
+
+    branchF = (lc, rc, t) => t match {
+      case (k, p, _) => row.get(k) match {
+        case Some(v) => if (p(v)) recurse(lc) else recurse(rc)
+        case None => r(lc, rc, getAnnotation, reorderF)
+      }
+    }
 
     // do it!
     recurse(start)
