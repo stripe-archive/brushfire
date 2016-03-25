@@ -1,5 +1,8 @@
 package com.stripe.brushfire
 
+import com.stripe.bonsai.Layout
+import com.stripe.bonsai.layout.ProductLayout
+
 /**
  * A `Predicate` is a function which accepts or rejects feature values.
  *
@@ -114,4 +117,27 @@ object Predicate {
   def ltEq[V](x: V): Predicate[V] = LtEq(x)
   def gt[V](x: V): Predicate[V] = Gt(x)
   def gtEq[V](x: V): Predicate[V] = GtEq(x)
+
+  private def unpack[V](pred: Predicate[V]): (Byte, V) =
+    pred match {
+      case IsEq(value) => (0.toByte, value)
+      case NotEq(value) => (1.toByte, value)
+      case Lt(value) => (2.toByte, value)
+      case LtEq(value) => (3.toByte, value)
+      case Gt(value) => (4.toByte, value)
+      case GtEq(value) => (5.toByte, value)
+    }
+
+  private def pack[V](i: Byte, value: V): Predicate[V] =
+    (i: @annotation.switch) match {
+      case 0 => IsEq(value)
+      case 1 => NotEq(value)
+      case 2 => Lt(value)
+      case 3 => LtEq(value)
+      case 4 => Gt(value)
+      case 5 => GtEq(value)
+    }
+
+  implicit def predicateLayout[V: Layout]: Layout[Predicate[V]] =
+    new ProductLayout(Layout[Byte], Layout[V], unpack, pack)
 }
