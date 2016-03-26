@@ -21,9 +21,9 @@ case class SampledMap[A,B](capacity: Int) {
         val r = rand.nextDouble
         randValues += key->r
 
-        if(randValues.size <= capacity && r > threshold)
+        if(randValues.size <= capacity && r >= threshold)
           threshold = r
-        else if(r < threshold) {
+        else if(randValues.size > capacity && r < threshold) {
           println("evicting")
           val bottomK = randValues.toList.sortBy{_._2}.take(capacity)
           val keep = bottomK.map{_._1}.toSet
@@ -53,7 +53,9 @@ case class Trainer[K: Ordering, V: Ordering, T: Monoid](
   val treeMap = trees.zipWithIndex.map{case (t,i) => i->t}.toMap
 
   def expand(maxLeavesPerTree: Int)(implicit splitter: Splitter[V, T], evaluator: Evaluator[V, T], stopper: Stopper[T]): Trainer[K, V, T] = {
-    var allStats = treeMap.mapValues{tree=> SampledMap[Int,Map[K,splitter.S]](maxLeavesPerTree)}
+    val allStats = treeMap.map{case (treeIndex, tree) =>
+      treeIndex -> SampledMap[Int,Map[K,splitter.S]](maxLeavesPerTree)
+    }
 
     trainingData.foreach{instance =>
       lazy val features = instance.features.mapValues { value => splitter.create(value, instance.target) }

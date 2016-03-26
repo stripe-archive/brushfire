@@ -26,7 +26,7 @@ object Example extends Defaults {
     println(trainer.validate(AccuracyError()))
 
     1.to(10).foreach { i =>
-      trainer = trainer.expand(5)
+      trainer = trainer.expand(1)
       println(trainer.validate(AccuracyError()))
     }
   }
