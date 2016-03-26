@@ -6,6 +6,45 @@ import com.twitter.algebird._
 
 import AnnotatedTree.AnnotatedTreeTraversal
 
+
+//map with a reservoir of up to `capacity` randomly chosen keys
+case class SampledMap[A,B](capacity: Int) {
+  var mapValues = Map[A,B]()
+  var randValues = Map[A,Double]()
+  var threshold = 0.0
+  val rand = new util.Random
+
+  private def randValue(key: A): Double = {
+    randValues.get(key) match {
+      case Some(r) => r
+      case None => {
+        val r = rand.nextDouble
+        randValues += key->r
+
+        if(randValues.size <= capacity && r > threshold)
+          threshold = r
+        else if(r < threshold) {
+          println("evicting")
+          val bottomK = randValues.toList.sortBy{_._2}.take(capacity)
+          val keep = bottomK.map{_._1}.toSet
+          threshold = bottomK.last._2
+          mapValues = mapValues.filterKeys(keep)
+        }
+
+        r
+      }
+    }
+  }
+
+  def containsKey(key: A): Boolean = randValue(key) <= threshold
+  def update(key: A, value: B) {
+    if(containsKey(key))
+      mapValues += key -> value
+  }
+
+  def get(key: A): Option[B] = mapValues.get(key)
+}
+
 case class Trainer[K: Ordering, V: Ordering, T: Monoid](
     trainingData: Iterable[Instance[K, V, T]],
     sampler: Sampler[K],
@@ -13,27 +52,28 @@ case class Trainer[K: Ordering, V: Ordering, T: Monoid](
 
   val treeMap = trees.zipWithIndex.map{case (t,i) => i->t}.toMap
 
-  def expand(times: Int)(implicit splitter: Splitter[V, T], evaluator: Evaluator[V, T], stopper: Stopper[T]): Trainer[K, V, T] = {
-    var allStats = treeMap.mapValues{tree=> Map[Int,Map[K,splitter.S]]()}
+  def expand(maxLeavesPerTree: Int)(implicit splitter: Splitter[V, T], evaluator: Evaluator[V, T], stopper: Stopper[T]): Trainer[K, V, T] = {
+    var allStats = treeMap.mapValues{tree=> SampledMap[Int,Map[K,splitter.S]](maxLeavesPerTree)}
 
     trainingData.foreach{instance =>
       lazy val features = instance.features.mapValues { value => splitter.create(value, instance.target) }
 
       for (
         (treeIndex, tree) <- treeMap.toList;
+        treeStats <- allStats.get(treeIndex).toList;
         i <- 1.to(sampler.timesInTrainingSet(instance.id, instance.timestamp, treeIndex)).toList;
-        (leafIndex, target, annotation) <- tree.leafFor(instance.features).toList if stopper.shouldSplit(target);
-        (feature, stats) <- features if (sampler.includeFeature(feature, treeIndex, leafIndex))
+        (leafIndex, target, annotation) <- tree.leafFor(instance.features).toList
+          if stopper.shouldSplit(target) && treeStats.containsKey(leafIndex);
+        (feature, stats) <- features
+          if sampler.includeFeature(feature, treeIndex, leafIndex)
       ) {
-        var treeStats = allStats(treeIndex)
-        var leafStats = treeStats.getOrElse(leafIndex, Map[K,splitter.S]())
+        var leafStats = treeStats.get(leafIndex).getOrElse(Map[K,splitter.S]())
         val combined = leafStats.get(feature) match {
           case Some(old) => splitter.semigroup.plus(old, stats)
           case None => stats
         }
         leafStats += feature -> combined
-        treeStats += leafIndex -> leafStats
-        allStats += treeIndex -> treeStats
+        treeStats.update(leafIndex, leafStats)
       }
     }
 

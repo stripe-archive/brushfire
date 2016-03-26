@@ -24,12 +24,10 @@ object Example extends Defaults {
         .updateTargets
 
     println(trainer.validate(AccuracyError()))
-    println(trainer.validate(BrierScoreError()))
 
     1.to(10).foreach { i =>
-      trainer = trainer.expand(1)
+      trainer = trainer.expand(5)
       println(trainer.validate(AccuracyError()))
-      println(trainer.validate(BrierScoreError()))
     }
   }
 }
