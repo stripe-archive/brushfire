@@ -56,7 +56,7 @@ case class Trainer[K: Ordering, V: Ordering, T: Monoid](
     }
 
     val newTrees = 0.until(trees.size).toList.map{i => newTreeMap(i)}
-    Trainer(trainingData, sampler, trees)
+    Trainer(trainingData, sampler, newTrees)
   }
 
   def updateTargets: Trainer[K, V, T] = {
