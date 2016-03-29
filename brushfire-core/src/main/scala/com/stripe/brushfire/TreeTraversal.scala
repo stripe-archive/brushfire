@@ -118,25 +118,39 @@ case class DepthFirstTreeTraversal[Tree, K, V, T, A](reorder: Reorder[A])(implic
     val leafF: LeafLabel[T, A] => Stream[LeafLabel[T, A]] =
       _ #:: Stream.empty
 
-    lazy val reorderF: (Node, Node) => Stream[LeafLabel[T, A]] =
-      (n1, n2) => recurse(n1) #::: recurse(n2)
+    // determine the order to traverse into two given nodes. this var
+    // is initialized just after 'recurse' -- it is basically a lazy
+    // val but with better performance.
+    var reorderF: (Node, Node) => Stream[LeafLabel[T, A]] = null
 
     // recurse into branch nodes, going left, right, or both,
-    // depending on what our predicate says.
-    lazy val branchF: (Node, Node, BranchLabel[K, V, A]) => Stream[LeafLabel[T, A]] = {
-      case (lc, rc, (k, p, _)) =>
-        row.get(k) match {
-          case Some(v) => if (p(v)) recurse(lc) else recurse(rc)
-          case None => r(lc, rc, getAnnotation, reorderF)
-        }
-    }
+    // depending on what our predicate says. this var is initialized
+    // just after 'recurse' -- it is basically a lazy val but with
+    // better performance.
+    var branchF: (Node, Node, BranchLabel[K, V, A]) => Stream[LeafLabel[T, A]] = null
 
     // recursively handle each node. the foldNode method decides
     // whether to handle it as a branch or a leaf.
     def recurse(node: Node): Stream[LeafLabel[T, A]] =
       foldNode(node)(branchF, leafF)
 
-    // do it!
+    // now that recurse is defined we can initialize this
+    reorderF = (n1, n2) => recurse(n1) #::: recurse(n2)
+
+    // now that recurse is defined we can initialize this
+    branchF = (lc, rc, t) => t match {
+      case (k, p, _) => row.get(k) match {
+        case Some(v) => if (p(v)) recurse(lc) else recurse(rc)
+        case None => r(lc, rc, getAnnotation, reorderF)
+      }
+    }
+
+    // ok, now do it!
+    //
+    // the reason we did all the work above of defining the functions
+    // in variables is that this makes our traversal more
+    // efficient. otherwise we'd have to generate Function1 instances
+    // at each level of each tree.
     recurse(start)
   }
 }
