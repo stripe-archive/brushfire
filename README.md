@@ -35,6 +35,7 @@ Thanks for assistance and contributions:
 * Roban Kramer <https://twitter.com/robanhk>
 * Colin Marc <http://twitter.com/colinmarc>
 * Steven Noble <http://twitter.com/snoble>
+* Erik Osheim <http://twitter.com/d6>
 * Tom Switzer <https://twitter.com/tixxit>
 
 # Quick start

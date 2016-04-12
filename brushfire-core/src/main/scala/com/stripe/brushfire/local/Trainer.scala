@@ -7,81 +7,144 @@ import spire.algebra.{ Order, PartialOrder }
 
 import AnnotatedTree.AnnotatedTreeTraversal
 
+//map with a reservoir of up to `capacity` randomly chosen keys
+case class SampledMap[A,B](capacity: Int) {
+  var mapValues = Map[A,B]()
+  var randValues = Map[A,Double]()
+  var threshold = 0.0
+  val rand = new util.Random
+
+  private def randValue(key: A): Double = {
+    randValues.get(key) match {
+      case Some(r) => r
+      case None => {
+        val r = rand.nextDouble
+        randValues += key->r
+
+        if(randValues.size <= capacity && r >= threshold)
+          threshold = r
+        else if(randValues.size > capacity && r < threshold) {
+          println("evicting")
+          val bottomK = randValues.toList.sortBy{_._2}.take(capacity)
+          val keep = bottomK.map{_._1}.toSet
+          threshold = bottomK.last._2
+          mapValues = mapValues.filterKeys(keep)
+        }
+
+        r
+      }
+    }
+  }
+
+  def containsKey(key: A): Boolean = randValue(key) <= threshold
+  def update(key: A, value: B) {
+    if(containsKey(key))
+      mapValues += key -> value
+  }
+
+  def get(key: A): Option[B] = mapValues.get(key)
+}
+
 case class Trainer[K: Order, V: PartialOrder, T: Monoid](
     trainingData: Iterable[Instance[K, V, T]],
     sampler: Sampler[K],
     trees: List[Tree[K, V, T]])(implicit traversal: AnnotatedTreeTraversal[K, V, T, Unit]) {
 
-  private def updateTrees(fn: (Tree[K, V, T], Int, Map[(Int, T, Unit), Iterable[Instance[K, V, T]]]) => Tree[K, V, T]): Trainer[K, V, T] = {
-    val newTrees = trees.zipWithIndex.par.map {
-      case (tree, index) =>
-        val byLeaf =
-          trainingData.flatMap { instance =>
-            val repeats = sampler.timesInTrainingSet(instance.id, instance.timestamp, index)
-            if (repeats > 0) {
-              tree.leafFor(instance.features).map { leaf =>
-                (1 to repeats).toList.map { i => (instance, leaf) }
-              }.getOrElse(Nil)
-            } else {
-              Nil
-            }
-          }.groupBy { _._2 }
-            .mapValues { _.map { _._1 } }
-        fn(tree, index, byLeaf)
-    }
-    copy(trees = newTrees.toList)
-  }
+  val treeMap = trees.zipWithIndex.map{case (t,i) => i->t}.toMap
 
-  private def updateLeaves(fn: (Int, (Int, T, Unit), Iterable[Instance[K, V, T]]) => Node[K, V, T, Unit]): Trainer[K, V, T] = {
-    updateTrees {
-      case (tree, treeIndex, byLeaf) =>
-        val newNodes = byLeaf.map {
-          case (leaf, instances) =>
-            val (index, _, _) = leaf
-            index -> fn(treeIndex, leaf, instances)
+  def expand(maxLeavesPerTree: Int)(implicit splitter: Splitter[V, T], evaluator: Evaluator[V, T], stopper: Stopper[T]): Trainer[K, V, T] = {
+    val allStats = treeMap.map{case (treeIndex, tree) =>
+      treeIndex -> SampledMap[Int,Map[K,splitter.S]](maxLeavesPerTree)
+    }
+
+    trainingData.foreach{instance =>
+      lazy val features = instance.features.mapValues { value => splitter.create(value, instance.target) }
+
+      for (
+        (treeIndex, tree) <- treeMap.toList;
+        treeStats <- allStats.get(treeIndex).toList;
+        i <- 1.to(sampler.timesInTrainingSet(instance.id, instance.timestamp, treeIndex)).toList;
+        (leafIndex, target, annotation) <- tree.leafFor(instance.features).toList
+          if stopper.shouldSplit(target) && treeStats.containsKey(leafIndex);
+        (feature, stats) <- features
+          if sampler.includeFeature(feature, treeIndex, leafIndex)
+      ) {
+        var leafStats = treeStats.get(leafIndex).getOrElse(Map[K,splitter.S]())
+        val combined = leafStats.get(feature) match {
+          case Some(old) => splitter.semigroup.plus(old, stats)
+          case None => stats
         }
-
-        tree.updateByLeafIndex(newNodes.lift)
-    }
-  }
-
-  def updateTargets: Trainer[K, V, T] =
-    updateLeaves {
-      case (treeIndex, (index, _, annotation), instances) =>
-        val target = implicitly[Monoid[T]].sum(instances.map { _.target })
-        LeafNode(index, target, annotation)
-    }
-
-  def expand(times: Int)(implicit splitter: Splitter[V, T], evaluator: Evaluator[V, T], stopper: Stopper[T]): Trainer[K, V, T] =
-    updateLeaves {
-      case (treeIndex, (index, target, annotation), instances) =>
-        Tree.expand(times, treeIndex, LeafNode[K, V, T, Unit](index, target, annotation), splitter, evaluator, stopper, sampler, instances)
-    }
-
-  def prune[P, E](error: Error[T, P, E])(implicit voter: Voter[T, P], ord: Order[E]): Trainer[K, V, T] =
-    updateTrees {
-      case (tree, treeIndex, byLeaf) =>
-        val byLeafIndex = byLeaf.map {
-          case ((index, _, _), instances) =>
-            index -> implicitly[Monoid[T]].sum(instances.map { _.target })
-        }
-        tree.prune(byLeafIndex, voter, error)
-    }
-
-  def validate[P, E](error: Error[T, P, E])(implicit voter: Voter[T, P]): Option[E] = {
-    val errors = trainingData.flatMap { instance =>
-      val useTrees = trees.zipWithIndex.filter {
-        case (tree, i) =>
-          sampler.includeInValidationSet(instance.id, instance.timestamp, i)
-      }.map { _._1 }
-      if(useTrees.isEmpty)
-        None
-      else {
-        val prediction = voter.predict(useTrees, instance.features)
-        Some(error.create(instance.target, prediction))
+        leafStats += feature -> combined
+        treeStats.update(leafIndex, leafStats)
       }
     }
-    error.semigroup.sumOption(errors)
+
+    val newTreeMap = allStats.map{case (treeIndex, treeStats) =>
+      val tree = treeMap(treeIndex)
+      treeIndex -> tree.growByLeafIndex{leafIndex =>
+        val candidates = for(
+          leafStats <- treeStats.get(leafIndex).toList;
+          parent <- tree.leafAt(leafIndex).toList;
+          (feature, stats) <- leafStats.toList;
+          split <- splitter.split(parent.target, stats);
+          (newSplit, score) <- evaluator.evaluate(split).toList
+        ) yield (newSplit.createSplitNode(feature), score)
+
+        if(candidates.isEmpty)
+          None
+        else
+          Some(candidates.maxBy{_._2}._1)
+      }
+    }
+
+    val newTrees = 0.until(trees.size).toList.map{i => newTreeMap(i)}
+    Trainer(trainingData, sampler, newTrees)
+  }
+
+  def updateTargets: Trainer[K, V, T] = {
+    var targets = treeMap.mapValues{tree => Map[Int, T]()}
+    trainingData.foreach{instance =>
+      for (
+        (treeIndex, tree) <- treeMap.toList;
+        i <- 1.to(sampler.timesInTrainingSet(instance.id, instance.timestamp, treeIndex)).toList;
+        leafIndex <- tree.leafIndexFor(instance.features).toList
+      ) {
+        val treeTargets = targets(treeIndex)
+        val old = treeTargets.getOrElse(leafIndex, Monoid.zero[T])
+        val combined = Monoid.plus(instance.target, old)
+        targets += treeIndex -> (treeTargets + (leafIndex -> combined))
+      }
+    }
+
+    val newTrees = trees.zipWithIndex.map{case (tree, index) =>
+      tree.updateByLeafIndex{leafIndex =>
+        val target = targets(index).getOrElse(leafIndex, Monoid.zero[T])
+        Some(LeafNode(leafIndex, target, ()))
+      }
+    }
+
+    copy(trees = newTrees)
+  }
+
+  def validate[P, E](error: Error[T, P, E])(implicit voter: Voter[T, P]): Option[E] = {
+    var output: Option[E] = None
+    trainingData.foreach{instance =>
+      val predictions =
+        for (
+          (treeIndex, tree) <- treeMap
+            if sampler.includeInValidationSet(instance.id, instance.timestamp, treeIndex);
+          target <- tree.targetFor(instance.features).toList
+        ) yield target
+
+      if(!predictions.isEmpty) {
+        val newError = error.create(instance.target, voter.combine(predictions))
+        output = output
+                    .map{old => error.semigroup.plus(old, newError)}
+                    .orElse(Some(newError))
+      }
+    }
+
+    output
   }
 }
 
