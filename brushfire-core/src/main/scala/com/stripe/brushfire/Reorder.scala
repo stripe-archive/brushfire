@@ -1,8 +1,9 @@
 package com.stripe.brushfire
 
-import scala.math.Ordering
 import scala.util.Random
 import scala.util.hashing.MurmurHash3
+import spire.algebra.Order
+import spire.syntax.all._
 
 /**
  * Simple data type that provides rules to order nodes during
@@ -66,7 +67,7 @@ object Reorder {
    * Reorder instance that traverses into the node with the higher
    * weight first.
    */
-  def weightedDepthFirst[A](implicit ev: Ordering[A]): Reorder[A] =
+  def weightedDepthFirst[A: Order]: Reorder[A] =
     new WeightedReorder()
 
   /**
@@ -94,11 +95,11 @@ object Reorder {
       g(n1, n2)
   }
 
-  class WeightedReorder[A](implicit ev: Ordering[A]) extends Reorder[A] {
+  class WeightedReorder[A: Order] extends Reorder[A] {
     def setSeed(seed: Option[String]): Reorder[A] =
       this
     def apply[N, S](n1: N, n2: N, f: N => A, g: (N, N) => S): S =
-      if (ev.compare(f(n1), f(n2)) >= 0) g(n1, n2) else g(n2, n1)
+      if (f(n1) >= f(n2)) g(n1, n2) else g(n2, n1)
   }
 
   class ShuffledReorder[A](r: Random) extends Reorder[A] {

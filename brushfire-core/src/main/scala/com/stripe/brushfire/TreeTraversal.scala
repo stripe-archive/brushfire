@@ -1,6 +1,7 @@
 package com.stripe.brushfire
 
 import com.stripe.bonsai.FullBinaryTreeOps
+import spire.algebra.{ Order, PartialOrder }
 
 /**
  * A `TreeTraversal` provides a way to find all of the leaves in a tree that
@@ -59,7 +60,7 @@ object TreeTraversal {
    * Performs a depth-first traversal of the tree, returning all matching leaf
    * nodes.
    */
-  implicit def depthFirst[Tree, K, V: Ordering, T, A](implicit treeOps: FullBinaryTreeOps[Tree, BranchLabel[K, V, A], LeafLabel[T, A]]): TreeTraversal[Tree, K, V, T, A] =
+  implicit def depthFirst[Tree, K, V: PartialOrder, T, A](implicit treeOps: FullBinaryTreeOps[Tree, BranchLabel[K, V, A], LeafLabel[T, A]]): TreeTraversal[Tree, K, V, T, A] =
     DepthFirstTreeTraversal(Reorder.unchanged)
 
   /**
@@ -68,8 +69,8 @@ object TreeTraversal {
    * annotations. This means that if we have multiple valid candidate children,
    * we will traverse the child with the largest annotation first.
    */
-  def weightedDepthFirst[Tree, K, V: Ordering, T, A: Ordering](implicit treeOps: FullBinaryTreeOps[Tree, BranchLabel[K, V, A], LeafLabel[T, A]]): TreeTraversal[Tree, K, V, T, A] =
-    DepthFirstTreeTraversal(Reorder.weightedDepthFirst)
+  def weightedDepthFirst[Tree, K, V: PartialOrder, T, A: Order](implicit treeOps: FullBinaryTreeOps[Tree, BranchLabel[K, V, A], LeafLabel[T, A]]): TreeTraversal[Tree, K, V, T, A] =
+    DepthFirstTreeTraversal[Tree, K, V, T, A](Reorder.weightedDepthFirst)
 
   /**
    * A depth first search for matching leaves, randomly choosing the order of
@@ -78,7 +79,7 @@ object TreeTraversal {
    * descend from that node are traversed before moving onto the node's
    * sibling.
    */
-  def randomDepthFirst[Tree, K, V: Ordering, T, A](seed: Option[Int] = None)(implicit treeOps: FullBinaryTreeOps[Tree, BranchLabel[K, V, A], LeafLabel[T, A]]): TreeTraversal[Tree, K, V, T, A] =
+  def randomDepthFirst[Tree, K, V: PartialOrder, T, A](seed: Option[Int] = None)(implicit treeOps: FullBinaryTreeOps[Tree, BranchLabel[K, V, A], LeafLabel[T, A]]): TreeTraversal[Tree, K, V, T, A] =
     DepthFirstTreeTraversal(Reorder.shuffled(seed.getOrElse(System.nanoTime.toInt)))
 
   /**
@@ -92,13 +93,13 @@ object TreeTraversal {
    * proportional to its probability of being sampled, relative to all the
    * other elements still in the set.
    */
-  def probabilisticWeightedDepthFirst[Tree, K, V: Ordering, T, A](seed: Option[Int] = None)(implicit treeOps: FullBinaryTreeOps[Tree, BranchLabel[K, V, A], LeafLabel[T, A]], conversion: A => Double): TreeTraversal[Tree, K, V, T, A] = {
+  def probabilisticWeightedDepthFirst[Tree, K, V: PartialOrder, T, A](seed: Option[Int] = None)(implicit treeOps: FullBinaryTreeOps[Tree, BranchLabel[K, V, A], LeafLabel[T, A]], conversion: A => Double): TreeTraversal[Tree, K, V, T, A] = {
     val n = seed.getOrElse(System.nanoTime.toInt)
     DepthFirstTreeTraversal(Reorder.probabilisticWeightedDepthFirst(n, conversion))
   }
 }
 
-case class DepthFirstTreeTraversal[Tree, K, V, T, A](reorder: Reorder[A])(implicit val treeOps: FullBinaryTreeOps[Tree, BranchLabel[K, V, A], LeafLabel[T, A]], ord: Ordering[V]) extends TreeTraversal[Tree, K, V, T, A] {
+case class DepthFirstTreeTraversal[Tree, K, V, T, A](reorder: Reorder[A])(implicit val treeOps: FullBinaryTreeOps[Tree, BranchLabel[K, V, A], LeafLabel[T, A]], ord: PartialOrder[V]) extends TreeTraversal[Tree, K, V, T, A] {
 
   import treeOps.{Node, foldNode}
 

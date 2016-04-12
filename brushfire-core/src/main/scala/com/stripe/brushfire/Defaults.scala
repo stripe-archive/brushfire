@@ -1,6 +1,7 @@
 package com.stripe.brushfire
 
 import com.twitter.algebird._
+import spire.algebra.{ Order, PartialOrder }
 
 trait LowPriorityDefaults {
   implicit def dispatchedSplitterWithSparseBoolean[A: Ordering, B, C: Ordering, T](
@@ -22,7 +23,7 @@ trait Defaults extends LowPriorityDefaults {
   implicit def doubleSplitter[T: Monoid]: Splitter[Double, T] = BinnedSplitter(BinarySplitter[Double, T](Lt(_))) { d => downRez(d, 2, 100) }
   implicit def booleanSplitter[T: Group]: Splitter[Boolean, T] = BinarySplitter[Boolean, T](IsEq(_))
 
-  implicit def dispatchedSplitterWithSpaceSaver[A: Ordering, B, C: Ordering, D, L](
+  implicit def dispatchedSplitterWithSpaceSaver[A, B, C, D, L](
       implicit ordinal: Splitter[A, Map[L, Long]],
       nominal: Splitter[B, Map[L, Long]],
       continuous: Splitter[C, Map[L, Long]]): Splitter[Dispatched[A, B, C, D], Map[L, Long]] =

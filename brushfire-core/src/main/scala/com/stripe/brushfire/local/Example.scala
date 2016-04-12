@@ -3,6 +3,7 @@ package com.stripe.brushfire.local
 import com.stripe.bonsai._
 import com.stripe.brushfire._
 import com.twitter.algebird._
+import spire.algebra.{ Order, PartialOrder }
 
 import AnnotatedTree.{AnnotatedTreeTraversal, fullBinaryTreeOpsForAnnotatedTree}
 
@@ -29,5 +30,7 @@ object Example extends Defaults {
       trainer = trainer.expand(1)
       println(trainer.validate(AccuracyError()))
     }
+  
+    //implicit val ord = Order.by[AveragedValue, Double] { _.value }
   }
 }

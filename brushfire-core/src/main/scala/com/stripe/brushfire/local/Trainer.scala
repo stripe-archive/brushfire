@@ -3,9 +3,9 @@ package local
 
 import com.stripe.brushfire._
 import com.twitter.algebird._
+import spire.algebra.{ Order, PartialOrder }
 
 import AnnotatedTree.AnnotatedTreeTraversal
-
 
 //map with a reservoir of up to `capacity` randomly chosen keys
 case class SampledMap[A,B](capacity: Int) {
@@ -45,7 +45,7 @@ case class SampledMap[A,B](capacity: Int) {
   def get(key: A): Option[B] = mapValues.get(key)
 }
 
-case class Trainer[K: Ordering, V: Ordering, T: Monoid](
+case class Trainer[K: Order, V: PartialOrder, T: Monoid](
     trainingData: Iterable[Instance[K, V, T]],
     sampler: Sampler[K],
     trees: List[Tree[K, V, T]])(implicit traversal: AnnotatedTreeTraversal[K, V, T, Unit]) {
@@ -149,8 +149,10 @@ case class Trainer[K: Ordering, V: Ordering, T: Monoid](
 }
 
 object Trainer {
-  def apply[K: Ordering, V: Ordering, T: Monoid](trainingData: Iterable[Instance[K, V, T]], sampler: Sampler[K])(implicit traversal: AnnotatedTreeTraversal[K, V, T, Unit]): Trainer[K, V, T] = {
-    val empty = 0.until(sampler.numTrees).toList.map { i => Tree.singleton[K, V, T](Monoid.zero) }
-    Trainer(trainingData, sampler, empty)
+  def apply[K: Order, V: PartialOrder, T: Monoid](trainingData: Iterable[Instance[K, V, T]], sampler: Sampler[K])(implicit traversal: AnnotatedTreeTraversal[K, V, T, Unit]): Trainer[K, V, T] = {
+    val emptyTrees = (0 until sampler.numTrees).toList.map { i =>
+      Tree.singleton[K, V, T](Monoid.zero)
+    }
+    Trainer(trainingData, sampler, emptyTrees)
   }
 }

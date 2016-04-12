@@ -11,6 +11,7 @@ libraryDependencies ++= {
     jacksonXC,
     jacksonJAXRS,
     tDigest,
+    spire,
     scalaTest,
     scalaCheck
   )

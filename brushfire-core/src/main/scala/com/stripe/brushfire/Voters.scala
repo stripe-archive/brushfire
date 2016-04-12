@@ -1,5 +1,7 @@
 package com.stripe.brushfire
 
+import spire.algebra.Order
+
 // Backwards compat.
 
 object SoftVoter {
@@ -7,7 +9,7 @@ object SoftVoter {
 }
 
 object ModeVoter {
-  def apply[L, M: Ordering]() = Voter.mode[L, M]
+  def apply[L, M: Order]() = Voter.mode[L, M]
 }
 
 object ThresholdVoter {

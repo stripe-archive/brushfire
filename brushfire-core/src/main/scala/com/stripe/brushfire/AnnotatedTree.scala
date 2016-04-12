@@ -2,6 +2,8 @@ package com.stripe.brushfire
 
 import com.twitter.algebird._
 import com.stripe.bonsai.{ FullBinaryTree, FullBinaryTreeOps }
+import spire.algebra.{ Order, PartialOrder }
+import spire.syntax.all._
 
 import java.lang.Math.{abs, max}
 
@@ -27,7 +29,7 @@ sealed abstract class Node[K, V, T, A] {
 }
 
 case class SplitNode[K, V, T, A](key: K, predicate: Predicate[V], leftChild: Node[K, V, T, A], rightChild: Node[K, V, T, A], annotation: A) extends Node[K, V, T, A] {
-  def evaluate(row: Map[K, V])(implicit ord: Ordering[V]): List[Node[K, V, T, A]] =
+  def evaluate(row: Map[K, V])(implicit ord: PartialOrder[V]): List[Node[K, V, T, A]] =
     row.get(key) match {
       case Some(v) =>
         (if (predicate(v)) leftChild else rightChild) :: Nil
@@ -120,7 +122,7 @@ case class AnnotatedTree[K, V, T, A](root: Node[K, V, T, A]) {
    * only produce a valid `Tree` if `f` preserves the ordering (ie if
    * `a.compare(b) == f(a).compare(f(b))`).
    */
-  def mapPredicates[V1: Ordering](f: V => V1): AnnotatedTree[K, V1, T, A] =
+  def mapPredicates[V1](f: V => V1): AnnotatedTree[K, V1, T, A] =
     mapSplits { (k, p) => (k, p.map(f)) }
 
   /**
@@ -155,7 +157,7 @@ case class AnnotatedTree[K, V, T, A](root: Node[K, V, T, A]) {
    * @param error to calculate an error statistic given observations (validation) and predictions (training).
    * @return The new, pruned tree.
    */
-  def prune[P, E: Ordering](validationData: Map[Int, T], voter: Voter[T, P], error: Error[T, P, E])(implicit m: Monoid[T], s: Semigroup[A]): AnnotatedTree[K, V, T, A] =
+  def prune[P, E: Order](validationData: Map[Int, T], voter: Voter[T, P], error: Error[T, P, E])(implicit m: Monoid[T], s: Semigroup[A]): AnnotatedTree[K, V, T, A] =
     AnnotatedTree(pruneNode(validationData, root, voter, error)._2)
 
   /**
@@ -171,7 +173,7 @@ case class AnnotatedTree[K, V, T, A](root: Node[K, V, T, A]) {
    * @param start The root node of the tree.
    * @return A node at the root of the new, pruned tree.
    */
-  def pruneNode[P, E: Ordering](validationData: Map[Int, T], start: Node[K, V, T, A], voter: Voter[T, P], error: Error[T, P, E])(implicit m: Monoid[T], aSemigroup: Semigroup[A]): (Map[Int, T], Node[K, V, T, A]) = {
+  def pruneNode[P, E: Order](validationData: Map[Int, T], start: Node[K, V, T, A], voter: Voter[T, P], error: Error[T, P, E])(implicit m: Monoid[T], aSemigroup: Semigroup[A]): (Map[Int, T], Node[K, V, T, A]) = {
     start match {
       case leaf @ LeafNode(_, _, _) =>
         // Bounce at the bottom and start back up the tree.
@@ -209,13 +211,13 @@ case class AnnotatedTree[K, V, T, A](root: Node[K, V, T, A]) {
    * @param children
    * @return
    */
-  def pruneLevel[P, E](
+  def pruneLevel[P, E: Order](
     parent: SplitNode[K, V, T, A],
     leftChild: LeafNode[K, V, T, A],
     rightChild: LeafNode[K, V, T, A],
     validationData: Map[Int, T],
     voter: Voter[T, P],
-    error: Error[T, P, E])(implicit targetMonoid: Monoid[T], errorOrdering: Ordering[E]): (Map[Int, T], Node[K, V, T, A]) = {
+    error: Error[T, P, E])(implicit targetMonoid: Monoid[T]): (Map[Int, T], Node[K, V, T, A]) = {
 
     def v(leaf: LeafNode[K, V, T, A]): T =
       validationData.getOrElse(leaf.index, targetMonoid.zero)
@@ -232,7 +234,7 @@ case class AnnotatedTree[K, V, T, A](root: Node[K, V, T, A]) {
     val errorOfSums = error.create(validationSum, targetPrediction) // Error of potential combined node.
 
     // Compare sum of errors and error of sums (and lower us out of the sum of errors Option).
-    val doCombine = errorOrdering.gteq(sumOfErrors, errorOfSums)
+    val doCombine = sumOfErrors >= errorOfSums
 
     if (doCombine) {
       // Create a new leaf from the combination of the children.

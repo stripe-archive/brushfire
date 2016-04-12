@@ -1,5 +1,8 @@
 package com.stripe.brushfire
 
+import spire.algebra.PartialOrder
+import spire.implicits._
+
 /**
  * A `Predicate` is a function which accepts or rejects feature values.
  *
@@ -16,7 +19,7 @@ package com.stripe.brushfire
  *  - GtEq(c): x >= c
  *
  * Predicates can be negated using `!`, and can be transformed using
- * `map`. Evaluating a predicate requires an Ordering, but this
+ * `map`. Evaluating a predicate requires a PartialOrder[V], but this
  * constraint is not enforced during construction, only when `apply()`
  * is invoked.
  */
@@ -32,14 +35,14 @@ sealed abstract class Predicate[V] extends Product with Serializable {
   /**
    * Evaluate this predicate for the feature value `v`.
    */
-  def apply(v: V)(implicit ord: Ordering[V]): Boolean =
+  def apply(v: V)(implicit ord: PartialOrder[V]): Boolean =
     this match {
-      case IsEq(x) => ord.equiv(v, x)
-      case NotEq(x) => !ord.equiv(v, x)
-      case Lt(x) => ord.lt(v, x)
-      case LtEq(x) => ord.lteq(v, x)
-      case Gt(x) => ord.gt(v, x)
-      case GtEq(x) => ord.gteq(v, x)
+      case IsEq(x) => v === x
+      case NotEq(x) => v =!= x
+      case Lt(x) => v < x
+      case LtEq(x) => v <= x
+      case Gt(x) => v > x
+      case GtEq(x) => v >= x
     }
 
   /**
@@ -62,7 +65,7 @@ sealed abstract class Predicate[V] extends Product with Serializable {
    * Map the value types of this [[Predicate]] using `f`.
    *
    * Remember that in order to evaluate a Predicate[U] you will need
-   * to be able to provide a valid Ordering[U] instance.
+   * to be able to provide a valid PartialOrder[U] instance.
    */
   def map[U](f: V => U): Predicate[U] =
     this match {

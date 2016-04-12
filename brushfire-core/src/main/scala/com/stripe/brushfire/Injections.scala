@@ -86,7 +86,7 @@ object JsonInjections {
       }
   }
 
-  implicit def predicateJsonInjection[V](implicit vInj: JsonNodeInjection[V], ord: Ordering[V] = null): JsonNodeInjection[Predicate[V]] = {
+  implicit def predicateJsonInjection[V](implicit vInj: JsonNodeInjection[V]): JsonNodeInjection[Predicate[V]] = {
     new AbstractJsonNodeInjection[Predicate[V]] {
       import Predicate._
 
@@ -128,9 +128,8 @@ object JsonInjections {
     // it). We do this by using `WithFallback`. If A is a unit, then we don't
     // need an injection. OTOH, if A isn't Unit, then we get an injection and
     // use that to serialize the annotation.
-    maybeAInj: (Unit =:= A) WithFallback JsonNodeInjection[A],
-    mon: Monoid[T],
-    ord: Ordering[V] = null): JsonNodeInjection[AnnotatedTree[K, V, T, A]] = {
+    maybeAInj: (Unit =:= A) WithFallback JsonNodeInjection[A]
+  ): JsonNodeInjection[AnnotatedTree[K, V, T, A]] = {
 
     implicit def nodeJsonNodeInjection: JsonNodeInjection[Node[K, V, T, A]] =
       new AbstractJsonNodeInjection[Node[K, V, T, A]] {
