@@ -1,7 +1,7 @@
 package com.stripe.brushfire
 
 import com.twitter.algebird._
-import com.stripe.bonsai.{ FullBinaryTree, FullBinaryTreeOps }
+import com.stripe.bonsai.{ FullBinaryTree, FullBinaryTreeOps, Layout }
 
 import java.lang.Math.{abs, max}
 
@@ -304,8 +304,12 @@ case class AnnotatedTree[K, V, T, A](root: Node[K, V, T, A]) {
   def renumberLeaves: AnnotatedTree[K, V, T, A] =
     AnnotatedTree(root.renumber(0)._2)
 
-  def compress: FullBinaryTree[(K, Predicate[V], A), (Int, T, A)] =
+  def compress(implicit
+    branchLayout: Layout[BranchLabel[K, V, A]],
+    leafLayout: Layout[LeafLabel[T, A]]
+  ): FullBinaryTree[(K, Predicate[V], A), (Int, T, A)] = {
     FullBinaryTree(this)
+  }
 }
 
 object AnnotatedTree {
