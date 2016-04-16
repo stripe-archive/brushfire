@@ -24,8 +24,13 @@ lazy val root = project.
   settings(unidocSettings: _*).
   settings(unpublished: _*)
 
+lazy val brushfireTree = project.
+  in(file("brushfire-tree")).
+  disablePlugins(sbtassembly.AssemblyPlugin)
+
 lazy val brushfireCore = project.
   in(file("brushfire-core")).
+  dependsOn(brushfireTree).
   disablePlugins(sbtassembly.AssemblyPlugin)
 
 lazy val brushfireScalding = project.

@@ -2,6 +2,21 @@ package com.stripe.brushfire
 
 import com.twitter.algebird._
 
+/** Allocates instances and features to trees and training or validation sets */
+trait Sampler[-K] {
+  /** returns number of trees to train */
+  def numTrees: Int
+
+  /** returns how many copies (0 to n) of an instance to train a given tree with */
+  def timesInTrainingSet(id: String, timestamp: Long, treeIndex: Int): Int
+
+  /** returns whether to use an instance to validate a given tree */
+  def includeInValidationSet(id: String, timestamp: Long, treeIndex: Int): Boolean
+
+  /** returns whether to consider a feature when splitting a given leaf */
+  def includeFeature(key: K, treeIndex: Int, leafIndex: Int): Boolean
+}
+
 object SingleTreeSampler extends Sampler[Any] {
   val numTrees = 1
   def timesInTrainingSet(id: String, timestamp: Long, treeIndex: Int) = 1

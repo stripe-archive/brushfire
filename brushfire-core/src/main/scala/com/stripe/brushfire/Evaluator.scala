@@ -2,6 +2,20 @@ package com.stripe.brushfire
 
 import com.twitter.algebird._
 
+/** Evaluates the goodness of a candidate split */
+trait Evaluator[V, T] {
+
+  /**
+   * Evaluate the fitness of a candidate split.
+   *
+   * This method may transform the split, in which case the score
+   * applies to the split that is returned. The result is optional to
+   * handle cases where a split is not valid (for example, if one side
+   * of a split is "empty" in some sense).
+   */
+  def evaluate(split: Split[V, T]): Option[(Split[V, T], Double)]
+}
+
 case class ChiSquaredEvaluator[V, L, W](implicit weightMonoid: Monoid[W], weightDouble: W => Double)
     extends Evaluator[V, Map[L, W]] {
   def evaluate(split: Split[V, Map[L, W]]): Option[(Split[V, Map[L, W]], Double)] = {

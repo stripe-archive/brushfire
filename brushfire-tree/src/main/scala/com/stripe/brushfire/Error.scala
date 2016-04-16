@@ -1,7 +1,20 @@
 package com.stripe.brushfire
 
-import com.twitter.algebird._
+import com.twitter.algebird.{AveragedValue, Group, Monoid, Semigroup}
 
+/** Computes some kind of error by comparing the trees' predictions to the validation set */
+trait Error[T, P, E] {
+  /** semigroup to sum up error values */
+  def semigroup: Semigroup[E]
+
+  /**
+   * create an single component of the error value
+   *
+   * @param actual the actual target distribution from the validation set
+   * @param predicted the set of predicted distributions from the trees
+   */
+  def create(actual: T, predicted: P): E
+}
 /**
  * FrequencyError sets up the most common case when dealing
  * with discrete distributions:
