@@ -65,10 +65,10 @@ case class DispatchedSplitter[A: Ordering, B, C: Ordering, D, T](
   }
 
   def split(parent: T, stats: S) = stats match {
-    case Ordinal(as) => Dispatched.wrapSplits(ordinal.split(parent, as))(Dispatched.ordinal)
-    case Nominal(bs) => Dispatched.wrapSplits(nominal.split(parent, bs))(Dispatched.nominal)
-    case Continuous(cs) => Dispatched.wrapSplits(continuous.split(parent, cs))(Dispatched.continuous)
-    case Sparse(ds) => Dispatched.wrapSplits(sparse.split(parent, ds))(Dispatched.sparse)
+    case Ordinal(as) => Split.wrapSplits(ordinal.split(parent, as))(Dispatched.ordinal)
+    case Nominal(bs) => Split.wrapSplits(nominal.split(parent, bs))(Dispatched.nominal)
+    case Continuous(cs) => Split.wrapSplits(continuous.split(parent, cs))(Dispatched.continuous)
+    case Sparse(ds) => Split.wrapSplits(sparse.split(parent, ds))(Dispatched.sparse)
   }
 }
 

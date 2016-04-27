@@ -1,4 +1,4 @@
-name := "brushfire-core"
+name := "brushfire-training"
 
 libraryDependencies ++= {
   import Deps._

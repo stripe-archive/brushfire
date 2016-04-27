@@ -16,3 +16,10 @@ case class Split[V, T](predicate: Predicate[V], leftDistribution: T, rightDistri
     SplitNode(feature, predicate, LeafNode(0, leftDistribution), LeafNode(1, rightDistribution))
 }
 
+object Split {
+  /**
+   * This is just .map on the Iterable[Split[?, T]] functor
+   */
+  def wrapSplits[X, T, R](splits: Iterable[Split[X, T]])(fn: X => R): Iterable[Split[R, T]] =
+    splits.map(_.map(fn))
+}
