@@ -1,5 +1,5 @@
 #!/bin/sh
-java -Xmx2G -cp ../brushfire-scalding/target/scala-2.10/brushfire-scalding-0.6.0-SNAPSHOT-jar-with-dependencies.jar \
+java -Xmx2G -cp ../brushfire-scalding/target/scala-2.11/brushfire-scalding-0.7.3-SNAPSHOT-jar-with-dependencies.jar \
 com.twitter.scalding.Tool \
 com.stripe.brushfire.scalding.IrisJob \
 --local \

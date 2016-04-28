@@ -1,4 +1,4 @@
-name := "brushfire-core"
+name := "brushfire-serialization"
 
 libraryDependencies ++= {
   import Deps._

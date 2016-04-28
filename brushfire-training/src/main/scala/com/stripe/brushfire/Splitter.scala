@@ -2,6 +2,26 @@ package com.stripe.brushfire
 
 import com.twitter.algebird._
 
+/**
+ * Produces candidate splits from the instances at a leaf node.
+ * @tparam V feature values
+ * @tparam T target distributions
+ */
+trait Splitter[V, T] {
+  /** the type of a representation of a joint distribution of feature values and predictions */
+  type S
+
+  /** return a new joint distribution from a value and a target distribution */
+  def create(value: V, target: T): S
+
+  /** semigroup to sum up joint distributions */
+  def semigroup: Semigroup[S]
+
+  /** return candidate splits given a joint distribution and the parent node's target distrubution */
+  def split(parent: T, stats: S): Iterable[Split[V, T]]
+}
+
+
 case class BinarySplitter[V: Ordering, T: Monoid](partition: V => Predicate[V]) extends Splitter[V, T] {
 
   type S = Map[V, T]
@@ -15,6 +35,40 @@ case class BinarySplitter[V: Ordering, T: Monoid](partition: V => Predicate[V]) 
       val (trues, falses) = stats.partition { case (v, d) => predicate(v) }
       Split(predicate, Monoid.sum(trues.values), Monoid.sum(falses.values))
     }
+  }
+}
+
+case class DispatchedSplitter[A: Ordering, B, C: Ordering, D, T](
+  ordinal: Splitter[A, T],
+  nominal: Splitter[B, T],
+  continuous: Splitter[C, T],
+  sparse: Splitter[D, T])
+    extends Splitter[Dispatched[A, B, C, D], T] {
+
+  type S = Dispatched[ordinal.S, nominal.S, continuous.S, sparse.S]
+  val semigroup =
+    Semigroup.from[S] {
+      case (Ordinal(l), Ordinal(r)) => Ordinal(ordinal.semigroup.plus(l, r))
+      case (Nominal(l), Nominal(r)) => Nominal(nominal.semigroup.plus(l, r))
+      case (Continuous(l), Continuous(r)) => Continuous(continuous.semigroup.plus(l, r))
+      case (Sparse(l), Sparse(r)) => Sparse(sparse.semigroup.plus(l, r))
+      case (a, b) => sys.error("Values do not match: " + (a, b))
+    }
+
+  def create(value: Dispatched[A, B, C, D], target: T) = {
+    value match {
+      case Ordinal(a) => Ordinal(ordinal.create(a, target))
+      case Nominal(b) => Nominal(nominal.create(b, target))
+      case Continuous(c) => Continuous(continuous.create(c, target))
+      case Sparse(d) => Sparse(sparse.create(d, target))
+    }
+  }
+
+  def split(parent: T, stats: S) = stats match {
+    case Ordinal(as) => Split.wrapSplits(ordinal.split(parent, as))(Dispatched.ordinal)
+    case Nominal(bs) => Split.wrapSplits(nominal.split(parent, bs))(Dispatched.nominal)
+    case Continuous(cs) => Split.wrapSplits(continuous.split(parent, cs))(Dispatched.continuous)
+    case Sparse(ds) => Split.wrapSplits(sparse.split(parent, ds))(Dispatched.sparse)
   }
 }
 
