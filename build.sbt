@@ -33,9 +33,14 @@ lazy val brushfireTraining = project.
   dependsOn(brushfireTree).
   disablePlugins(sbtassembly.AssemblyPlugin)
 
+lazy val brushfireSerialization = project.
+  in(file("brushfire-serialization")).
+  dependsOn(brushfireTree).
+  disablePlugins(sbtassembly.AssemblyPlugin)
+
 lazy val brushfireScalding = project.
   in(file("brushfire-scalding")).
-  dependsOn(brushfireTraining)
+  dependsOn(brushfireTraining, brushfireSerialization)
 
 lazy val brushfireFinatra = project.
   in(file("brushfire-finatra")).
