@@ -20,7 +20,7 @@ val unpublished = Seq(publish := (), publishLocal := (), publishArtifact := fals
 
 lazy val root = project.
   in(file(".")).
-  aggregate(brushfireTraining, brushfireScalding).
+  aggregate(brushfireTree, brushfireSerialization, brushfireTraining, brushfireScalding).
   settings(unidocSettings: _*).
   settings(unpublished: _*)
 
