@@ -35,3 +35,7 @@ lazy val brushfireScalding = project.
 lazy val brushfireFinatra = project.
   in(file("brushfire-finatra")).
   dependsOn(brushfireCore)
+
+lazy val brushfireMondrian = project.
+  in(file("brushfire-mondrian")).
+  disablePlugins(sbtassembly.AssemblyPlugin)
