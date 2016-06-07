@@ -1,5 +1,6 @@
 package com.stripe.brushfire.mondrian
 
+import com.twitter.algebird.Semigroup
 import scala.util.Random.nextDouble
 import scala.collection.mutable.Builder
 import scala.math.{ log, max }
@@ -12,15 +13,27 @@ import scala.math.{ log, max }
  *
  * [1] http://papers.nips.cc/paper/5234-mondrian-forests-efficient-online-random-forests.pdf
  */
-case class MondrianTree(root: Option[MondrianTree.Node], λ: Double) {
+case class MondrianTree[V](root: Option[MondrianTree.Node[V]], λ: Double) {
 
   import MondrianTree.{ Node, Branch, Leaf, Path }
+
+  /**
+   * Return true if the tree is empty.
+   */
+  def isEmpty: Boolean =
+    root.isEmpty
+
+  /**
+   * Return true if the tree is non-empty.
+   */
+  def nonEmpty: Boolean =
+    root.nonEmpty
 
   /**
    * Return the number of the nodes in the tree.
    */
   def size: Int =
-    root.map(n => n.fold(1)(_ + _)).getOrElse(0)
+    root.map(n => n.fold(_ => 1)(_ + _)).getOrElse(0)
 
   /**
    * Return the maximum depth of the tree.
@@ -29,13 +42,13 @@ case class MondrianTree(root: Option[MondrianTree.Node], λ: Double) {
    * will reach this depth.
    */
   def depth: Int =
-    root.map(n => n.fold(1)((x, y) => max(x, y) + 1)).getOrElse(0)
+    root.map(n => n.fold(_ => 1)((x, y) => max(x, y) + 1)).getOrElse(0)
 
   /**
    * Given the vectors `xss`, compute a histogram of paths.
    */
-  def histogram(xss: TraversableOnce[Vector[Double]]): Map[Path, Int] =
-    xss.foldLeft(Map.empty[Path, Int]) { (m, xs) =>
+  def histogram(xss: TraversableOnce[Vector[Double]]): Map[Path[V], Int] =
+    xss.foldLeft(Map.empty[Path[V], Int]) { (m, xs) =>
       path(xs).fold(m)(p => m.updated(p, m.getOrElse(p, 0) + 1))
     }
 
@@ -45,10 +58,10 @@ case class MondrianTree(root: Option[MondrianTree.Node], λ: Double) {
    * If the tree is empty the result will be `None`. Otherwise, the
    * result will be `Some(path)`.
    */
-  def path(x: Vector[Double]): Option[Path] = {
-    def descend(node: Node, bldr: Builder[Boolean, Vector[Boolean]]): Path =
+  def path(x: Vector[Double]): Option[Path[V]] = {
+    def descend(node: Node[V], bldr: Builder[Boolean, Vector[Boolean]]): Path[V] =
       node match {
-        case leaf @ Leaf(_, _, _) =>
+        case leaf @ Leaf(_, _, _, _) =>
           Path(bldr.result, leaf)
         case Branch(i, pt, _, _, _, left, right) =>
           val goRight = x(i) > pt
@@ -61,8 +74,8 @@ case class MondrianTree(root: Option[MondrianTree.Node], λ: Double) {
    * Absorb the given vector `xs` into the tree, returning a new tree
    * that has "learned" this point.
    */
-  def absorb(xs: Vector[Double]): MondrianTree =
-    MondrianTree(Some(root.fold(Node.leaf(λ, xs))(n => extendNode(n, xs))), λ)
+  def absorb(xs: Vector[Double], value: V)(implicit s: Semigroup[V]): MondrianTree[V] =
+    MondrianTree(Some(root.fold(Node.leaf(λ, xs, value))(n => extendNode(n, xs, value))), λ)
 
   /**
    * For a given node `t` and vector `x`, do what is necessary to
@@ -73,16 +86,16 @@ case class MondrianTree(root: Option[MondrianTree.Node], λ: Double) {
    * implemented -- the tree grows up from the branches (or leaves),
    * not down from the leaves.
    */
-  def extendNode(t: Node, x: Vector[Double]): Node = {
+  def extendNode(t: Node[V], x: Vector[Double], value: V)(implicit s: Semigroup[V]): Node[V] = {
 
-    def introduceNewParent(e: Double, timestamp: Double, j: Node): Node = {
+    def introduceNewParent(e: Double, timestamp: Double, j: Node[V]): Node[V] = {
       val deltas = Bounds.deltas(j.upperBounds, x, j.lowerBounds)
       val i = Util.weightedSample(deltas)
       val xi = x(i)
       val jubi = j.upperBounds(i)
       val lb = Bounds.min(j.lowerBounds, x)
       val ub = Bounds.max(j.upperBounds, x)
-      val leaf = Node.leaf(λ, x)
+      val leaf = Node.leaf[V](λ, x, value)
       if (xi > jubi) { // cut <= xi
         Branch(i, Util.sample(jubi, xi), timestamp, lb, ub, j, leaf)
       } else { // cut > xi
@@ -90,7 +103,7 @@ case class MondrianTree(root: Option[MondrianTree.Node], λ: Double) {
       }
     }
 
-    def extendDown(j: Node): Node = {
+    def extendDown(j: Node[V]): Node[V] = {
       val lb = Bounds.min(j.lowerBounds, x)
       val ub = Bounds.max(j.upperBounds, x)
       j match {
@@ -100,12 +113,12 @@ case class MondrianTree(root: Option[MondrianTree.Node], λ: Double) {
           } else {
             b.copy(rightChild = extendBlock(t, right), lowerBounds = lb, upperBounds = ub)
           }
-        case leaf @ Leaf(_, _, _) =>
-          leaf.copy(lowerBounds = lb, upperBounds = ub)
+        case Leaf(t, _, _, value0) =>
+          Leaf(t, lb, ub, s.plus(value0, value))
       }
     }
 
-    def extendBlock(parentTimestamp: Double, j: Node): Node = {
+    def extendBlock(parentTimestamp: Double, j: Node[V]): Node[V] = {
       val rate = Bounds.rate(j.upperBounds, x, j.lowerBounds)
       // probability that e > 1/rate is:
       //   exp(-e*rate)
@@ -119,6 +132,42 @@ case class MondrianTree(root: Option[MondrianTree.Node], λ: Double) {
 
     extendBlock(0.0, t)
   }
+
+  /**
+   * Given a vector `x`, find the best prediction available.
+   *
+   * This prediction will correspond to the mean of the values seen by
+   * this leaf.
+   */
+  def predict(x: Vector[Double]): Option[V] =
+    leafFor(x).map(_.value)
+
+  /**
+   * Given the vector `x`, find its corresponding leaf and return the
+   * center of that leaf's bounding box.
+   *
+   * The bounding box is an N-dimensional box (a hyper-rectangle), so
+   * we find the center by finding the midpoint in each dimension.
+   */
+  def clusterCenter(x: Vector[Double]): Option[Vector[Double]] =
+    leafFor(x).map { case Leaf(_, lb, ub, _) => Bounds.mean(ub, lb) }
+
+  /**
+   * Given a vector `x`, find the leaf (if any) that matches.
+   *
+   * If the tree is empty, this will return `None`. Otherwise it will
+   * return `Some(leaf)`
+   */
+  def leafFor(x: Vector[Double]): Option[Leaf[V]] = {
+    def loop(node: Node[V]): Leaf[V] =
+      node match {
+        case leaf @ Leaf(_, _, _, _) =>
+          leaf
+        case Branch(i, pt, _, _, _, left, right) =>
+          loop(if (x(i) <= pt) left else right)
+      }
+    root.map(loop)
+  }
 }
 
 object MondrianTree {
@@ -128,22 +177,36 @@ object MondrianTree {
    *
    * Even empty Mondrian tree require a liftime parameter `λ`.
    */
-  def empty(λ: Double): MondrianTree =
+  def empty[V](λ: Double): MondrianTree[V] =
     MondrianTree(None, λ)
 
   /**
    * Produce a Mondrian tree from a single vector `xs` and a liftime
    * parameter `λ`.
    */
-  def apply(xs: Vector[Double], λ: Double): MondrianTree =
-    empty(λ).absorb(xs)
+  def apply[V: Semigroup](xs: Vector[Double], value: V, λ: Double): MondrianTree[V] =
+    empty[V](λ).absorb(xs, value)
 
   /**
    * Produce a Mondrian tree from the given vectors `xss` and a
    * liftime parameter `λ`.
    */
-  def apply(xss: TraversableOnce[Vector[Double]], λ: Double): MondrianTree =
-    xss.foldLeft(MondrianTree.empty(λ))((t, xs) => t.absorb(xs))
+  def apply[V: Semigroup](xss: TraversableOnce[Point[V]], λ: Double): MondrianTree[V] =
+    xss.foldLeft(empty[V](λ)) { case (t, (xs, v)) => t.absorb(xs, v) }
+
+  /**
+   * Produce a Mondrian tree from a single vector `xs` and a liftime
+   * parameter `λ`.
+   */
+  def apply(xs: Vector[Double], λ: Double): MondrianTree[Unit] =
+    empty[Unit](λ).absorb(xs, ())
+
+  /**
+   * Produce a Mondrian tree from the given vectors `xss` and a
+   * liftime parameter `λ`.
+   */
+  def apply(xss: TraversableOnce[Vector[Double]], λ: Double): MondrianTree[Unit] =
+    xss.foldLeft(empty[Unit](λ)) { (t, xs) => t.absorb(xs, ()) }
 
   /**
    * A node in the mondrian tree.
@@ -156,23 +219,24 @@ object MondrianTree {
    * The bounds are both inclusive (for a single value the lower and
    * upper bounds will be the same).
    */
-  sealed abstract class Node {
+  sealed abstract class Node[V] {
 
     def timestamp: Double
     def lowerBounds: Vector[Double]
     def upperBounds: Vector[Double]
 
-    def fold[A](isLeaf: A)(isBranch: (A, A) => A): A =
+    def fold[A](isLeaf: V => A)(isBranch: (A, A) => A): A =
       this match {
-        case Leaf(_, _, _) =>
-          isLeaf
+        case Leaf(_, _, _, value) =>
+          isLeaf(value)
         case Branch(_, _, _, _, _, left, right) =>
           isBranch(left.fold(isLeaf)(isBranch), right.fold(isLeaf)(isBranch))
       }
   }
 
   object Node {
-    def leaf(t: Double, x: Vector[Double]): Node = Leaf(t, x, x)
+    def leaf[V](t: Double, x: Vector[Double], value: V): Node[V] =
+      Leaf(t, x, x, value)
   }
 
   /**
@@ -185,24 +249,25 @@ object MondrianTree {
    * feature on. If `x <= splitPoint` the left child is chosen,
    * otherwise the right child is chosen.
    */
-  case class Branch(
+  case class Branch[V](
     splitDim: Int,
     splitPoint: Double,
     timestamp: Double,
     lowerBounds: Vector[Double],
     upperBounds: Vector[Double],
-    leftChild: Node,
-    rightChild: Node) extends Node
+    leftChild: Node[V],
+    rightChild: Node[V]) extends Node[V]
 
-  case class Leaf(
+  case class Leaf[V](
     timestamp: Double,
     lowerBounds: Vector[Double],
-    upperBounds: Vector[Double]) extends Node
+    upperBounds: Vector[Double],
+    value: V) extends Node[V]
 
   /**
    * Path represents a traversal through the tree to a particular
    * leaf. The decisions represent whether we went left or right,
    * starting from the root.
    */
-  case class Path(decisions: Vector[Boolean], destination: Leaf)
+  case class Path[V](decisions: Vector[Boolean], destination: Leaf[V])
 }

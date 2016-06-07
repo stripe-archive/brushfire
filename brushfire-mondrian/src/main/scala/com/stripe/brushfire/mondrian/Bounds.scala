@@ -8,6 +8,25 @@ import Util._
 object Bounds {
 
   /**
+   * A vector of zeros.
+   */
+  def zeros(n: Int): Vector[Double] =
+    Vector.fill(n)(0.0)
+
+  /**
+   * Compute the pairwise sum value from two vectors.
+   *
+   * The given vectors should both have the same size.
+   */
+  def add(xs: Vector[Double], ys: Vector[Double]): Vector[Double] = {
+    def loop(i: Int, b: Builder[Double, Vector[Double]]): Vector[Double] =
+      if (i >= xs.size) b.result else {
+        loop(i + 1, b += (xs(i) + ys(i)))
+      }
+    loop(0, Vector.newBuilder[Double])
+  }
+
+  /**
    * Compute the pairwise min value from two vectors.
    *
    * The given vectors should both have the same size.
@@ -29,6 +48,20 @@ object Bounds {
     def loop(i: Int, b: Builder[Double, Vector[Double]]): Vector[Double] =
       if (i >= xs.size) b.result else {
         loop(i + 1, b += scala.math.max(xs(i), ys(i)))
+      }
+    loop(0, Vector.newBuilder[Double])
+  }
+
+  /**
+   * Compute the pariwise mean value from two vectors.
+   *
+   * The given vectors should both have the same size.
+   */
+  def mean(xs: Vector[Double], ys: Vector[Double]): Vector[Double] = {
+    def loop(i: Int, b: Builder[Double, Vector[Double]]): Vector[Double] =
+      if (i >= xs.size) b.result else {
+        val y = ys(i)
+        loop(i + 1, b += (y + (xs(i) - y) / 2.0))
       }
     loop(0, Vector.newBuilder[Double])
   }

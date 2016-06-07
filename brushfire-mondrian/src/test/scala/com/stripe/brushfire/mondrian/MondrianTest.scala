@@ -8,48 +8,55 @@ import org.scalatest.prop._
 import org.scalacheck._
 import Arbitrary.arbitrary
 
+case class Lambda(toDouble: Double)
+
+object Lambda {
+  implicit val arbitraryLambda: Arbitrary[Lambda] =
+    Arbitrary(Gen.chooseNum(1.0, 1000000.0).map(Lambda(_)))
+}
+
+case class Vect3(toVector: Vector[Double])
+
+object Vect3 {
+  implicit val arbitraryVect3: Arbitrary[Vect3] =
+    Arbitrary(arbitrary[(Double, Double, Double)]
+      .map { case (x, y, z) => Vect3(Vector(x, y, z)) })
+}
+
 class PredicateSpec extends WordSpec with Matchers with PropertyChecks {
 
-  case class Lambda(toDouble: Double)
-
-  object Lambda {
-    implicit val arbitraryLambda: Arbitrary[Lambda] =
-      Arbitrary(Gen.chooseNum(1.0, 1000000.0).map(Lambda(_)))
-  }
-
-  case class Point(toVector: Vector[Double])
-
-  object Point {
-    implicit val arbitraryPoint: Arbitrary[Point] =
-      Arbitrary(arbitrary[(Double, Double, Double)].map { case (x, y, z) =>
-      Point(Vector(x, y, z))
-    })
-  }
-
   "MondrianTree" should {
+
     "be created from points" in {
-      forAll { (xss: Iterable[Point], lambda: Lambda) =>
+      forAll { (xss: Iterable[Vect3], lambda: Lambda) =>
         val t = MondrianTree(xss.map(_.toVector), lambda.toDouble)
         t.root.isEmpty shouldBe xss.isEmpty
         t.size should be <= xss.size
       }
     }
 
-    "do stuff with flowers" in {
-
-      // java...
+    def readIrisData(): Vector[(Vector[Double], String)] = {
       import java.io._
       val br = new BufferedReader(new FileReader(new File("example/iris.data")))
-      var line = br.readLine()
-      var data = Vector.empty[(Vector[Double], String)]
-      while (line != null) {
-        val toks = line.split(',')
-        val dims = toks.iterator.take(4).map(_.toDouble).toVector
-        val name = toks(4)
-        data = data :+ (dims, name)
-        line = br.readLine()
+      try {
+        var line = br.readLine()
+        val bldr = Vector.newBuilder[(Vector[Double], String)]
+        while (line != null) {
+          val toks = line.split(',')
+          val dims = toks.iterator.take(4).map(_.toDouble).toVector
+          val name = toks(4)
+          bldr += ((dims, name))
+          line = br.readLine()
+        }
+        bldr.result
+      } finally {
+        br.close()
       }
-      br.close()
+    }
+
+    "do stuff with flowers" in {
+
+      val data = readIrisData()
 
       // ok let's train a tree on some flower data!
       val λ = 1000.0
@@ -72,8 +79,8 @@ class PredicateSpec extends WordSpec with Matchers with PropertyChecks {
       }
 
       // we have totally overfit this model (using a large λ
-      // parameter), and validating it with the training data, so we
-      // are very confident that these classes will be distinct.
+      // parameter), and are validating it with the training data, so
+      // we are very confident that these classes will be distinct.
       dotted.foreach { case ((k0, k1), n) =>
         if (k0 != k1) {
           n shouldBe 0
