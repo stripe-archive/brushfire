@@ -1,6 +1,6 @@
 package com.stripe.brushfire.mondrian
 
-import com.twitter.algebird.Monoid
+import com.twitter.algebird.{Semigroup, Monoid}
 import scala.util.Random.nextDouble
 import scala.collection.mutable.Builder
 import scala.math.{ log, max }
@@ -44,6 +44,9 @@ case class MondrianForest[V](trees: List[MondrianTree[V]]) {
       Some(totals.map(_ / centers.size))
     }
   }
+
+  def pruneBy[E](lossFn: V => E)(implicit sv: Semigroup[V], se: Semigroup[E], oe: Ordering[E]): MondrianForest[V] =
+    MondrianForest(trees.map(_.pruneBy(lossFn)))
 }
 
 object MondrianForest {

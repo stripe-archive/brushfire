@@ -149,6 +149,7 @@ case class MondrianTree[V](root: Option[MondrianTree.Node[V]], λ: Double) {
           val combinedV = sv.plus(leftV, rightV)
           val prunedE = lossFn(combinedV)
           val unprunedE = se.plus(leftE, rightE)
+
           if(oe.lt(prunedE, unprunedE))
             (combinedV, prunedE, Leaf(λ, lb, ub, combinedV))
           else
