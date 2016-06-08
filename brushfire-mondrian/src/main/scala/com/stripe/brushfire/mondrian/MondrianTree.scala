@@ -134,6 +134,33 @@ case class MondrianTree[V](root: Option[MondrianTree.Node[V]], λ: Double) {
   }
 
   /**
+   * Given a function from a leaf's value to a loss, and a way to sum these losses,
+   * prune the children of any branch node where the loss of the sum of its children's values
+   * is less than the sum of the losses of its children's values.
+   * Note: there is originally one E value created per leaf (and these are then recursively summed),
+   * which means that E can track the number of leaves involved, if desired, for regularization.
+   */
+  def pruneBy[E](lossFn: V => E)(implicit sv: Semigroup[V], se: Semigroup[E], oe: Ordering[E]): MondrianTree[V] = {
+    def loop(t: Node[V]): (V, E, Node[V]) =
+      t match {
+        case b@Branch(_, _, _, lb, ub, left, right) =>
+          val (leftV, leftE, newLeft) = loop(left)
+          val (rightV, rightE, newRight) = loop(right)
+          val combinedV = sv.plus(leftV, rightV)
+          val prunedE = lossFn(combinedV)
+          val unprunedE = se.plus(leftE, rightE)
+          if(oe.lt(prunedE, unprunedE))
+            (combinedV, prunedE, Leaf(λ, lb, ub, combinedV))
+          else
+            (combinedV, unprunedE, b.copy(leftChild=newLeft, rightChild=newRight))
+
+        case Leaf(_, _, _, v) => (v, lossFn(v), t)
+      }
+
+    MondrianTree(root.map{r => loop(r)._3}, λ)
+  }
+
+  /**
    * Given a vector `x`, find the best prediction available.
    *
    * This prediction will correspond to the mean of the values seen by
