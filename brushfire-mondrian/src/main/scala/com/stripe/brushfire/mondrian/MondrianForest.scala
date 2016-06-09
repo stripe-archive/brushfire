@@ -45,7 +45,7 @@ case class MondrianForest[V](trees: List[MondrianTree[V]]) {
     }
   }
 
-  def pruneBy[E](lossFn: V => E)(implicit sv: Semigroup[V], se: Semigroup[E], oe: Ordering[E]): MondrianForest[V] =
+  def pruneBy[E](lossFn: (V,V) => E)(implicit sv: Semigroup[V], se: Semigroup[E], oe: Ordering[E]): MondrianForest[V] =
     MondrianForest(trees.map(_.pruneBy(lossFn)))
 }
 

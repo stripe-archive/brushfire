@@ -44,7 +44,9 @@ class PredicateSpec extends WordSpec with Matchers with PropertyChecks {
         val bldr = Vector.newBuilder[(Vector[Double], String)]
         while (line != null) {
           val toks = line.split(',')
-          val dims = toks.iterator.take(64).map(_.toDouble).toVector
+          val dims =
+            toks.iterator.take(64).map(_.toDouble).toVector ++
+            (1.to(64)).map{i=>scala.util.Random.nextInt(16).toDouble}
           val name = toks(64)
           bldr += ((dims, name))
           line = br.readLine()
@@ -66,14 +68,20 @@ class PredicateSpec extends WordSpec with Matchers with PropertyChecks {
       }.sum / ps.size
     }
 
-    def l2(map: Map[String,Long]):Double = {
-      val size = map.values.sum
-      val probs = map.mapValues{_.toDouble / size}
-      map.map{case (k,v) =>
-        val err = 1.0 - probs(k)
+    def l2(validation: Map[String,Long], training: Map[String,Long]):Double = {
+      val size = training.values.sum
+      val probs = training.mapValues{_.toDouble / size}
+      validation.map{case (k,v) =>
+        val err = 1.0 - probs.getOrElse(k,0.0)
         v * err * err
       }.sum
     }
+
+  def acc(validation: Map[String,Long], training: Map[String,Long]):Double = {
+    val predicted = training.toList.maxBy(_._2)._1
+    validation.values.sum.toDouble - validation.getOrElse(predicted, 0L)
+  }
+
 
     "do stuff with digits" in {
 
@@ -83,32 +91,43 @@ class PredicateSpec extends WordSpec with Matchers with PropertyChecks {
       val (train, validate) = data.partition{d => math.random < 0.8}
 
       //train a forest. lambda is chosen to end up with around 3000 total nodes
-      val t = MondrianForest(100, train.map{case (dims, name) => (dims, Map(name->1L))}, 0.006)
+      val t = MondrianForest(100, train.map{case (dims, name) => (dims, Map(name->1L))}, 0.005)
 
       //validate with the holdouts
       val validationAccuracy = accuracy(t, validate)
 
-      //train another forest, pruning every 100 examples
-      //lambda is higher to compensate for pruning
-      //this usually ends up around 2500 total nodes
-      var t2 = MondrianForest.empty[Map[String,Long]](100, 0.01)
-      val groups = train.grouped(100).foreach{batch =>
-        //prune with l2 error, regularized by adding a constant for each leaf node
-        t2 = t2.pruneBy{v => l2(v)+2.0}
-        batch.foreach{case (xs,v) => t2 = t2.absorb(xs,Map(v->1L))}
+      //prune with l2 error, regularized by adding a constant for each leaf node
+      var t2 = t
+
+      println(t2.trees.map(_.size).sum)
+      println(accuracy(t2, validate))
+
+      (1.to(5)).foreach{i =>
+        t2 = t2.pruneBy{case (v1,v2) => l2(v1,v2)+0.1}
+        println(t2.trees.map(_.size).sum)
+        println(accuracy(t2, validate))
+        //retrain
+        scala.util.Random.shuffle(train).foreach{
+          case (xs,v) => t2 = t2.absorb(xs,Map(v->1L))
+        }
+        println(t2.trees.map(_.size).sum)
+        println(accuracy(t2, validate))
       }
 
       //validate with the holdouts
       val validationAccuracy2 = accuracy(t2, validate)
 
+      val tSize = t.trees.map(_.size).sum
+      val t2Size = t2.trees.map(_.size).sum
+
+
       //despite having fewer total nodes, ...
-      t2.trees.map(_.size).sum should be < t.trees.map(_.size).sum
+      println(s"$t2Size < $tSize")
+      t2Size should be < tSize
 
       //... pruning should yield greater accuracy
-      validationAccuracy2 should be > validationAccuracy
-
-      //print the absolute numbers for human gratification
       println(s"$validationAccuracy2 > $validationAccuracy")
+      validationAccuracy2 should be > validationAccuracy
     }
   }
 }

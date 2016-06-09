@@ -140,25 +140,34 @@ case class MondrianTree[V](root: Option[MondrianTree.Node[V]], λ: Double) {
    * Note: there is originally one E value created per leaf (and these are then recursively summed),
    * which means that E can track the number of leaves involved, if desired, for regularization.
    */
-  def pruneBy[E](lossFn: V => E)(implicit sv: Semigroup[V], se: Semigroup[E], oe: Ordering[E]): MondrianTree[V] = {
-    def loop(t: Node[V]): (V, E, Node[V]) =
+  def pruneBy[E](lossFn: (V,V) => E)(implicit sv: Semigroup[V], se: Semigroup[E], oe: Ordering[E]): MondrianTree[V] = {
+    def loop(t: Node[V]): (V, Node[V]) =
       t match {
         case b@Branch(_, _, _, lb, ub, left, right) =>
-          val (leftV, leftE, newLeft) = loop(left)
-          val (rightV, rightE, newRight) = loop(right)
+          val (leftV, newLeft) = loop(left)
+          val (rightV, newRight) = loop(right)
           val combinedV = sv.plus(leftV, rightV)
-          val prunedE = lossFn(combinedV)
-          val unprunedE = se.plus(leftE, rightE)
+          val unprunedE = se.plus(lossFn(leftV,leftV), lossFn(rightV,rightV))
+          val leftPrunedE = lossFn(combinedV, rightV)
+          val rightPrunedE = lossFn(combinedV, leftV)
+          val minPrunedE = oe.min(leftPrunedE, rightPrunedE)
 
-          if(oe.lt(prunedE, unprunedE))
-            (combinedV, prunedE, Leaf(λ, lb, ub, combinedV))
-          else
-            (combinedV, unprunedE, b.copy(leftChild=newLeft, rightChild=newRight))
+          if(oe.lt(minPrunedE, unprunedE)) {
+           // println((leftV, rightV, leftPrunedE, rightPrunedE, unprunedE))
+            if(oe.lt(leftPrunedE, rightPrunedE))
+              (rightV, newRight)
+            else
+              (leftV, newLeft)
+          } else {
+            val lb = Bounds.min(newLeft.lowerBounds, newRight.lowerBounds)
+            val ub = Bounds.max(newLeft.upperBounds, newRight.upperBounds)
+            (combinedV, b.copy(leftChild=newLeft, rightChild=newRight))
+          }
 
-        case Leaf(_, _, _, v) => (v, lossFn(v), t)
+        case Leaf(_, _, _, v) => (v, t)
       }
 
-    MondrianTree(root.map{r => loop(r)._3}, λ)
+    MondrianTree(root.map{r => loop(r)._2}, λ)
   }
 
   /**
