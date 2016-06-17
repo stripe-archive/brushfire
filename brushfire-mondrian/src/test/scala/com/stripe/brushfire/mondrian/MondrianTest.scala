@@ -55,7 +55,41 @@ class PredicateSpec extends WordSpec with Matchers with PropertyChecks {
       }
     }
 
-    def accuracy(t: MondrianForest[Map[String,Long]], ps: TraversableOnce[(Vector[Double], String)]): Double = {
+/**
+ * cross entropy is -\sum_i p_i log q_i
+ */
+    def crossEntropy(truth: Boolean, prob: Double): Double = {
+      val eps = 0.0001
+      def clamp(p: Double): Double =
+        if (p <= 0.0) eps
+        else if (p >= 1.0) (1.0 - eps)
+        else p
+
+      -(if (truth) math.log(clamp(prob)) else math.log1p(-clamp(prob)))/math.log(2.0)
+    }
+
+    def relativeCE(data: List[(Boolean, Double)]): (Double, Double, Double) = {
+      val truth = data.map { case (t, _) => if (t) 1.0 else 0.0 }
+      val p = (truth.sum) / (truth.size)
+      val entropy =
+        if (p == 0.0 || p == 1.0) 0.0
+        else -(p * math.log(p) + (1.0 - p) * math.log1p(-p))/math.log(2.0)
+
+      val ce = data.map { case (t, p) => crossEntropy(t, p) }.sum / truth.size
+      ((entropy - ce)/entropy, entropy, ce)
+    }
+
+    def getCrossEntropy(t: MondrianForest[Map[String,Long]], ps: TraversableOnce[(Vector[Double], String)]): (Double, Double, Double) =
+      relativeCE(ps.map {case (dims, label) =>
+        val dist = t.predict(dims)
+        val trueP = dist.getOrElse("True", 0L)
+        val falseP = dist.getOrElse("False", 0L)
+        val p = trueP.toDouble/(trueP + falseP)
+        val truth = label == "True"
+        (truth, p)
+      }.toList)
+
+    def accuracy(t: MondrianForest[Map[String,Long]], ps: TraversableOnce[(Vector[Double], String)]): Double =
       ps.map{case (dims, label) =>
         val dist = t.predict(dims)
         val predicted = dist.toList.maxBy(_._2)._1
@@ -64,7 +98,6 @@ class PredicateSpec extends WordSpec with Matchers with PropertyChecks {
         else
           0.0
       }.sum / ps.size
-    }
 
     def l2(map: Map[String,Long]):Double = {
       val size = map.values.sum
@@ -109,6 +142,43 @@ class PredicateSpec extends WordSpec with Matchers with PropertyChecks {
 
       //print the absolute numbers for human gratification
       println(s"$validationAccuracy2 > $validationAccuracy")
+    }
+
+    "try training with hashing" in {
+      val dataReader = new DataReader(9)
+      //val ignore = Set(0, 1, 40, 41) // chargeid and date
+      //val data = io.Source.fromFile("sample131k.tsv").getLines.map { line =>
+      val ignore = Set(40) // last one is the label
+      val data = io.Source.fromFile("transformed.tsv").getLines.take(1<<17).map { line =>
+        val v = dataReader.tsvLine(line, ignore).toVector
+        val label = line.split('\t')(40)
+        (v, label)
+      }.toList
+      //randomly partition into a training and validation set
+      //val (train, validate) = data.partition{d => math.random < 0.8}
+ //     val prob = data.count { case (_, t) => t == "True" }.toDouble / data.size
+   //   println(s"prob: $prob, size: ${data.size}")
+
+      val trues = data.filter { case (_, t) => t == "True" }
+      val falses = scala.util.Random.shuffle(data.filter { case (_, t) => t == "False" })
+        .take(trues.size)
+      val balanced = scala.util.Random.shuffle(trues ++ falses)
+      val (train, validate) = balanced.partition{d => math.random < 0.8}
+      val prob = balanced.count { case (_, t) => t == "True" }.toDouble / balanced.size
+
+      println(s"prob: $prob, size: ${balanced.size}")
+      //train a forest. lambda is chosen to end up with around 3000 total nodes
+      var t = MondrianForest.empty[Map[String,Long]](100, 0.006)
+      val groups = train.grouped(10000).foreach { batch =>
+        //prune with l2 error, regularized by adding a constant for each leaf node
+        //t = t.pruneBy { v => l2(v) + 2.0 }
+        batch.foreach { case (xs,v) => t = t.absorb(xs,Map(v->1L)) }
+      }
+
+      //validate with the holdouts
+      val (relce, e, ce) = getCrossEntropy(t, validate)
+
+      println(s"relative cross entropy: $relce, entropy: $e, cross entropy: $ce")
     }
   }
 }
