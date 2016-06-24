@@ -45,7 +45,7 @@ case class Trainer[K: Ordering, V: Ordering, T: Monoid](
     copy(samplerExecution = newExecution)
   }
 
-  def tee(fn: ((TypedPipe[Instance[K, V, T]], Sampler[K], Iterable[(Int, Tree[K, V, T])])) => Execution[_]): Trainer[K, V, T] = {
+  def tee[A](fn: ((TypedPipe[Instance[K, V, T]], Sampler[K], Iterable[(Int, Tree[K, V, T])])) => Execution[A]): Trainer[K, V, T] = {
     val newExecution = treeExecution
       .flatMap { trees =>
         Execution.zip(trainingDataExecution, samplerExecution, trees.toIterableExecution)
