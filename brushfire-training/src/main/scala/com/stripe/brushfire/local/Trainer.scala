@@ -127,7 +127,7 @@ case class Trainer[K: Ordering, V: Ordering, T: Monoid](
   }
 
   def validate[P, E](error: Error[T, P, E])(implicit voter: Voter[T, P]): Option[E] =
-    error.semigroup.sumOption(trainingData.iterator.map { instance =>
+    error.semigroup.sumOption(trainingData.iterator.flatMap { instance =>
       val id = instance.id
       val timestamp = instance.timestamp
       val features = instance.features
@@ -139,7 +139,8 @@ case class Trainer[K: Ordering, V: Ordering, T: Monoid](
           tree.targetFor(features)
         }.toVector
 
-      error.create(instance.target, voter.combine(predictions))
+      if (predictions.isEmpty) None
+      else Some(error.create(instance.target, voter.combine(predictions)))
     })
 }
 
