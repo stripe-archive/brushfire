@@ -126,26 +126,21 @@ case class Trainer[K: Ordering, V: Ordering, T: Monoid](
     copy(trees = newTrees)
   }
 
-  def validate[P, E](error: Error[T, P, E])(implicit voter: Voter[T, P]): Option[E] = {
-    var output: Option[E] = None
-    trainingData.foreach{instance =>
-      val predictions =
-        for (
-          (treeIndex, tree) <- treeMap
-            if sampler.includeInValidationSet(instance.id, instance.timestamp, treeIndex);
-          target <- tree.targetFor(instance.features).toList
-        ) yield target
+  def validate[P, E](error: Error[T, P, E])(implicit voter: Voter[T, P]): Option[E] =
+    error.semigroup.sumOption(trainingData.iterator.map { instance =>
+      val id = instance.id
+      val timestamp = instance.timestamp
+      val features = instance.features
 
-      if(!predictions.isEmpty) {
-        val newError = error.create(instance.target, voter.combine(predictions))
-        output = output
-                    .map{old => error.semigroup.plus(old, newError)}
-                    .orElse(Some(newError))
-      }
-    }
+      val predictions = treeMap.iterator
+        .filter { case (treeIndex, _) =>
+          sampler.includeInValidationSet(id, timestamp, treeIndex)
+        }.flatMap { case (_, tree) =>
+          tree.targetFor(features)
+        }.toVector
 
-    output
-  }
+      error.create(instance.target, voter.combine(predictions))
+    })
 }
 
 object Trainer {
