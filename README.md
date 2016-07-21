@@ -1,11 +1,111 @@
-![Brushfire](brushfire.png)
-
-Brushfire
+What is Brushfire?
 =========
 
-Brushfire is a framework for distributed supervised learning of decision tree ensemble models in Scala.
+Brushfire is a framework developed by [Stripe](http://stripe.com) for distributed [supervised learning](https://en.wikipedia.org/wiki/Supervised_learning) of [decision trees](https://en.wikipedia.org/wiki/Decision_tree_learning) in [Scala](http://www.scala-lang.org/) using [ensemble models](https://en.wikipedia.org/wiki/Ensemble_learning).
 
-The basic approach to distributed tree learning is inspired by Google's [PLANET](http://static.googleusercontent.com/media/research.google.com/en/us/pubs/archive/36296.pdf), but considerably generalized thanks to Scala's type parameterization and Algebird's aggregation abstractions.
+<img src="brushfire.png" width="400">
+
+# Quick start
+
+Brushfire rides on Scala and [SBT](http://www.scala-sbt.org/) (Scala's interactive build tool). Install both and then:
+
+```bash
+$ git clone https://github.com/stripe/brushfire.git
+$ cd brushfire
+$ sbt brushfireScalding/assembly
+$ cd example
+$ ./iris
+```
+
+The `iris.output` directory will be created. Inside you will see 4 versions of a decision tree, represented as JSON, for classifying irises:
+
+```bash
+$ ls iris.output | grep step_*
+step_00
+step_01
+step_02
+step_03
+```
+
+Here's an example decision tree output from `step_03`:
+
+```json
+{
+   "key":"petal-width",
+   "predicate":{
+      "lt":0.6015625
+   },
+   "left":{
+      "leaf":0,
+      "distribution":{
+         "Iris-setosa":42
+      }
+   },
+   "right":{
+      "key":"petal-width",
+      "predicate":{
+         "lt":1.703125
+      },
+      "left":{
+         "key":"petal-length",
+         "predicate":{
+            "lt":5.09375
+         },
+         "left":{
+            "leaf":1,
+            "distribution":{
+               "Iris-virginica":1,
+               "Iris-versicolor":38
+            }
+         },
+         "right":{
+            "leaf":2,
+            "distribution":{
+               "Iris-virginica":2
+            }
+         }
+      },
+      "right":{
+         "key":"sepal-width",
+         "predicate":{
+            "lt":2.703125
+         },
+         "left":{
+            "leaf":3,
+            "distribution":{
+               "Iris-virginica":4
+            }
+         },
+         "right":{
+            "leaf":4,
+            "distribution":{
+               "Iris-virginica":29
+            }
+         }
+      }
+   }
+}
+```
+
+To use brushfire in your own SBT project, add the following to your `build.sbt`:
+
+```scala
+libraryDependencies += "com.stripe" %% "brushfire" % "0.6.3"
+```
+
+To use brushfire as a jar in your own Maven project, add the following to your POM file:
+
+```xml
+<dependency>
+  <groupId>com.stripe</groupId>
+  <artifactId>brushfire_${scala.binary.version}</artifactId>
+  <version>0.6.3</version>
+</dependency>
+```
+
+# Background
+
+The basic approach to distributed tree learning is inspired by Google's [PLANET](http://static.googleusercontent.com/media/research.google.com/en/us/pubs/archive/36296.pdf), but considerably generalized thanks to Scala's type parameterization and [Algebird's](https://github.com/twitter/algebird) aggregation abstractions.
 
 Brushfire currently supports:
 * binary and multi-class classifiers
@@ -25,9 +125,7 @@ In the future we plan to add support for:
 
 # Authors
 
-* Avi Bryant <http://twitter.com/avibryant>
-
-Thanks for assistance and contributions:
+Avi Bryant <http://twitter.com/avibryant> with assistance and contributions from:
 
 * Edwin Chen <https://twitter.com/echen>
 * Dan Frank <http://twitter.com/danielhfrank>
@@ -38,32 +136,7 @@ Thanks for assistance and contributions:
 * Erik Osheim <http://twitter.com/d6>
 * Tom Switzer <https://twitter.com/tixxit>
 
-# Quick start
 
-````
-sbt brushfireScalding/assembly
-cd example
-./iris
-cat iris.output/step_03
-````
-
-If it worked, you should see a JSON representation of 4 versions of a decision tree for classifying irises.
-
-To use brushfire in your own SBT project, add the following to your `build.sbt`:
-
-```scala
-libraryDependencies += "com.stripe" %% "brushfire" % "0.6.3"
-```
-
-To use brushfire as a jar in your own Maven project, add the following to your POM file:
-
-```
-<dependency>
-  <groupId>com.stripe</groupId>
-  <artifactId>brushfire_${scala.binary.version}</artifactId>
-  <version>0.6.3</version>
-</dependency>
-```
 
 # Using Brushfire with Scalding
 
@@ -164,3 +237,4 @@ Brushfire is designed to be extremely pluggable. Some ways you might want to ext
 * Adding a new feature type, or a new way of binning an existing feature type (such as log-binning real numbers): define a new [Splitter](http://stripe.github.io/brushfire/#com.stripe.brushfire.Splitter)
 * Adding a new target type (such as real-valued targets for regression trees): define a new [Evaluator](http://stripe.github.io/brushfire/#com.stripe.brushfire.Evaluator), a new [Stopper](http://stripe.github.io/brushfire/#com.stripe.brushfire.Stopper) and quite likely also define a new [Splitter](http://stripe.github.io/brushfire/#com.stripe.brushfire.Splitter) for any continuous or sparse feature types you want to be able to use.
 * Add a new distributed computation platform: define a new equivalent of [Trainer](http://stripe.github.io/brushfire/#com.stripe.brushfire.scalding.Trainer), idiomatically to the platform you're using. (There's no specific interface this should implement.)
+mark
