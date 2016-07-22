@@ -1,0 +1,3 @@
+#!/bin/sh
+
+sbt "brushfireScalding/runMain com.twitter.scalding.Tool com.stripe.brushfire.scalding.IrisJob --local --input example/iris.data --output example/iris.output"

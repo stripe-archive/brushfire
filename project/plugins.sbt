@@ -1,5 +1,5 @@
 addSbtPlugin("com.eed3si9n" % "sbt-unidoc" % "0.3.2")
-addSbtPlugin("com.eed3si9n" % "sbt-assembly" % "0.13.0")
+addSbtPlugin("com.eed3si9n" % "sbt-assembly" % "0.14.3")
 addSbtPlugin("com.typesafe.sbt" % "sbt-native-packager" % "1.0.0-RC1")
 addSbtPlugin("com.jsuereth" % "sbt-pgp" % "1.0.0")
 addSbtPlugin("no.arktekk.sbt" % "aether-deploy" % "0.14")
