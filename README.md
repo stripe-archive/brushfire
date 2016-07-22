@@ -1,13 +1,24 @@
 What is Brushfire?
 =========
 
-Brushfire is a framework developed by [Stripe](http://stripe.com) for distributed [supervised learning](https://en.wikipedia.org/wiki/Supervised_learning) of [decision trees](https://en.wikipedia.org/wiki/Decision_tree_learning) in [Scala](http://www.scala-lang.org/) using [ensemble models](https://en.wikipedia.org/wiki/Ensemble_learning).
+Brushfire is a framework developed at [Stripe](http://stripe.com) for distributed [supervised learning](https://en.wikipedia.org/wiki/Supervised_learning) of [decision trees](https://en.wikipedia.org/wiki/Decision_tree_learning) in [Scala](http://www.scala-lang.org/) using [ensemble models](https://en.wikipedia.org/wiki/Ensemble_learning).
 
 <img src="brushfire.png" width="400">
 
 # Quick start
 
-Brushfire rides on Scala and [SBT](http://www.scala-sbt.org/) (Scala's interactive build tool). Install both and then:
+Brushfire rides on Scala and [SBT](http://www.scala-sbt.org/) (Scala's interactive build tool). Get those installed and then we can run the example code which uses Brushfire to build example decision tree models from the [Iris dataset](https://archive.ics.uci.edu/ml/datasets/Iris). 
+
+We can run it from your local machine (which pulls down all the required dependencies):
+
+```bash
+$ git clone https://github.com/stripe/brushfire.git
+$ cd brushfire
+$ ./quick-start
+```
+
+Or we can run it from a Hadoop cluster (which pulls down all the required dependencies except for Hadoop jars which are provided by the Hadoop execution environment):
+
 
 ```bash
 $ git clone https://github.com/stripe/brushfire.git
@@ -17,7 +28,7 @@ $ cd example
 $ ./iris
 ```
 
-The `iris.output` directory will be created. Inside you will see 4 versions of a decision tree, represented as JSON, for classifying irises:
+The `example/iris.output` directory will be created. Inside we can see 4 versions of a decision tree, represented as JSON, for classifying irises:
 
 ```bash
 $ ls iris.output | grep step_*
@@ -87,13 +98,13 @@ Here's an example decision tree output from `step_03`:
 }
 ```
 
-To use brushfire in your own SBT project, add the following to your `build.sbt`:
+To use brushfire in your own SBT project, we add the following to our `build.sbt`:
 
 ```scala
 libraryDependencies += "com.stripe" %% "brushfire" % "0.6.3"
 ```
 
-To use brushfire as a jar in your own Maven project, add the following to your POM file:
+To use brushfire as a jar in our own Maven project, we add the following to our POM file:
 
 ```xml
 <dependency>
