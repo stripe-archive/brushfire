@@ -31,7 +31,7 @@ object Deps {
   val jacksonJAXRS   = "org.codehaus.jackson" % "jackson-jaxrs"      % V.jackson
   val tDigest        = "com.tdunning"         % "t-digest"           % V.tDigest
 
-val hadoopClient   = "org.apache.hadoop"    % "hadoop-client"      % V.hadoopClient   % "provided"
+  val hadoopClient   = "org.apache.hadoop"    % "hadoop-client"      % V.hadoopClient   % "provided"
   val scaldingCore   = "com.twitter"         %% "scalding-core"      % V.scalding
 
   val finatra        = "com.twitter"         %% "finatra"            % V.finatra
