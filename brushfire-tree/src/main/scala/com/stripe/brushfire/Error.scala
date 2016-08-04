@@ -81,8 +81,10 @@ case class AccuracyError[L, M](implicit m: Monoid[M])
 
   lazy val monoid = implicitly[Monoid[(M, M)]]
 
-  def error(label: L, count: M, probabilities: Map[L, Double]): (M, M) = {
-    val mode = probabilities.maxBy { _._2 }._1
-    if (mode == label) (count, m.zero) else (m.zero, count)
-  }
+  def error(label: L, count: M, probabilities: Map[L, Double]): (M, M) =
+    if (probabilities.isEmpty) (m.zero, m.zero)
+    else {
+      val mode = probabilities.maxBy(_._2)._1
+      if (mode == label) (count, m.zero) else (m.zero, count)
+    }
 }
