@@ -27,12 +27,14 @@ object CrossEntropyExample extends Defaults {
     val totalNormalized: Map[String, Double] = CrossEntropyError.normalize(totalData)
     val totalEntropy: Double = CrossEntropyError.entropy(totalNormalized)
 
-    def relativeEntropy(xn: (Double, Long)): Double = {
-      val (x, n) = xn
+    def relativeEntropy(xn: AveragedValue): Double = {
+      val x = xn.value
+      val n = xn.count
       (totalEntropy - (x / n)) / totalEntropy
     }
 
-    val t0 = Trainer(trainingData, KFoldSampler(4)).updateTargets
+    //val t0 = Trainer(trainingData, KFoldSampler(4)).updateTargets
+    val t0 = Trainer(trainingData, RFSampler(10, 0.3)).updateTargets
 
     (0 until 10).foldLeft(t0) { (trainer, i) =>
       println(i)
