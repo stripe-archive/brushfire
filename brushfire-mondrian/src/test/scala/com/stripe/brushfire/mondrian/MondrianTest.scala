@@ -134,6 +134,12 @@ class PredicateSpec extends WordSpec with Matchers with PropertyChecks {
       //validate with the holdouts
       val validationAccuracy2 = accuracy(t2, validate)
 
+      // t2
+      val ps: TraversableOnce[(Vector[Double], String)] = validate
+      val (relce, e, ce) = getCrossEntropy(t2, ps)
+
+      println(s"digits: relative cross entropy: $relce, entropy: $e, cross entropy: $ce")
+
       //despite having fewer total nodes, ...
       t2.trees.map(_.size).sum should be < t.trees.map(_.size).sum
 
@@ -141,15 +147,17 @@ class PredicateSpec extends WordSpec with Matchers with PropertyChecks {
       validationAccuracy2 should be > validationAccuracy
 
       //print the absolute numbers for human gratification
-      println(s"$validationAccuracy2 > $validationAccuracy")
+      println(s"digits: $validationAccuracy2 > $validationAccuracy")
     }
 
     "try training with hashing" in {
+      val path = "sample131k.tsv"
       val dataReader = new DataReader(9)
       //val ignore = Set(0, 1, 40, 41) // chargeid and date
       //val data = io.Source.fromFile("sample131k.tsv").getLines.map { line =>
       val ignore = Set(40) // last one is the label
-      val data = io.Source.fromFile("transformed.tsv").getLines.take(1<<17).map { line =>
+      //val data = io.Source.fromFile("transformed.tsv").getLines.take(1<<17).map { line =>
+      val data = io.Source.fromFile(path).getLines.map { line =>
         val v = dataReader.tsvLine(line, ignore).toVector
         val label = line.split('\t')(40)
         (v, label)
