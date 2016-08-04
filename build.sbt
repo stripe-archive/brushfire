@@ -20,21 +20,31 @@ val unpublished = Seq(publish := (), publishLocal := (), publishArtifact := fals
 
 lazy val root = project.
   in(file(".")).
-  aggregate(brushfireCore, brushfireScalding).
+  aggregate(brushfireTree, brushfireSerialization, brushfireTraining, brushfireScalding).
   settings(unidocSettings: _*).
   settings(unpublished: _*)
 
-lazy val brushfireCore = project.
-  in(file("brushfire-core")).
+lazy val brushfireTree = project.
+  in(file("brushfire-tree")).
+  disablePlugins(sbtassembly.AssemblyPlugin)
+
+lazy val brushfireTraining = project.
+  in(file("brushfire-training")).
+  dependsOn(brushfireTree).
+  disablePlugins(sbtassembly.AssemblyPlugin)
+
+lazy val brushfireSerialization = project.
+  in(file("brushfire-serialization")).
+  dependsOn(brushfireTree, brushfireTraining % "test->test;compile->compile").
   disablePlugins(sbtassembly.AssemblyPlugin)
 
 lazy val brushfireScalding = project.
   in(file("brushfire-scalding")).
-  dependsOn(brushfireCore)
+  dependsOn(brushfireTraining, brushfireSerialization)
 
 lazy val brushfireFinatra = project.
   in(file("brushfire-finatra")).
-  dependsOn(brushfireCore)
+  dependsOn(brushfireTraining)
 
 lazy val brushfireMondrian = project.
   in(file("brushfire-mondrian")).

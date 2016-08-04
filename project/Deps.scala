@@ -9,7 +9,7 @@ object Deps {
     val algebird = "0.9.0"
     val jackson = "1.9.13"
     val bijection = "0.7.0"
-    val bonsai = "0.1.3"
+    val bonsai = "0.2.1"
     val tDigest = "3.1"
 
     val hadoopClient = "2.5.2"
