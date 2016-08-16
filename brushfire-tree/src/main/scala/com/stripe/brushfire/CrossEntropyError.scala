@@ -70,7 +70,7 @@ object CrossEntropyError {
     // }.toMap
     val score = -StableSum(ks.iterator.map { k => p(k) * log2(q(k)) })
     val count = StableSum(p0.values.iterator).toLong
-    AveragedValue(count, score)
+    AveragedValue(count, score / count)
 
     // h(p) = - p log p - (1-p) log (1-p) = -(c0/N) log (c0/N) - (c1/N) log (c1/N) =
     //   // log(a/b) = log a - log b
