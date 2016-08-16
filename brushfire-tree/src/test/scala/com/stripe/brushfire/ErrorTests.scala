@@ -9,6 +9,10 @@ import org.scalatest.prop.PropertyChecks
 import Arbitrary.arbitrary
 import Ordering.Implicits._
 
+// TODO: it's not clear these laws are either necessary or sufficient
+//       to express what we actually need an Error type to do. we'll
+//       hang onto them now until we can find something better.
+
 abstract class ErrorTests[L: Arbitrary, T: Arbitrary: Semigroup, E: Ordering]
     extends PropSpec with Matchers with PropertyChecks {
 
@@ -28,6 +32,8 @@ abstract class ErrorTests[L: Arbitrary, T: Arbitrary: Semigroup, E: Ordering]
     } else ()
   }
 
+  // this is used to see if things are "close enough"
+  // it's fairly hand-wavey but better than nothing
   def nearEq(e1: E, e2: E): Unit
 
   property("create(x) + create(y) = create(x + y)") {
@@ -69,6 +75,8 @@ object Arbitraries {
 
 import Arbitraries._
 
+// L = Boolean
+// M = Count
 class BrierScoreErrorTest extends ErrorTests[Boolean, Map[Boolean, Count], AveragedValue] {
 
   type Err = BrierScoreError[Boolean, Count]
@@ -78,6 +86,8 @@ class BrierScoreErrorTest extends ErrorTests[Boolean, Map[Boolean, Count], Avera
     basicallyEq(e1.value, e2.value, 1e-10)
 }
 
+// it seems like cross-entropy doesn't satisfy these laws
+//
 // class CrossEntropyErrorTest extends ErrorTests[Boolean, Map[Boolean, Count], AveragedValue] {
 //
 //   type Err = CrossEntropyError[Boolean, Count]
