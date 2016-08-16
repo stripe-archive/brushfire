@@ -120,8 +120,7 @@ case class MondrianTree[V](root: Option[MondrianTree.Node[V]], λ: Double) {
 
     def extendBlock(parentTimestamp: Double, j: Node[V]): Node[V] = {
       val rate = Bounds.rate(j.upperBounds, x, j.lowerBounds)
-      // probability that e > 1/rate is:
-      //   exp(-e*rate)
+      // probability that e > 1/rate is: exp(-e*rate)
       val e = log(1.0 / nextDouble) / rate
       if (rate > 0.0 && parentTimestamp + e < j.timestamp) {
         introduceNewParent(e, parentTimestamp + e, j)

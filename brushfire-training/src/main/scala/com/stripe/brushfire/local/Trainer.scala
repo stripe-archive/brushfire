@@ -24,7 +24,7 @@ case class SampledMap[A,B](capacity: Int) {
         if(randValues.size <= capacity && r >= threshold)
           threshold = r
         else if(randValues.size > capacity && r < threshold) {
-          println("evicting")
+          //println("evicting")
           val bottomK = randValues.toList.sortBy{_._2}.take(capacity)
           val keep = bottomK.map{_._1}.toSet
           threshold = bottomK.last._2

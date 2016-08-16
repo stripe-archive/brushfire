@@ -12,12 +12,13 @@ object Example extends Defaults {
     val path = args.head
     val cols = args.tail.toList
 
-    val trainingData = Lines(path).map { line =>
-      val parts = line.split(",").reverse.toList
-      val label = parts.head
-      val values = parts.tail.map { s => s.toDouble }
-      Instance(line, 0L, Map(cols.zip(values): _*), Map(label -> 1L))
-    }.toIterable
+    val trainingData: Iterable[Instance[String,Double,Map[String,Long]]] =
+      Lines(path).map { line =>
+        val parts = line.split(",").reverse.toList
+        val label = parts.head
+        val values = parts.tail.map { s => s.toDouble }
+        Instance(line, 0L, Map(cols.zip(values): _*), Map(label -> 1L))
+      }.toIterable
 
     var trainer =
       Trainer(trainingData, KFoldSampler(4))

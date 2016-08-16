@@ -48,4 +48,6 @@ lazy val brushfireFinatra = project.
 
 lazy val brushfireMondrian = project.
   in(file("brushfire-mondrian")).
+  dependsOn(brushfireTree).
+  dependsOn(brushfireTraining).
   disablePlugins(sbtassembly.AssemblyPlugin)
