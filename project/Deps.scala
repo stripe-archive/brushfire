@@ -6,7 +6,7 @@ object Resolvers {
 
 object Deps {
   object V {
-    val algebird = "0.9.0"
+    val algebird = "0.12.2"
     val jackson = "1.9.13"
     val bijection = "0.7.0"
     val bonsai = "0.2.1"
