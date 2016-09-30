@@ -6,14 +6,14 @@ object Resolvers {
 
 object Deps {
   object V {
-    val algebird = "0.9.0"
+    val algebird = "0.12.2"
     val jackson = "1.9.13"
     val bijection = "0.7.0"
     val bonsai = "0.2.1"
     val tDigest = "3.1"
 
     val hadoopClient = "2.5.2"
-    val scalding = "0.13.1"
+    val scalding = "0.16.1-RC3"
     val chill = "0.5.2"
 
     val finatra = "1.6.0"
