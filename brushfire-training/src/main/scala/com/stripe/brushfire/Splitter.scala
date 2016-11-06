@@ -17,7 +17,7 @@ trait Splitter[V, T] {
   /** semigroup to sum up joint distributions */
   def semigroup: Semigroup[S]
 
-  /** return candidate splits given a joint distribution and the parent node's target distrubution */
+  /** return candidate splits given a joint distribution and the parent node's target distribution */
   def split(parent: T, stats: S): Iterable[Split[V, T]]
 }
 
