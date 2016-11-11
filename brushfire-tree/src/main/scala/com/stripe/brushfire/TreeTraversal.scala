@@ -126,6 +126,17 @@ case class DepthFirstTreeTraversal[Tree, K, V, T, A](reorder: Reorder[A])(implic
         Stream.empty[Node]
       }
     }
+    final def asIterator: Iterator[Node] = {
+      var adv = this
+      new Iterator[Node] {
+        def next: Node = {
+          val (node, nextAdv) = adv.next
+          adv = nextAdv
+          node
+        }
+        def hasNext: Boolean = adv.hasNext
+      }
+    }
 
     private val getAnnotation: Node => A =
       node => treeOps.foldNode(node)((_, _, bl) => bl._3, ll => ll._3)
