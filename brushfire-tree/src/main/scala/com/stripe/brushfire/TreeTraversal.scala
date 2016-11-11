@@ -1,7 +1,8 @@
 package com.stripe.brushfire
 
 import com.stripe.bonsai.FullBinaryTreeOps
-import scala.collection.immutable.Stack
+
+import scala.util.{Failure, Success, Try}
 
 /**
  * A `TreeTraversal` provides a way to find all of the leaves in a tree that
@@ -110,17 +111,23 @@ case class DepthFirstTreeTraversal[Tree, K, V, T, A](reorder: Reorder[A])(implic
   import treeOps.{Node, foldNode}
 
   case class Advancer(stack: List[(Node, Option[Node])]) {
-    def hasValue: Boolean = stack.nonEmpty
-    def value: Node = stack.head._1
-    def advance: Option[Advancer] = stack match {
-      case (_, Some(node2)) :: xs => Some(recurse(node2, xs))
-      case (_, None) :: Nil => None
-      case (_, None) :: xs => Some(Advancer(xs))
-      case _ :: Nil => None
-      case Nil => None
+    def hasNext: Boolean = stack.nonEmpty
+    def next: (Node, Advancer) = tryNext.get
+    def tryNext: Try[(Node, Advancer)] = stack match {
+      case (ret, Some(n2)) :: xs => Success((ret, recurse(n2, xs)))
+      case (ret, None) :: xs => Success((ret, Advancer(xs)))
+      case _ => Failure(new Exception("Empty stack!"))
+    }
+    final def asStream: Stream[Node] = {
+      if (hasNext) {
+        val (node, nextAdv) = next
+        node #:: nextAdv.asStream
+      } else {
+        Stream.empty[Node]
+      }
     }
 
-    val getAnnotation: Node => A =
+    private val getAnnotation: Node => A =
       node => treeOps.foldNode(node)((_, _, bl) => bl._3, ll => ll._3)
 
     private def recurse(node: Node, s: List[(Node, Option[Node])]): Advancer = {
@@ -133,15 +140,11 @@ case class DepthFirstTreeTraversal[Tree, K, V, T, A](reorder: Reorder[A])(implic
   }
 
   object Advancer {
-    def fromNode(node: Node): Advancer = Advancer(Nil).recurse(node, Nil)
+    def apply(node: Node): Advancer = Advancer(Nil).recurse(node, Nil)
   }
 
   def streamNode(node: Node): Stream[Node] = {
-    def recurse(advOpt: Option[Advancer]): Stream[Node] = advOpt match {
-      case Some(adv) => adv.value #:: recurse(adv.advance)
-      case None => Stream.empty
-    }
-    recurse(Option(Advancer.fromNode(node)))
+    Advancer(node).asStream
   }
 
   def searchNode(start: Node, row: Map[K, V], id: Option[String]): Stream[LeafLabel[T, A]] = {
