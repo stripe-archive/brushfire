@@ -1,6 +1,7 @@
 package com.stripe.brushfire
 
 import com.stripe.bonsai.FullBinaryTreeOps
+import scala.collection.immutable.Stack
 
 /**
  * A `TreeTraversal` provides a way to find all of the leaves in a tree that
@@ -48,6 +49,12 @@ trait TreeTraversal[Tree, K, V, T, A] {
    * @return the leaf nodes that match the row
    */
   def searchNode(node: treeOps.Node, row: Map[K, V], id: Option[String]): Stream[LeafLabel[T, A]]
+
+  def streamNode(node: treeOps.Node): Stream[treeOps.Node]
+  def stream(tree: Tree): Stream[treeOps.Node] = treeOps.root(tree) match {
+    case Some(root) => streamNode(root)
+    case None => Stream.empty
+  }
 }
 
 object TreeTraversal {
@@ -101,6 +108,41 @@ object TreeTraversal {
 case class DepthFirstTreeTraversal[Tree, K, V, T, A](reorder: Reorder[A])(implicit val treeOps: FullBinaryTreeOps[Tree, BranchLabel[K, V, A], LeafLabel[T, A]], ord: Ordering[V]) extends TreeTraversal[Tree, K, V, T, A] {
 
   import treeOps.{Node, foldNode}
+
+  case class Advancer(stack: List[(Node, Option[Node])]) {
+    def hasValue: Boolean = stack.nonEmpty
+    def value: Node = stack.head._1
+    def advance: Option[Advancer] = stack match {
+      case (_, Some(node2)) :: xs => Some(recurse(node2, xs))
+      case (_, None) :: Nil => None
+      case (_, None) :: xs => Some(Advancer(xs))
+      case _ :: Nil => None
+      case Nil => None
+    }
+
+    val getAnnotation: Node => A =
+      node => treeOps.foldNode(node)((_, _, bl) => bl._3, ll => ll._3)
+
+    private def recurse(node: Node, s: List[(Node, Option[Node])]): Advancer = {
+      treeOps.foldNode(node)(
+        (lc, rc, bl: BranchLabel[K, V, A]) =>
+          reorder(lc, rc, getAnnotation, (n1: Node, n2: Node) => recurse(n1, (node, Some(n2)) :: s)),
+        ll => Advancer((node, None) :: s)
+      )
+    }
+  }
+
+  object Advancer {
+    def fromNode(node: Node): Advancer = Advancer(Nil).recurse(node, Nil)
+  }
+
+  def streamNode(node: Node): Stream[Node] = {
+    def recurse(advOpt: Option[Advancer]): Stream[Node] = advOpt match {
+      case Some(adv) => adv.value #:: recurse(adv.advance)
+      case None => Stream.empty
+    }
+    recurse(Option(Advancer.fromNode(node)))
+  }
 
   def searchNode(start: Node, row: Map[K, V], id: Option[String]): Stream[LeafLabel[T, A]] = {
 
@@ -160,4 +202,5 @@ case class LimitedTreeTraversal[Tree, K, V, T, A](traversal: TreeTraversal[Tree,
   val treeOps: traversal.treeOps.type = traversal.treeOps
   def searchNode(node: treeOps.Node, row: Map[K, V], id: Option[String]): Stream[LeafLabel[T, A]] =
     traversal.searchNode(node, row, id).take(limit)
+  def streamNode(node: treeOps.Node): Stream[treeOps.Node] = traversal.streamNode(node).take(limit)
 }
