@@ -14,7 +14,7 @@ object Deps {
 
     val hadoopClient = "2.5.2"
     val scalding = "0.16.1-RC3"
-    val chill = "0.9.2"
+    val chill = "0.7.7"
 
     val finatra = "1.6.0"
 
