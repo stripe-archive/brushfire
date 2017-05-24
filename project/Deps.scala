@@ -6,20 +6,20 @@ object Resolvers {
 
 object Deps {
   object V {
-    val algebird = "0.12.2"
+    val algebird = "0.13.0"
     val jackson = "1.9.13"
-    val bijection = "0.7.0"
     val bonsai = "0.2.1"
+    val bijection = "0.9.5"
     val tDigest = "3.1"
 
     val hadoopClient = "2.5.2"
     val scalding = "0.16.1-RC3"
-    val chill = "0.5.2"
+    val chill = "0.7.7"
 
     val finatra = "1.6.0"
 
-    val scalaTest = "2.2.4"
-    val scalaCheck = "1.12.2"
+    val scalaTest = "3.0.1"
+    val scalaCheck = "1.13.4"
   }
 
   val algebirdCore   = "com.twitter"         %% "algebird-core"      % V.algebird

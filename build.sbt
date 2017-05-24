@@ -2,15 +2,19 @@ organization in ThisBuild := "com.stripe"
 
 scalaVersion in ThisBuild := "2.11.5"
 
-crossScalaVersions in ThisBuild := Seq("2.10.4", "2.11.5")
+crossScalaVersions in ThisBuild := Seq("2.10.4", "2.11.5", "2.12.1")
 
 scalacOptions in ThisBuild ++= Seq(
-  "-Yinline-warnings",
   "-deprecation",
   "-feature",
   "-unchecked",
   "-optimize"
 )
+
+scalacOptions in ThisBuild ++= (scalaBinaryVersion.value match {
+  case "2.12" => Seq.empty
+  case "2.10" | "2.11" => Seq("-Yinline-warnings")
+})
 
 autoAPIMappings in ThisBuild := true
 
