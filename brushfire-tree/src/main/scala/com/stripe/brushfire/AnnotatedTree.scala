@@ -19,9 +19,9 @@ sealed abstract class Node[K, V, T, A] {
         (nextId + 1, LeafNode(nextId, target, annotation))
     }
 
-  def fold[B](f: (Node[K, V, T, A], Node[K, V, T, A], (K, Predicate[V], A)) => B, g: Tuple3[Int, T, A] => B): B =
+  def fold[B](f: ((K, Predicate[V], A), Node[K, V, T, A], Node[K, V, T, A]) => B, g: Tuple3[Int, T, A] => B): B =
     this match {
-      case SplitNode(k, p, lc, rc, a) => f(lc, rc, (k, p, a))
+      case SplitNode(k, p, lc, rc, a) => f((k, p, a), lc, rc)
       case LeafNode(index, target, a) => g((index, target, a))
     }
 }
@@ -326,6 +326,6 @@ class FullBinaryTreeOpsForAnnotatedTree[K, V, T, A] extends FullBinaryTreeOps[An
   def root(t: AnnotatedTree[K, V, T, A]): Option[Node] = Some(t.root)
 
   def foldNode[B](node: Node)(
-    f: (Node, Node, (K, Predicate[V], A)) => B,
+    f: ((K, Predicate[V], A), Node, Node) => B,
     g: Tuple3[Int, T, A] => B): B = node.fold(f, g)
 }

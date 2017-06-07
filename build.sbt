@@ -1,8 +1,8 @@
 organization in ThisBuild := "com.stripe"
 
-scalaVersion in ThisBuild := "2.11.5"
+scalaVersion in ThisBuild := "2.11.11"
 
-crossScalaVersions in ThisBuild := Seq("2.10.4", "2.11.5", "2.12.1")
+crossScalaVersions in ThisBuild := Seq("2.10.6", "2.11.11", "2.12.2")
 
 scalacOptions in ThisBuild ++= Seq(
   "-deprecation",

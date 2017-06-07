@@ -8,7 +8,7 @@ object Deps {
   object V {
     val algebird = "0.13.0"
     val jackson = "1.9.13"
-    val bonsai = "0.2.1"
+    val bonsai = "0.3.0"
     val bijection = "0.9.5"
     val tDigest = "3.1"
 

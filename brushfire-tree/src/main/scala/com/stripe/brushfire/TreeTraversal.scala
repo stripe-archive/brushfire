@@ -112,7 +112,7 @@ case class DepthFirstTreeTraversal[Tree, K, V, T, A](reorder: Reorder[A])(implic
 
     // pull the A value out of a branch or leaf.
     val getAnnotation: Node => A =
-      node => foldNode(node)((_, _, bl) => bl._3, ll => ll._3)
+      node => foldNode(node)((bl, _, _) => bl._3, ll => ll._3)
 
     // construct a singleton stream from a leaf
     val leafF: LeafLabel[T, A] => Stream[LeafLabel[T, A]] =
@@ -127,7 +127,7 @@ case class DepthFirstTreeTraversal[Tree, K, V, T, A](reorder: Reorder[A])(implic
     // depending on what our predicate says. this var is initialized
     // just after 'recurse' -- it is basically a lazy val but with
     // better performance.
-    var branchF: (Node, Node, BranchLabel[K, V, A]) => Stream[LeafLabel[T, A]] = null
+    var branchF: (BranchLabel[K, V, A], Node, Node) => Stream[LeafLabel[T, A]] = null
 
     // recursively handle each node. the foldNode method decides
     // whether to handle it as a branch or a leaf.
@@ -138,7 +138,7 @@ case class DepthFirstTreeTraversal[Tree, K, V, T, A](reorder: Reorder[A])(implic
     reorderF = (n1, n2) => recurse(n1) #::: recurse(n2)
 
     // now that recurse is defined we can initialize this
-    branchF = (lc, rc, t) => t match {
+    branchF = (t, lc, rc) => t match {
       case (k, p, _) => row.get(k) match {
         case Some(v) => if (p(v)) recurse(lc) else recurse(rc)
         case None => r(lc, rc, getAnnotation, reorderF)
