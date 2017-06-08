@@ -16,7 +16,7 @@ object Deps {
     val scalding = "0.17.4"
     val chill = "0.7.7"
 
-    val finatra = "1.6.0"
+    val finagle = "6.44.0"
 
     val scalaTest = "3.0.1"
     val scalaCheck = "1.13.4"
@@ -34,7 +34,7 @@ object Deps {
   val hadoopClient   = "org.apache.hadoop"    % "hadoop-client"      % V.hadoopClient   % "provided"
   val scaldingCore   = "com.twitter"         %% "scalding-core"      % V.scalding
 
-  val finatra        = "com.twitter"         %% "finatra"            % V.finatra
+  val finagle        = "com.twitter"         %% "finagle-http"       % V.finagle
 
   val scalaTest      = "org.scalatest"       %% "scalatest"          % V.scalaTest      % "test"
   val scalaCheck     = "org.scalacheck"      %% "scalacheck"         % V.scalaCheck     % "test"
