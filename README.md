@@ -31,6 +31,7 @@ $ ./iris
 The `example/iris.output` directory will be created. Inside we can see 4 versions of a decision tree, represented as JSON, for classifying irises:
 
 ```bash
+$ cd example
 $ ls iris.output | grep step_*
 step_00
 step_01
@@ -98,19 +99,58 @@ Here's an example decision tree output from `step_03`:
 }
 ```
 
-To use brushfire in your own SBT project, we add the following to our `build.sbt`:
+You can also start a scoring web service with the following commands (starting in the project root directory, and assuming that you've already run `quick-start`):
 
-```scala
-libraryDependencies += "com.stripe" %% "brushfire" % "0.6.3"
+```
+$ sbt brushfireFinagle/assembly
+$ cd example
+$ ./iris-srv
 ```
 
-To use brushfire as a jar in our own Maven project, we add the following to our POM file:
+Once the server has started, you can access it from a browser, or using a CLI tool such as [httpie](https://github.com/jakubroztocil/httpie) or curl:
+
+```
+$ http GET localhost:8080/iris petal-width=1 petal-length=1 sepal-width=1 sepal-length=1
+HTTP/1.1 200 OK
+Content-Encoding: gzip
+Content-Length: 405
+Content-Type: application/json;charset=utf-8
+
+{
+    "array": false,
+    "bigDecimal": false,
+    "bigInteger": false,
+    "bigIntegerValue": 0,
+    "binary": false,
+    "binaryValue": null,
+    "boolean": false,
+    "booleanValue": false,
+    "containerNode": true,
+    "decimalValue": 0,
+    "double": false,
+    "doubleValue": 0.0,
+    "elements": [...],
+    "fieldNames": [
+        "Iris-setosa"
+    ],
+    ...
+}
+
+```
+
+To use brushfire in your own SBT project, you can add the following to our `build.sbt`:
+
+```scala
+libraryDependencies += "com.stripe" %% "brushfire" % "0.7.5"
+```
+
+You can add the following to your POM file to use brushfire in a Maven project:
 
 ```xml
 <dependency>
   <groupId>com.stripe</groupId>
   <artifactId>brushfire_${scala.binary.version}</artifactId>
-  <version>0.6.3</version>
+  <version>0.7.5</version>
 </dependency>
 ```
 
