@@ -8,12 +8,12 @@ object Deps {
   object V {
     val algebird = "0.13.0"
     val jackson = "1.9.13"
-    val bonsai = "0.2.1"
+    val bonsai = "0.3.0"
     val bijection = "0.9.5"
     val tDigest = "3.1"
 
     val hadoopClient = "2.5.2"
-    val scalding = "0.16.1-RC3"
+    val scalding = "0.17.4"
     val chill = "0.7.7"
 
     val finatra = "1.6.0"
