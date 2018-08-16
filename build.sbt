@@ -10,11 +10,17 @@ scalacOptions in ThisBuild ++= Seq(
   "-unchecked",
   "-optimize"
 )
-
 scalacOptions in ThisBuild ++= (scalaBinaryVersion.value match {
-  case "2.12" => Seq.empty
+  case "2.12" => Nil
   case "2.11" => Seq("-Yinline-warnings")
 })
+
+scalacOptions in (Compile, console) ~= {
+  _.filterNot(Set("-Ywarn-unused-import", "-Yno-predef"))
+}
+scalacOptions in (Test, console) ~= {
+  _.filterNot(Set("-Ywarn-unused-import", "-Yno-predef"))
+}
 
 autoAPIMappings in ThisBuild := true
 
@@ -26,7 +32,8 @@ lazy val root = project.
   in(file(".")).
   aggregate(brushfireTree, brushfireSerialization, brushfireTraining, brushfireScalding).
   settings(unidocSettings: _*).
-  settings(unpublished: _*)
+  settings(unpublished: _*).
+  disablePlugins(sbtassembly.AssemblyPlugin)
 
 lazy val brushfireTree = project.
   in(file("brushfire-tree")).
@@ -46,6 +53,7 @@ lazy val brushfireScalding = project.
   in(file("brushfire-scalding")).
   dependsOn(brushfireTraining, brushfireSerialization)
 
-lazy val brushfireFinatra = project.
-  in(file("brushfire-finatra")).
-  dependsOn(brushfireTraining)
+lazy val brushfireFinagle = project.
+  in(file("brushfire-finagle")).
+  dependsOn(brushfireSerialization, brushfireTraining).
+  settings(unpublished: _*)

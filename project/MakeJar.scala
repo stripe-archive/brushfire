@@ -9,7 +9,9 @@ object MakeJar {
     assemblyMergeStrategy in assembly := {
       val defaultStrategy = (assemblyMergeStrategy in assembly).value
 
-      { 
+      {
+        case "BUILD" => MergeStrategy.discard
+        case path if path.endsWith("io.netty.versions.properties") => MergeStrategy.first
         case PathList(ps @ _*) if ps.last endsWith ".class" => MergeStrategy.first
         case path => defaultStrategy(path)
       }

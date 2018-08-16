@@ -1,11 +1,162 @@
-![Brushfire](brushfire.png)
-
-Brushfire
+What is Brushfire?
 =========
 
-Brushfire is a framework for distributed supervised learning of decision tree ensemble models in Scala.
+Brushfire is a framework developed at [Stripe](http://stripe.com) for distributed [supervised learning](https://en.wikipedia.org/wiki/Supervised_learning) of [decision trees](https://en.wikipedia.org/wiki/Decision_tree_learning) in [Scala](http://www.scala-lang.org/) using [ensemble models](https://en.wikipedia.org/wiki/Ensemble_learning).
 
-The basic approach to distributed tree learning is inspired by Google's [PLANET](http://static.googleusercontent.com/media/research.google.com/en/us/pubs/archive/36296.pdf), but considerably generalized thanks to Scala's type parameterization and Algebird's aggregation abstractions.
+<img src="brushfire.png" width="400">
+
+# Quick start
+
+Brushfire rides on Scala and [SBT](http://www.scala-sbt.org/) (Scala's interactive build tool). Get those installed and then we can run the example code which uses Brushfire to build example decision tree models from the [Iris dataset](https://archive.ics.uci.edu/ml/datasets/Iris). 
+
+We can run it from your local machine (which pulls down all the required dependencies):
+
+```bash
+$ git clone https://github.com/stripe/brushfire.git
+$ cd brushfire
+$ ./quick-start
+```
+
+Or we can run it from a Hadoop cluster (which pulls down all the required dependencies except for Hadoop jars which are provided by the Hadoop execution environment):
+
+
+```bash
+$ git clone https://github.com/stripe/brushfire.git
+$ cd brushfire
+$ sbt brushfireScalding/assembly
+$ cd example
+$ ./iris
+```
+
+The `example/iris.output` directory will be created. Inside we can see 4 versions of a decision tree, represented as JSON, for classifying irises:
+
+```bash
+$ cd example
+$ ls iris.output | grep step_*
+step_00
+step_01
+step_02
+step_03
+```
+
+Here's an example decision tree output from `step_03`:
+
+```json
+{
+   "key":"petal-width",
+   "predicate":{
+      "lt":0.6015625
+   },
+   "left":{
+      "leaf":0,
+      "distribution":{
+         "Iris-setosa":42
+      }
+   },
+   "right":{
+      "key":"petal-width",
+      "predicate":{
+         "lt":1.703125
+      },
+      "left":{
+         "key":"petal-length",
+         "predicate":{
+            "lt":5.09375
+         },
+         "left":{
+            "leaf":1,
+            "distribution":{
+               "Iris-virginica":1,
+               "Iris-versicolor":38
+            }
+         },
+         "right":{
+            "leaf":2,
+            "distribution":{
+               "Iris-virginica":2
+            }
+         }
+      },
+      "right":{
+         "key":"sepal-width",
+         "predicate":{
+            "lt":2.703125
+         },
+         "left":{
+            "leaf":3,
+            "distribution":{
+               "Iris-virginica":4
+            }
+         },
+         "right":{
+            "leaf":4,
+            "distribution":{
+               "Iris-virginica":29
+            }
+         }
+      }
+   }
+}
+```
+
+You can also start a scoring web service with the following commands (starting in the project root directory, and assuming that you've already run `quick-start`):
+
+```
+$ sbt brushfireFinagle/assembly
+$ cd example
+$ ./iris-srv
+```
+
+Once the server has started, you can access it from a browser, or using a CLI tool such as [httpie](https://github.com/jakubroztocil/httpie) or curl:
+
+```
+$ http GET localhost:8080/iris petal-width=1 petal-length=1 sepal-width=1 sepal-length=1
+HTTP/1.1 200 OK
+Content-Encoding: gzip
+Content-Length: 405
+Content-Type: application/json;charset=utf-8
+
+{
+    "array": false,
+    "bigDecimal": false,
+    "bigInteger": false,
+    "bigIntegerValue": 0,
+    "binary": false,
+    "binaryValue": null,
+    "boolean": false,
+    "booleanValue": false,
+    "containerNode": true,
+    "decimalValue": 0,
+    "double": false,
+    "doubleValue": 0.0,
+    "elements": [...],
+    "fieldNames": [
+        "Iris-setosa"
+    ],
+    ...
+}
+
+```
+
+To use brushfire in your own SBT project, you can add the following to our `build.sbt`:
+
+```scala
+libraryDependencies += "com.stripe" %% "brushfire" % "0.7.5"
+```
+
+You can add the following to your POM file to use brushfire in a Maven project:
+
+```xml
+<dependency>
+  <groupId>com.stripe</groupId>
+  <artifactId>brushfire_${scala.binary.version}</artifactId>
+  <version>0.7.5</version>
+</dependency>
+```
+
+# Background
+
+The basic approach to distributed tree learning is inspired by Google's [PLANET](http://static.googleusercontent.com/media/research.google.com/en/us/pubs/archive/36296.pdf), but considerably generalized thanks to Scala's type parameterization and [Algebird's](https://github.com/twitter/algebird) aggregation abstractions.
 
 Brushfire currently supports:
 * binary and multi-class classifiers
@@ -25,9 +176,7 @@ In the future we plan to add support for:
 
 # Authors
 
-* Avi Bryant <http://twitter.com/avibryant>
-
-Thanks for assistance and contributions:
+Avi Bryant <http://twitter.com/avibryant> with assistance and contributions from:
 
 * Edwin Chen <https://twitter.com/echen>
 * Dan Frank <http://twitter.com/danielhfrank>
@@ -38,32 +187,7 @@ Thanks for assistance and contributions:
 * Erik Osheim <http://twitter.com/d6>
 * Tom Switzer <https://twitter.com/tixxit>
 
-# Quick start
 
-````
-sbt brushfireScalding/assembly
-cd example
-./iris
-cat iris.output/step_03
-````
-
-If it worked, you should see a JSON representation of 4 versions of a decision tree for classifying irises.
-
-To use brushfire in your own SBT project, add the following to your `build.sbt`:
-
-```scala
-libraryDependencies += "com.stripe" %% "brushfire" % "0.6.3"
-```
-
-To use brushfire as a jar in your own Maven project, add the following to your POM file:
-
-```
-<dependency>
-  <groupId>com.stripe</groupId>
-  <artifactId>brushfire_${scala.binary.version}</artifactId>
-  <version>0.6.3</version>
-</dependency>
-```
 
 # Using Brushfire with Scalding
 
