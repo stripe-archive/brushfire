@@ -1,16 +1,13 @@
 package com.stripe.brushfire
 
 import scala.util.Random
-
 import com.twitter.algebird._
-
-import org.scalacheck.{ Gen, Prop }
+import org.scalacheck.{Gen, Prop}
 import org.scalacheck.Prop._
 import org.scalacheck.Arbitrary.arbitrary
-import org.scalatest.{ WordSpec, Matchers }
+import org.scalatest.{Matchers, WordSpec}
 import org.scalatest.prop.Checkers
-
-import Predicate.Lt
+import Predicate.{GtEq, Lt}
 
 class TreeTraversalSpec extends WordSpec with Matchers with Checkers {
   import TreeGenerators._
@@ -53,6 +50,26 @@ class TreeTraversalSpec extends WordSpec with Matchers with Checkers {
             case Seq(i, j) => i < j
           }
       }
+    }
+
+    "generate a stream of nodes" in {
+      check { (tree: TreeSDD[Unit]) =>
+        val traversal =
+          TreeTraversal.depthFirst[TreeSDD[Unit], String, Double, Double, Unit]
+        val nodes = traversal.stream(tree).toList
+        val fromStream = nodes.collect { case LeafNode(_, target, ()) => target}.toSet
+        val fromSearch = traversal.search(tree, Map.empty, None).map(_._2).toSet
+        fromStream == fromSearch
+      }
+    }
+
+    "iterate over nodes in order" in {
+      val simpleTree = AnnotatedTree(split[Double, Unit]("a", GtEq(0.5), LeafNode(1, 0.95, ()), LeafNode(2, 0.5, ())))
+      val traversal =
+        TreeTraversal.depthFirst[TreeSDD[Unit], String, Double, Double, Unit]
+      val treeOps = new FullBinaryTreeOpsForAnnotatedTree[String, Double, Double, Unit]()
+      val root = treeOps.root(simpleTree).get
+      traversal.stream(simpleTree).toList shouldBe List(LeafNode(1, 0.95, ()), root, LeafNode(2, 0.5, ()))
     }
   }
 
