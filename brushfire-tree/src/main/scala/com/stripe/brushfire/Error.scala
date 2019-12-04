@@ -15,6 +15,7 @@ trait Error[T, P, E] {
    */
   def create(actual: T, predicted: P): E
 }
+
 /**
  * FrequencyError sets up the most common case when dealing
  * with discrete distributions:
@@ -27,13 +28,10 @@ trait FrequencyError[L, M, E] extends Error[Map[L, M], Map[L, Double], E] {
 
   def monoid: Monoid[E]
 
-  def create(actual: Map[L, M], predicted: Map[L, Double]) = {
-    if (predicted.isEmpty)
-      monoid.zero
-    else {
-      monoid.sum(actual.map { case (label, count) => error(label, count, predicted) })
-    }
-  }
+  def create(actual: Map[L, M], predicted: Map[L, Double]): E =
+    monoid.sum(actual.iterator.map { case (label, count) =>
+      error(label, count, predicted)
+    })
 
   def error(label: L, count: M, probabilities: Map[L, Double]): E
 }
@@ -83,11 +81,10 @@ case class AccuracyError[L, M](implicit m: Monoid[M])
 
   lazy val monoid = implicitly[Monoid[(M, M)]]
 
-  def error(label: L, count: M, probabilities: Map[L, Double]) = {
-    val mode = probabilities.maxBy { _._2 }._1
-    if (mode == label)
-      (count, m.zero)
-    else
-      (m.zero, count)
-  }
+  def error(label: L, count: M, probabilities: Map[L, Double]): (M, M) =
+    if (probabilities.isEmpty) (m.zero, m.zero)
+    else {
+      val mode = probabilities.maxBy(_._2)._1
+      if (mode == label) (count, m.zero) else (m.zero, count)
+    }
 }
